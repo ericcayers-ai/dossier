@@ -24,6 +24,7 @@ ui/dist/
 # Verification run artifacts (large binaries / live caches produced by verification runs)
 .verification/live-cache/
 .verification/live-render/
+.verification/*.png
 
 # graphify machine-local + regenerable state.
 # Commit-safe graph artifacts (graph.json, GRAPH_REPORT.md, scope.json,
