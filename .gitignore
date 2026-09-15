@@ -37,6 +37,7 @@ ui/dist/
 .graphify/manifest.json
 .graphify/description-instructions/
 .graphify/label-instructions/
+.graphify/.graphify_describe_pending
 
 # Environment / secrets
 .env
