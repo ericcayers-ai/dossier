@@ -1,0 +1,1 @@
+[{"id":"open-word","label":"Open in Word","applies_to":["*.docx"],"argv":["cmd","/c","start","","{path}"],"confirm":false,"writes":false},{"id":"reveal","label":"Reveal in File Explorer","applies_to":["*"],"argv":["explorer.exe","/select,{path}"],"confirm":false,"writes":false}]

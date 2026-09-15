@@ -1,0 +1,1 @@
+{"strip_prefixes":["job-posting-","keywords-","keyword-gap-","diagnosis-","jd-gap-input-","workflow-","skill-gap-","Ayers_Resume_"],"strip_suffixes":["_CoverLetter"],"strip_patterns":["-\\d{4}-\\d{2}-\\d{2}","_[A-Z][a-z]{2}\\d{4}","-page-\\d+"]}

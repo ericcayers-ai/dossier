@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments / package managers
+.venv/
+venv/
+node_modules/
+
+# Test + tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Dossier runtime state (created at launch under the selected root or repo root)
+.dossier/
+
+# Frontend build output
+ui/dist/
+
+# Verification run artifacts (large binaries / live caches produced by verification runs)
+.verification/live-cache/
+.verification/live-render/
+
+# graphify machine-local + regenerable state.
+# Commit-safe graph artifacts (graph.json, GRAPH_REPORT.md, scope.json,
+# .graphify_labels.json, .graphify_detect.json) stay tracked.
+# Never tracked: worktree/branch state, AST cache, instruction batches, and the
+# manifest (absolute machine paths, not portable).
+.graphify/branch.json
+.graphify/worktree.json
+.graphify/needs_update
+.graphify/cache/
+.graphify/manifest.json
+.graphify/description-instructions/
+.graphify/label-instructions/
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
