@@ -1,0 +1,228 @@
+import asyncio
+import json
+import mimetypes
+import os
+from pathlib import Path
+from urllib.parse import urlparse
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
+from ..bundles import resolve_bundle
+from ..audit import audit_workspace, build_handoff
+from ..config import AppConfig
+from ..db import open_db, search
+from ..indexer import crawl, watch
+from ..safety import Conflict, FileStamp, PathEscape, atomic_write, resolve_in_root, stamp, trash
+
+
+def _loopback_origin(origin: str) -> bool:
+    parsed = urlparse(origin)
+    return parsed.scheme in {"http", "https"} and parsed.hostname in {"127.0.0.1", "localhost"}
+
+
+def create_app(config: AppConfig) -> FastAPI:
+    config.ensure()
+    connection = open_db(config.db_path)
+    crawl(config, connection)
+    app = FastAPI(title="Dossier")
+    app.state.config = config
+    app.state.conn = connection
+    app.state.events = asyncio.Queue()
+    app.state.watch_task = None
+
+    @app.exception_handler(PathEscape)
+    async def path_error(request: Request, exc: PathEscape):
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    @app.middleware("http")
+    async def auth(request: Request, call_next):
+        if request.url.path.startswith("/api/"):
+            origin = request.headers.get("origin")
+            if origin and not _loopback_origin(origin):
+                return JSONResponse({"detail": "origin rejected"}, status_code=403)
+            supplied = request.headers.get("authorization", "")
+            header_token = supplied.removeprefix("Bearer ").strip() if supplied.startswith("Bearer ") else ""
+            cookie_token = request.cookies.get("dossier_token", "")
+            query_token = request.query_params.get("token", "")
+            if header_token != config.token and cookie_token != config.token and query_token != config.token:
+                return Response("Unauthorized", status_code=401)
+        return await call_next(request)
+
+    @app.on_event("startup")
+    async def start_watcher():
+        async def on_change(changes):
+            for change, path in changes:
+                await app.state.events.put({"type": change.name.lower(), "path": str(path)})
+        app.state.watch_task = asyncio.create_task(watch(config, connection, on_change))
+
+    @app.on_event("shutdown")
+    async def stop_watcher():
+        task = app.state.watch_task
+        if task:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        connection.close()
+
+    dist = Path(__file__).parents[3] / "ui" / "dist"
+
+    @app.get("/")
+    def index():
+        if dist.joinpath("index.html").exists():
+            response = FileResponse(dist / "index.html", media_type="text/html")
+        else:
+            response = HTMLResponse("<h1>Dossier</h1><p>Build ui/ first.</p>")
+        response.set_cookie("dossier_token", config.token, httponly=True, samesite="lax")
+        return response
+
+    if dist.joinpath("assets").exists():
+        app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
+
+    def tree_node(path: Path) -> dict:
+        if path.is_dir():
+            children = []
+            for child in sorted(path.iterdir(), key=lambda item: (not item.is_dir(), item.name.casefold())):
+                if child.name in {".dossier", ".git", "__pycache__", "node_modules"}:
+                    continue
+                try:
+                    if child.is_symlink() and not child.resolve().is_relative_to(config.root):
+                        continue
+                    children.append(tree_node(child))
+                except (OSError, ValueError):
+                    continue
+            return {"name": path.name, "rel": path.relative_to(config.root).as_posix() if path != config.root else "", "directory": True, "children": children}
+        stat = path.stat()
+        return {"name": path.name, "rel": path.relative_to(config.root).as_posix(), "directory": False, "ext": path.suffix.casefold(), "size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
+
+    @app.get("/api/health")
+    def health():
+        count = connection.execute("SELECT count(*) AS count FROM files").fetchone()["count"]
+        return {"ok": True, "root": str(config.root), "indexed": count}
+
+    @app.get("/api/tree")
+    def tree(dir: str = ""):
+        path = resolve_in_root(config.root, dir)
+        if not path.is_dir():
+            raise HTTPException(404, "directory not found")
+        return tree_node(path).get("children", [])
+
+    @app.get("/api/file")
+    def get_file(rel: str):
+        path = resolve_in_root(config.root, rel)
+        if not path.is_file():
+            raise HTTPException(404, "file not found")
+        return {"rel": rel, "content": path.read_text(encoding="utf-8", errors="replace"), "stamp": stamp(path).__dict__}
+
+    @app.put("/api/file")
+    async def put_file(payload: dict):
+        try:
+            path = resolve_in_root(config.root, str(payload["rel"]))
+            expected_data = payload.get("expect")
+            expected = FileStamp(**expected_data) if expected_data else None
+            if expected is not None and path.exists() and stamp(path) != expected:
+                raise Conflict("file changed on disk")
+            if path.exists():
+                trash(config, path)
+            result = atomic_write(path, str(payload.get("content", "")).encode("utf-8"), expected)
+            return {"rel": str(payload["rel"]), "stamp": result.__dict__}
+        except PathEscape as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except (Conflict, KeyError, TypeError, ValueError) as exc:
+            status = 409 if isinstance(exc, Conflict) else 400
+            raise HTTPException(status, str(exc)) from exc
+
+    @app.get("/api/raw")
+    def raw(rel: str):
+        path = resolve_in_root(config.root, rel)
+        if not path.is_file():
+            raise HTTPException(404, "file not found")
+        filename = path.name.replace('"', "'")
+        return FileResponse(path, media_type=mimetypes.guess_type(path.name)[0] or "application/octet-stream", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+
+    @app.get("/api/search")
+    def do_search(q: str, limit: int = 50):
+        if not q.strip():
+            return []
+        return search(connection, q, min(max(limit, 1), 200))
+
+    @app.get("/api/bundle")
+    def bundle(rel: str):
+        return resolve_bundle(connection, rel).__dict__
+
+    @app.get("/api/events")
+    async def events():
+        async def stream():
+            yield "data: {\"type\":\"connected\"}\n\n"
+            while True:
+                try:
+                    event = await asyncio.wait_for(app.state.events.get(), timeout=15)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        return StreamingResponse(stream(), media_type="text/event-stream")
+
+    @app.get("/api/render")
+    def render(rel: str):
+        from ..convert import convert
+        source = resolve_in_root(config.root, rel)
+        if source.suffix.casefold() != ".docx":
+            raise HTTPException(400, "only DOCX files have a server render")
+        cache_dir = config.dossier_dir / "cache" / "render"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / f"{stamp(source).sha256}.pdf"
+        if not cache_path.exists():
+            convert(source, cache_path)
+        return FileResponse(cache_path, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{source.stem}.pdf"'})
+
+    @app.get("/api/export")
+    def export(rel: str, target: str):
+        from ..convert import convert
+        source = resolve_in_root(config.root, rel)
+        destination = resolve_in_root(config.root, target)
+        return {"path": str(convert(source, destination))}
+
+    @app.get("/api/actions")
+    def actions():
+        from ..actions import load_actions
+        return [action.__dict__ for action in load_actions(config)]
+
+    @app.post("/api/actions")
+    def run_action(payload: dict):
+        from ..actions import run_action as execute_action
+        try:
+            return execute_action(config, payload["id"], payload["rel"], bool(payload.get("confirmed"))).__dict__
+        except PermissionError as exc:
+            raise HTTPException(428, str(exc)) from exc
+        except (ValueError, PathEscape) as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.get("/api/jobs")
+    def jobs():
+        from ..domain_jobs import load_jobs
+        return load_jobs(config.root)
+
+    @app.get("/api/jobs/history")
+    def job_history():
+        from ..domain_jobs import parse_history
+        return parse_history(config.root / "job-history.md")
+
+    @app.get("/api/jobs/due")
+    def jobs_due():
+        from ..domain_jobs import due_items
+        return due_items(config.root)
+
+    @app.get("/api/jobs/feeds")
+    def feed_catalog():
+        from ..feeds import ADAPTERS, ENDPOINTS, PROHIBITED
+        return {"permitted": {name: {"policy": cls.policy, "endpoint": ENDPOINTS[name]} for name, cls in ADAPTERS.items()}, "prohibited": sorted(PROHIBITED)}
+
+    @app.get("/api/audit")
+    def audit():
+        return audit_workspace(config.root, connection)
+
+    @app.get("/api/ai/handoff")
+    def ai_handoff():
+        return build_handoff(config.root, connection)
+
+    return app
