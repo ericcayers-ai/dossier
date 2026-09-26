@@ -131,7 +131,14 @@ def norm_title(title: str) -> str:
 
 
 def dedupe(jobs: list[dict]) -> tuple[list[dict], dict]:
-    """Drop repeats by unique url, then by title+employer. Keeps the first seen."""
+    """Drop repeats: same normalised URL, or same title+employer when no URL.
+
+    A shared URL is the same posting, whatever employer string a particular
+    capture happened to record — one board labels the employer "SEEK listing"
+    where another names the real company, and both rows used to survive. Title
+    plus employer is only used when there is no URL at all, since two genuinely
+    distinct postings can share both ("Retail Assistant" at a large chain).
+    """
     seen_urls: set[str] = set()
     seen_pairs: set[str] = set()
     kept: list[dict] = []
@@ -139,14 +146,14 @@ def dedupe(jobs: list[dict]) -> tuple[list[dict], dict]:
     for job in jobs:
         url = norm_url(job.get("url", ""))
         pair = norm_pair(job.get("title"), job.get("employer"))
-        if url and url in seen_urls and norm_pair(job.get("title"), job.get("employer")) in seen_pairs:
-            dropped["duplicate"] += 1
-            continue
-        if not url and pair in seen_pairs:
-            dropped["duplicate-no-url"] += 1
-            continue
         if url:
+            if url in seen_urls:
+                dropped["duplicate-url"] += 1
+                continue
             seen_urls.add(url)
+        elif pair in seen_pairs:
+            dropped["duplicate-title-employer"] += 1
+            continue
         seen_pairs.add(pair)
         kept.append(job)
     return kept, {"input": len(jobs), "kept": len(kept), "dropped": dict(dropped)}

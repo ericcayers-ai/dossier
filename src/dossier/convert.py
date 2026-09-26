@@ -3,10 +3,8 @@ from pathlib import Path
 import csv
 import json
 import shutil
-import subprocess
 import sys
 import threading
-import tempfile
 
 
 def _pymupdf():
@@ -53,13 +51,16 @@ def available_renderers():
 
 
 def routes(ext):
-    ext = ext.casefold()
-    if ext == ".docx": return [Route(".pdf", "faithful", "word"), Route(".md", "semantic"), Route(".txt", "semantic")]
-    if ext == ".pdf": return [Route(".png", "faithful", "pymupdf"), Route(".md", "extracted"), Route(".txt", "extracted")]
-    if ext == ".md": return [Route(".docx", "semantic"), Route(".pdf", "faithful", "word")]
-    if ext == ".csv": return [Route(".json", "semantic"), Route(".zip", "faithful")]
-    if ext == ".json": return [Route(".csv", "semantic"), Route(".zip", "faithful")]
-    return []
+    """Conversion routes with their fidelity class.
+
+    The table lives in `engine.render`; this adapter only reshapes it into the
+    dataclass the API and the older tests expect, so the fidelity of a route is
+    declared exactly once.
+    """
+    from .engine import render
+
+    return [Route(item["target"], item["fidelity"], item["requires"])
+            for item in render.routes(ext)]
 
 
 def _write_docx_from_markdown(source: Path, target: Path):

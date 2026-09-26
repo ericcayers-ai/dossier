@@ -1,8 +1,6 @@
 import csv
-import json
 
 import pytest
-from docx import Document
 
 from dossier.convert import convert, routes
 

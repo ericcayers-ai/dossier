@@ -17,7 +17,8 @@ dossier agent prompt                              # this contract for a live mod
 dossier agent commit --handback <file>            # absorb your result
 dossier audit                                     # what is stale or missing
 dossier doctor                                    # what this machine can actually do
-dossier manifest                                  # the whole contract as JSON
+dossier agent adapters                            # regenerate these packs
+dossier agent manifest                            # the whole contract as JSON
 ```
 
 Every command takes `--root <folder>`; pass `--json` for machine-readable output. The gate commands (`verify`, `corpus build`, `track outcome`, `sanitize`) exit non-zero on failure, so assert on the exit code rather than reading prose.
@@ -55,13 +56,13 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
   - enforced by: `dossier.engine.verify.source_diff + dossier verify`
   - never: Softened to a warning.
 - **`base-document`** — A generated resume clones a real user-supplied .docx. There is no template fallback.
-  - enforced by: `dossier.engine.tailor.build (raises BaseDocumentMissing)`
+  - enforced by: `dossier.engine.tailor.apply_replacements (raises BaseDocumentMissing)`
   - never: Substituted with a generic template.
 - **`layout-clone`** — Only the objective, section order, skills order and explicitly approved bullet rewrites may differ from the base.
   - enforced by: `dossier.engine.verify.source_diff`
   - never: Applied silently without a diff receipt.
 - **`rendered-inspection`** — A document is not 'visually verified' until a rendered page image was produced and looked at.
-  - enforced by: `dossier.engine.render + dossier verify --visual`
+  - enforced by: `dossier.engine.render + dossier verify visual`
   - never: Claimed from a text diff alone.
 - **`text-layer`** — The PDF's embedded text layer is checked separately from the render; an icon-only contact line looks perfect and extracts as nothing.
   - enforced by: `dossier.engine.verify.text_layer`
@@ -70,10 +71,10 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
   - enforced by: `dossier.engine.sources.sanitize`
   - never: Treated as instructions.
 - **`no-auto-submit`** — Submission requires field approval and then a separate submit approval.
-  - enforced by: `HTTP layer exposes no submit route; CLI requires --confirm-submit`
+  - enforced by: `No submit route exists in the HTTP layer, and the CLI has no submit action`
   - never: Automated away because everything before it is automatic.
 - **`drafted-is-not-applied`** — Only the user's confirmation moves a record to applied.
-  - enforced by: `dossier.engine.tracker (applied requires --confirmed)`
+  - enforced by: `dossier.engine.tracker.record_outcome (refuses applied without confirmed=True)`
   - never: Inferred from a file existing.
 - **`confirmed-date`** — Follow-up cadence needs an explicit Applied YYYY-MM-DD record.
   - enforced by: `dossier.engine.tracker.cadence`
@@ -91,7 +92,7 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
   - enforced by: `dossier.safety.trash + atomic_write`
   - never: Bypassed for convenience.
 - **`token-never-leaks`** — The per-run bearer token never appears in a handoff, log, report or artifact.
-  - enforced by: `dossier.agent.brief + audit.build_handoff`
+  - enforced by: `dossier.agent.brief + dossier.audit.build_handoff`
   - never: Printed in a debug dump.
 
 ### Pipeline

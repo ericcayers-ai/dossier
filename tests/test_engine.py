@@ -56,13 +56,29 @@ def test_build_facets_writes_the_standard_files(tmp_path):
 def test_dedupe_drops_repeats_by_url_then_pair():
     jobs = [
         {"title": "A", "employer": "X", "url": "http://x/1"},
-        {"title": "A", "employer": "X", "url": "http://x/1"},
+        {"title": "A", "employer": "X", "url": "http://x/1?ref=card"},
         {"title": "B", "employer": "Y", "url": ""},
         {"title": "B", "employer": "Y", "url": ""},
+        {"title": "B", "employer": "Z", "url": ""},
     ]
     kept, report = corpus.dedupe(jobs)
-    assert len(kept) == 2
-    assert report["input"] == 4 and report["kept"] == 2
+    assert len(kept) == 3, "the two no-url B rows collapse; B at Z is a different employer"
+    assert report["dropped"] == {"duplicate-url": 1, "duplicate-title-employer": 1}
+    assert report["kept"] == 3
+
+
+def test_dedupe_collapses_one_posting_captured_with_two_employer_labels():
+    """One real posting captured twice, once with the board's placeholder employer
+    ('SEEK listing') and once with the named company. Same URL, so one posting."""
+    jobs = [
+        {"title": "Summer Internships", "employer": "SEEK listing",
+         "url": "https://nz.seek.com/job/94261727?type=standard&ref=search"},
+        {"title": "Summer Internships", "employer": "Northbridge",
+         "url": "https://nz.seek.com/job/94261727"},
+    ]
+    kept, report = corpus.dedupe(jobs)
+    assert len(kept) == 1
+    assert report["dropped"] == {"duplicate-url": 1}
 
 
 def test_combine_merges_board_folders_and_tags_the_source(tmp_path):
@@ -201,11 +217,12 @@ def test_sentence_openers_are_not_reported_as_skills():
         "# Role\n\n## Requirements\n"
         "- If you are driven by purpose, come help\n"
         "- We value curiosity and At least one year\n"
+        "- Delivering timely resolutions while Working across teams\n"
         "- Python and Docker\n"
     )
     tokens, _ = jd_skill_gap.scan_posting(posting)
     assert "Python" in tokens and "Docker" in tokens
-    assert not ({"If", "We", "At"} & set(tokens)), tokens
+    assert not ({"If", "We", "At", "Delivering", "Working"} & set(tokens)), tokens
 
 
 def test_aggregate_counts_recurring_gaps(tmp_path):

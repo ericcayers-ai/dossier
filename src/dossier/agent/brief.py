@@ -79,6 +79,7 @@ class Brief:
     handback_schema: dict
     next: list[str]
     blockers: list[str]
+    prerequisites: list[dict]
     pipeline: list[str]
 
     def to_dict(self) -> dict:
@@ -99,6 +100,7 @@ class Brief:
             "handback_schema": self.handback_schema,
             "next_modes": self.next,
             "blockers": self.blockers,
+            "prerequisites": self.prerequisites,
             "pipeline": self.pipeline,
         }
 
@@ -264,31 +266,70 @@ def build(
         handback_schema=HANDBACK_SCHEMA,
         next=list(item.next),
         blockers=list(space.blockers),
+        prerequisites=_prerequisites(item, space),
         pipeline=manifest.pipeline_from(item.id),
     )
 
 
 def _deterministic_commands(item: manifest.Mode, space: Workspace) -> list[dict]:
-    """The engine calls that exist for this mode, ready to paste and run."""
-    root = space.root
+    """The engine calls this mode owns, ready to paste.
+
+    Only commands that run as written are marked runnable; anything carrying a
+    `<placeholder>` says so, so a model never pastes a command that argparse
+    would reject.
+    """
     commands: list[dict] = []
-    if item.engine:
-        name = item.engine
-        if "." in name:
-            group, action = name.split(".", 1)
-        else:
-            group, action = name, ""
+    if item.command:
+        rendered = item.command.replace("{root}", space.root)
+        runnable = "<" not in rendered
         commands.append({
-            "step": f"engine: {name}",
-            "command": f'dossier {group} {action} --root "{root}"'.replace("  ", " ").strip(),
-            "note": "Deterministic. Run it, then paste its output as your evidence.",
+            "step": f"engine: {item.engine.removeprefix('engine.') or item.id}",
+            "command": rendered,
+            "runnable": runnable,
+            "note": (
+                "Deterministic and runnable as written. Run it, then paste its real output "
+                "as your evidence."
+                if runnable else
+                "Deterministic. Replace each <placeholder> with a real path or value from the "
+                "workspace, run it, then paste its real output as your evidence."
+            ),
         })
     commands.append({
         "step": "reconcile",
-        "command": f'dossier audit --root "{root}"',
+        "command": f'dossier audit --root "{space.root}"',
+        "runnable": True,
         "note": "Read-only. Tells you what is stale, unsynced or missing before you change anything.",
     })
     return commands
+
+
+NEEDS_LABELS = manifest.NEED_KEYS
+
+
+def _prerequisites(item: manifest.Mode, space: Workspace) -> list[dict]:
+    """What this mode needs, and whether the workspace already has it.
+
+    A declared input that resolves to nothing is the difference between a mode
+    that runs and a mode that silently does half a job, so it is checked rather
+    than assumed.
+    """
+    available = {
+        "root": True,
+        "identity": space.identity_doc is not None,
+        "resume": space.resume_extract is not None,
+        "base": bool(space.base_documents),
+        "posting": bool(space.postings),
+        "docx": bool(space.artefacts),
+    }
+    rows: list[dict] = []
+    for need in item.needs:
+        rows.append({
+            "need": need,
+            "label": NEEDS_LABELS.get(need, need),
+            "resolved": available.get(need, False),
+            "from_user": need in manifest.USER_SUPPLIED,
+        })
+    return rows
 
 
 def render(brief: Brief, vendor: str = "generic") -> str:
@@ -348,6 +389,17 @@ def render(brief: Brief, vendor: str = "generic") -> str:
             lines.append(f"- {blocker}")
         lines.append("")
 
+    lines.append("## Run these first")
+    lines.append("")
+    for entry in brief.deterministic:
+        marker = "runnable as written" if entry.get("runnable") else "needs the bracketed values filled in"
+        lines.append(f"1. **{entry['step']}** ({marker})")
+        lines.append("   ```text")
+        lines.append(f"   {entry['command']}")
+        lines.append("   ```")
+        lines.append(f"   {entry['note']}")
+    lines.append("")
+
     lines.append("## Inputs you may open")
     lines.append("")
     if brief.inputs:
@@ -357,12 +409,14 @@ def render(brief: Brief, vendor: str = "generic") -> str:
         lines.append("- None resolved. Say so and ask for the missing file rather than guessing.")
     lines.append("")
 
-    lines.append("## Run these first")
-    lines.append("")
-    for entry in brief.deterministic:
-        lines.append(f"1. **{entry['step']}** — `{entry['command']}`")
-        lines.append(f"   {entry['note']}")
-    lines.append("")
+    unresolved = [row for row in brief.prerequisites if not row["resolved"]]
+    if unresolved:
+        lines.append("## Prerequisites this mode needs")
+        lines.append("")
+        for row in unresolved:
+            source = "ask the user for it" if row["from_user"] else "resolve it from the workspace first"
+            lines.append(f"- **{row['need']}** — {row['label']} ({source})")
+        lines.append("")
 
     if brief.decisions:
         lines.append("## What you decide")

@@ -71,7 +71,7 @@ safely over files they did not create.
 dossier serve | doctor | workspace | audit [--reindex] | handoff | sources | sanitize
 dossier agent   manifest | prompt | route | brief | next | status | commit | adapters
 dossier corpus  build | rank | propagate | dedupe | folders
-dossier track   summary | cadence | outcome
+dossier track   summary | cadence | outcome | followup
 dossier keywords gap | aggregate
 dossier render  [--docx X.docx [--pdf Y.pdf]] [--visual]
 dossier verify  source-diff | text-layer | visual | all
@@ -80,7 +80,12 @@ dossier tailor  inspect | blocks | replace | cover-letter | import
 
 Every command takes `--root <folder>` and `--json`. Gate commands exit non-zero
 on failure, so a batch script can assert on the exit code instead of reading
-prose.
+prose. `tests/test_matrix.py` parses and executes every command the contract
+declares, and sweeps every API route, so a command that argparse would reject
+fails the suite rather than the session.
+
+`dossier agent manifest` prints the whole contract as JSON, including the exact
+command line for each mode and the code that enforces each gate.
 
 ## The gates
 
@@ -130,6 +135,11 @@ intentions. The full table is in `docs/CONTRACT.md`; the load-bearing ones:
   carry-forward that returns no match rather than a guess.
 - An **Agent** pane showing the contract, the next unit of work, the live task
   packet, the gates and the workspace facts.
+
+The one route that does not return is `/api/events` (server-sent file events,
+the only entry in `api.app.STREAMING_PATHS`). It is bounded by a `seconds`
+parameter so no client — including a script enumerating the API — can hang on it
+indefinitely.
 
 ## Fidelity boundaries
 

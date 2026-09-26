@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 import sqlite3, json, time, hashlib
 from .extract import extract_text
 @dataclass

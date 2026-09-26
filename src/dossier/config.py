@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-import json, secrets
+import secrets
 
 @dataclass(frozen=True)
 class AppConfig:

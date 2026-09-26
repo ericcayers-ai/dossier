@@ -442,18 +442,38 @@ def objective_replacement(current_objective: str, new_objective: str) -> dict[st
     return {current_objective: new_objective}
 
 
+_TAILORED = re.compile(r"resume[_-][a-z0-9]", re.IGNORECASE)
+
+
+def is_base_document(path: Path | str) -> bool:
+    """True for a resume the user wrote, false for one this pipeline produced.
+
+    One definition, used by both the workspace resolver and the importer, so
+    "which file do we clone?" cannot be answered two different ways.
+    """
+    path = Path(path)
+    if path.suffix.casefold() != ".docx":
+        return False
+    stem = path.stem
+    if stem.casefold().endswith("_coverletter"):
+        return False
+    if _TAILORED.search(stem):
+        return False
+    return "resume" in stem.casefold() or "cv" in stem.casefold()
+
+
+def is_generated_document(path: Path | str) -> bool:
+    """True for a document this pipeline produced: a tailored resume or its letter."""
+    path = Path(path)
+    if path.suffix.casefold() != ".docx":
+        return False
+    return path.stem.casefold().endswith("_coverletter") or bool(_TAILORED.search(path.stem))
+
+
 def find_base_documents(root: Path | str) -> list[Path]:
     """Candidate base documents in a folder, excluding generated artefacts."""
     root = Path(root)
-    tailored = re.compile(r"resume[_-][a-z0-9]", re.IGNORECASE)
-    found = []
-    for path in sorted(root.glob("*.docx")):
-        stem = path.stem
-        if stem.casefold().endswith("_coverletter") or tailored.search(stem):
-            continue
-        if "resume" in stem.casefold() or "cv" in stem.casefold():
-            found.append(path)
-    return found
+    return [path for path in sorted(root.glob("*.docx")) if is_base_document(path)]
 
 
 def import_base(source: Path, root: Path | str, name: str = "base-resume.docx",

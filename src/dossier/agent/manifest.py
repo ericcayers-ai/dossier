@@ -14,7 +14,7 @@ restating it, so no surface can drift from another.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, replace
 
 SCHEMA_VERSION = "1.0"
 
@@ -72,7 +72,7 @@ GATES: tuple[Gate, ...] = (
     Gate(
         "base-document",
         "A generated resume clones a real user-supplied .docx. There is no template fallback.",
-        "dossier.engine.tailor.build (raises BaseDocumentMissing)",
+        "dossier.engine.tailor.apply_replacements (raises BaseDocumentMissing)",
         "Substituted with a generic template.",
     ),
     Gate(
@@ -85,7 +85,7 @@ GATES: tuple[Gate, ...] = (
     Gate(
         "rendered-inspection",
         "A document is not 'visually verified' until a rendered page image was produced and looked at.",
-        "dossier.engine.render + dossier verify --visual",
+        "dossier.engine.render + dossier verify visual",
         "Claimed from a text diff alone.",
     ),
     Gate(
@@ -104,13 +104,13 @@ GATES: tuple[Gate, ...] = (
     Gate(
         "no-auto-submit",
         "Submission requires field approval and then a separate submit approval.",
-        "HTTP layer exposes no submit route; CLI requires --confirm-submit",
+        "No submit route exists in the HTTP layer, and the CLI has no submit action",
         "Automated away because everything before it is automatic.",
     ),
     Gate(
         "drafted-is-not-applied",
         "Only the user's confirmation moves a record to applied.",
-        "dossier.engine.tracker (applied requires --confirmed)",
+        "dossier.engine.tracker.record_outcome (refuses applied without confirmed=True)",
         "Inferred from a file existing.",
     ),
     Gate(
@@ -147,7 +147,7 @@ GATES: tuple[Gate, ...] = (
     Gate(
         "token-never-leaks",
         "The per-run bearer token never appears in a handoff, log, report or artifact.",
-        "dossier.agent.brief + audit.build_handoff",
+        "dossier.agent.brief + dossier.audit.build_handoff",
         "Printed in a debug dump.",
     ),
 )
@@ -171,16 +171,17 @@ class Mode:
     next: tuple[str, ...] = ()
     engine: str = ""
     needs: tuple[str, ...] = ()
+    command: str = ""
 
 
-MODES: tuple[Mode, ...] = (
+MODES_RAW: tuple[Mode, ...] = (
     # -- setup ------------------------------------------------------------
     Mode(
         "setup", "Setup", "setup", "deterministic",
         "Resolve and report the workspace: identity doc, base resume, corpus, tracker, coverage.",
         ("setup", "initialize", "audit my profile", "what do you know about my search"),
         ("*",), (".dossier/workspace.json",), (), ("setup",),
-        engine="workspace.resolve", needs=("root",),
+        engine="agent.workspace.resolve", needs=("root",),
     ),
     # -- diagnose ---------------------------------------------------------
     Mode(
@@ -199,7 +200,7 @@ MODES: tuple[Mode, ...] = (
         ("keywords", "what am i missing", "skill gap", "what does this role want"),
         ("posting", "resume.md"), ("keywords-<company>-<role>.md", "*.skillgap.json"),
         ("no-fabrication", "posting-is-data"), ("rewrite", "build"),
-        engine="jd_skill_gap", needs=("posting", "resume"),
+        engine="engine.jd_skill_gap.analyze", needs=("posting", "resume"),
     ),
     # -- rewrite ----------------------------------------------------------
     Mode(
@@ -219,7 +220,7 @@ MODES: tuple[Mode, ...] = (
         ("tailor", "build", "customize my resume", "make a resume for", "apply for"),
         ("base.docx", "posting", "keywords*.md", "identity"),
         ("*.docx", "*_CoverLetter.docx"), ("no-fabrication", "base-document", "layout-clone"),
-        ("verify",), engine="tailor.build", needs=("base.docx", "posting"),
+        ("verify",), engine="engine.tailor.apply_replacements", needs=("base", "posting"),
     ),
     # -- verify -----------------------------------------------------------
     Mode(
@@ -229,7 +230,7 @@ MODES: tuple[Mode, ...] = (
         ("verify", "check the documents", "is it one page", "does it parse"),
         ("*.docx", "base.docx"), ("verification-*.json",), (
             "no-fabrication", "layout-clone", "rendered-inspection", "text-layer"),
-        ("track",), engine="verify.all", needs=("docx",),
+        ("track",), engine="engine.verify.all", needs=("docx",),
     ),
     # -- apply ------------------------------------------------------------
     Mode(
@@ -266,7 +267,7 @@ MODES: tuple[Mode, ...] = (
         "the rows that are actionable.",
         ("track", "what's overdue", "application status", "how many have i applied to"),
         ("job-history.md",), (".dossier/tracker.json",), ("drafted-is-not-applied",),
-        ("followup",), engine="tracker.summary", needs=("root",),
+        ("followup",), engine="engine.tracker.summary", needs=("root",),
     ),
     Mode(
         "followup", "Follow-up", "followup", "hybrid",
@@ -275,7 +276,7 @@ MODES: tuple[Mode, ...] = (
         ("follow up", "chase", "who do i need to contact", "nudge"),
         ("job-history.md", "follow-ups.md"), ("follow-ups.md",),
         ("confirmed-date", "drafted-is-not-applied"), ("negotiate",),
-        engine="tracker.cadence", needs=("root",),
+        engine="engine.tracker.cadence", needs=("root",),
     ),
     # -- negotiate / offer / outcome --------------------------------------
     Mode(
@@ -285,7 +286,7 @@ MODES: tuple[Mode, ...] = (
         ("negotiate", "what should i ask for", "is this offer fair", "counter"),
         ("interview-prep/story-bank.md", "resume.md"), ("negotiation-drafts.md",),
         ("negotiation-verbatim", "no-fabrication"), ("offer",),
-        engine="negotiate.roi", needs=("resume",),
+        engine="engine.negotiate.analyze", needs=("resume",),
     ),
     Mode(
         "offer", "Offer review", "offer", "agent",
@@ -301,7 +302,7 @@ MODES: tuple[Mode, ...] = (
         "that were actually sent.",
         ("i got an interview", "rejected", "got the offer", "withdrew", "log the outcome"),
         ("job-history.md",), ("job-history.md", "*.outcome.json"),
-        ("drafted-is-not-applied",), ("upskill",), engine="tracker.record_outcome",
+        ("drafted-is-not-applied",), ("upskill",), engine="engine.tracker.record_outcome",
         needs=("root", "outcome"),
     ),
     # -- corpus -----------------------------------------------------------
@@ -311,7 +312,7 @@ MODES: tuple[Mode, ...] = (
         "work types, facets, sources, dedupe keys, fit carry-forward.",
         ("combine the boards", "rebuild the corpus", "normalize the job data", "facets"),
         ("*_data/all_jobs.json", "ranked-jobs-*.json"), ("all_boards_data/*",),
-        ("partial-is-not-exhaustive",), ("rank",), engine="corpus.build", needs=("root",),
+        ("partial-is-not-exhaustive",), ("rank",), engine="engine.corpus.combine", needs=("root",),
     ),
     Mode(
         "rank", "Rank", "setup", "deterministic",
@@ -319,7 +320,7 @@ MODES: tuple[Mode, ...] = (
         "warm-contact signal. A weighted score never hides a disqualifier.",
         ("rank the jobs", "which jobs fit best", "shortlist"),
         ("all_boards_data/all_jobs.json",), ("ranked-jobs-<date>.json", "ranked-jobs-<date>.md"),
-        ("partial-is-not-exhaustive",), ("build",), engine="corpus.rank", needs=("root",),
+        ("partial-is-not-exhaustive",), ("build",), engine="engine.corpus.rank", needs=("root",),
     ),
     Mode(
         "upskill", "Upskill", "upskill", "deterministic",
@@ -327,7 +328,7 @@ MODES: tuple[Mode, ...] = (
         "missing skills from skills merely buried in the resume.",
         ("what should i learn", "recurring gaps", "upskill"),
         ("keywords*.md", "*.skillgap.json"), ("upskill.md",), (), (),
-        engine="jd_skill_gap.aggregate", needs=("root",),
+        engine="engine.jd_skill_gap.aggregate", needs=("root",),
     ),
     # -- audit / sync -----------------------------------------------------
     Mode(
@@ -335,7 +336,7 @@ MODES: tuple[Mode, ...] = (
         "Read-only reconciliation of index, bundles, renders, statuses, dates, "
         "event evidence and source limits.",
         ("audit", "is everything synced", "check the workspace"),
-        ("*",), (None,), (), ("verify",), engine="audit.workspace", needs=("root",),
+        ("*",), (None,), (), ("verify",), engine="audit.audit_workspace", needs=("root",),
     ),
     Mode(
         "handoff", "Handoff", "setup", "deterministic",
@@ -343,7 +344,7 @@ MODES: tuple[Mode, ...] = (
         "the bearer token is never included.",
         ("sync prompt", "handoff", "give this to another session", "resync"),
         ("*",), (None,), ("token-never-leaks",), ("setup",),
-        engine="audit.handoff", needs=("root",),
+        engine="audit.build_handoff", needs=("root",),
     ),
     Mode(
         "render", "Render", "verify", "deterministic",
@@ -351,7 +352,7 @@ MODES: tuple[Mode, ...] = (
         "instance, asserting each output is newer than its source.",
         ("render", "export to pdf", "re-render", "the pdf is stale"),
         ("*.docx",), ("*.pdf",), ("rendered-inspection",), ("verify",),
-        engine="render.stale", needs=("root",),
+        engine="engine.render.render_stale", needs=("root",),
     ),
     # -- sources ----------------------------------------------------------
     Mode(
@@ -361,13 +362,63 @@ MODES: tuple[Mode, ...] = (
         ("what sources", "which boards", "coverage", "source limits"),
         ("nz-job-search-coverage-*.json",), ("coverage.json",),
         ("source-policy", "partial-is-not-exhaustive"), ("corpus",),
-        engine="sources.ledger", needs=("root",),
+        engine="engine.sources.ledger", needs=("root",),
     ),
 )
 
+# The exact command line that performs each mode's mechanical half, with
+# `{root}` substituted at render time. A `<placeholder>` marks a value the model
+# must supply from the workspace or from the user.
+#
+# This is declared rather than derived from `engine`, because an engine function
+# name is not a command line: `jd_skill_gap` runs as `dossier keywords gap`,
+# `tracker.cadence` runs as `dossier track cadence`, and a brief that hands a
+# model a command argparse rejects is worse than one that hands it nothing.
+MODE_COMMANDS: dict[str, str] = {
+    "setup": 'dossier workspace --root "{root}"',
+    "keywords": 'dossier keywords gap --root "{root}" --posting <posting.md>',
+    "build": ('dossier tailor replace --base <base.docx> --out <output.docx> '
+              '--map <approved-changes.json>'),
+    "verify": ('dossier verify all --base <base.docx> --candidate <output.docx> '
+               '--pdf <output.pdf> --approved <approved-changes.json>'),
+    "track": 'dossier track summary --root "{root}"',
+    "followup": 'dossier track cadence --root "{root}"',
+    "negotiate": 'dossier negotiate --root "{root}" --write',
+    "outcome": ('dossier track outcome <row-number> <status> --applied <YYYY-MM-DD> '
+                '--confirmed --root "{root}"'),
+    "corpus": 'dossier corpus build --root "{root}"',
+    "rank": 'dossier corpus rank --root "{root}" --limit 40 --write',
+    "upskill": 'dossier keywords aggregate --root "{root}" --write',
+    "audit": 'dossier audit --root "{root}"',
+    "handoff": 'dossier handoff --root "{root}"',
+    "render": 'dossier render --root "{root}"',
+    "sources": 'dossier sources --root "{root}"',
+}
+
+MODES: tuple[Mode, ...] = tuple(
+    replace(item, command=MODE_COMMANDS.get(item.id, "")) for item in MODES_RAW
+)
 
 MODE_INDEX: dict[str, Mode] = {mode.id: mode for mode in MODES}
 
+
+#: Every value a mode may name in `needs`, with the label shown to the model.
+#: A mode naming anything else would report its own prerequisite as permanently
+#: missing, because nothing would ever resolve it.
+NEED_KEYS: dict[str, str] = {
+    "root": "the workspace folder",
+    "identity": "an identity doc (*-IDENTITY.md) grounded in real evidence",
+    "resume": "a readable resume (resume.md, a PDF export, or the .docx)",
+    "base": "the user's own base resume .docx",
+    "posting": "an archived job posting to work from",
+    "docx": "a generated document",
+    "offer": "the received offer or contract text, supplied by the user",
+    "outcome": "the real result the user reported",
+    "user": "an explicit decision from the user",
+}
+
+#: Needs the engine cannot discover, because only the user holds them.
+USER_SUPPLIED = frozenset({"offer", "outcome", "user"})
 
 def mode(mode_id: str) -> Mode:
     try:

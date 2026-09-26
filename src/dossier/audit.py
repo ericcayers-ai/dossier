@@ -1,100 +1,22 @@
+"""Read-only reconciliation of a workspace.
+
+Every fact here comes from an engine module: the tracker vocabulary and the
+application log from `engine.tracker`, the corpus from `engine.corpus`, and the
+board ledger from `engine.sources`. Audit deliberately owns no parsing of its
+own — a second implementation of "what counts as a confirmed applied date" is
+exactly how two answers to the same question start disagreeing.
+"""
+
 from collections import Counter
 from datetime import date
 from pathlib import Path
 import json
-import re
 
-from .domain_jobs import canonical_status, load_jobs, parse_history
+from .engine import sources as source_engine
+from .engine.corpus import load as load_corpus
+from .engine.tracker import applied_dates, parse as parse_tracker
 
-
-SOURCE_POLICIES = {
-    "greenhouse": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only public company-board endpoint."},
-    "lever": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only public company-board endpoint."},
-    "ashby": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only public company-board endpoint."},
-    "himalayas": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only remote feed with cursor pagination."},
-    "remotive": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only remote feed."},
-    "arbeitnow": {"status": "available", "policy": "official_public", "manual_request": False, "detail": "Read-only public feed; re-check usage limits."},
-    "linkedin": {"status": "blocked", "policy": "prohibited", "manual_request": True, "detail": "Automated scraping and activity are prohibited; use a user export or manual link."},
-    "indeed": {"status": "blocked", "policy": "manual_only", "manual_request": True, "detail": "No verified public candidate-search API; use a user-supplied posting or licensed source."},
-    "glassdoor": {"status": "blocked", "policy": "prohibited", "manual_request": True, "detail": "No verified public extraction permission; use manual/user-supplied data."},
-    "seek": {"status": "blocked", "policy": "manual_only", "manual_request": True, "detail": "Partner/hirer API only was verified; do not scrape listings."},
-    "workday": {"status": "unavailable", "policy": "manual_only", "manual_request": True, "detail": "No universal public candidate-search endpoint; tenant portals require manual handling."},
-}
-
-
-def _confirmed_application_dates(path: Path) -> dict[int, date]:
-    if not path.exists():
-        return {}
-    text = path.read_text(encoding="utf-8", errors="replace")
-    dates = {}
-    for match in re.finditer(r"Applied\s+(\d{4}-\d{2}-\d{2}).*?#(\d+)", text, re.IGNORECASE):
-        try:
-            dates[int(match.group(2))] = date.fromisoformat(match.group(1))
-        except ValueError:
-            continue
-    return dates
-
-
-def _newest_coverage_file(root: Path) -> Path | None:
-    """Latest nz-job-search-coverage-*.json in the workspace, by filename date.
-
-    The workspace publishes a dated coverage snapshot per resync; pinning one
-    hard-coded filename silently froze the audit on an old snapshot.
-    """
-    candidates = sorted(root.glob("nz-job-search-coverage-*.json"))
-    return candidates[-1] if candidates else None
-
-
-def _coverage_snapshot(root: Path) -> tuple[list[dict], dict]:
-    """Return (source rows, snapshot metadata) from the newest coverage file.
-
-    Supports both published schemas: the older `sources` list and the newer
-    `current_source_counts` + `source_statuses` pair.
-    """
-    path = _newest_coverage_file(root)
-    if path is None:
-        return [], {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return [], {}
-    if not isinstance(data, dict):
-        return [], {}
-    meta = {
-        "coverage_file": path.name,
-        "captured_on": data.get("captured_on"),
-        "merged_rows": data.get("merged_rows"),
-        "ranking_rows": data.get("ranking_rows"),
-        "ranking_counts": data.get("ranking_counts"),
-        "drafted_target_count": data.get("drafted_target_count"),
-        "drafted_target_status_counts": data.get("drafted_target_status_counts"),
-        "current_limits": data.get("current_limits", {}),
-    }
-    rows: list[dict] = []
-    for item in data.get("sources", []):
-        if isinstance(item, dict) and item.get("source"):
-            rows.append({
-                "source": item["source"],
-                "status": item.get("status", "captured"),
-                "records": item.get("detail_records", item.get("search_result_jobs", 0)),
-                "notes": item.get("notes"),
-                "captured_on": data.get("captured_on"),
-            })
-    seen = {row["source"].casefold() for row in rows}
-    statuses = data.get("source_statuses", {}) or {}
-    counts = data.get("current_source_counts", {}) or {}
-    for name in list(counts) + list(statuses):
-        if not name or name.casefold() in seen:
-            continue
-        seen.add(name.casefold())
-        rows.append({
-            "source": name,
-            "status": statuses.get(name, "captured"),
-            "records": counts.get(name, 0),
-            "notes": None,
-            "captured_on": data.get("captured_on"),
-        })
-    return rows, meta
+READY_CHECKS = 9
 
 
 def audit_workspace(root: Path, conn) -> dict:
@@ -107,62 +29,81 @@ def audit_workspace(root: Path, conn) -> dict:
         latest_docx = max((row["mtime_ns"] for row in rows if row["ext"] == ".docx"), default=0)
         stale.extend(row["rel"] for row in rows if row["ext"] == ".pdf" and latest_docx and row["mtime_ns"] < latest_docx)
 
-    history = parse_history(root / "job-history.md")
+    history = parse_tracker(root)
     status_counts = Counter(item.get("status", "unknown") for item in history)
-    dates = _confirmed_application_dates(root / "follow-ups.md")
-    actionable_without_date = [index for index, item in enumerate(history, 1) if item.get("status") in {"applied", "responded", "interview"} and index not in dates]
+    dates, _date_sources = applied_dates(root)
+    actionable_without_date = [
+        index for index, item in enumerate(history, start=1)
+        if item.get("status") in {"applied", "responded", "interview"} and index not in dates
+    ]
 
-    source_status = {name: dict(value) for name, value in SOURCE_POLICIES.items()}
-    coverage_rows, coverage_meta = _coverage_snapshot(root)
-    for item in coverage_rows:
-        source = str(item.get("source", "")).casefold()
-        if source:
-            source_status.setdefault(source, {"status": "captured", "policy": "manual_only", "manual_request": False, "detail": "Captured source; verify freshness from its saved provenance."})
-            source_status[source]["capture_status"] = item.get("status", "unknown")
-            source_status[source]["records"] = item.get("records", 0)
-            source_status[source]["captured_on"] = item.get("captured_on")
-            if item.get("notes"):
-                source_status[source]["notes"] = item["notes"]
+    ledger = source_engine.ledger(root)
+    source_status = {name: dict(value) for name, value in ledger["sources"].items()}
+    snapshot = ledger["coverage"]
 
-    captured_on = coverage_meta.get("captured_on")
-    age_days = None
-    if captured_on:
-        try:
-            age_days = (date.today() - date.fromisoformat(str(captured_on))).days
-        except ValueError:
-            age_days = None
-    target_counts = coverage_meta.get("drafted_target_status_counts") or {}
+    captured_on = snapshot.get("captured_on")
+    age_days = snapshot.get("age_days")
+    target_counts = snapshot.get("drafted_target_status_counts") or {}
     retargeted = [name for name, value in target_counts.items() if "passed" in str(name) or "today" in str(name)]
-    coverage_detail = (
-        f"{coverage_meta.get('coverage_file')} captured {captured_on}; "
-        f"{coverage_meta.get('merged_rows')} merged rows, {coverage_meta.get('ranking_rows')} ranked, "
-        f"{age_days if age_days is not None else '?'} day(s) old."
-    )
+    coverage_detail = snapshot.get("detail", "No coverage snapshot. Source freshness is unproven.")
     if retargeted:
         coverage_detail += " Postings needing attention: " + ", ".join(
             f"{name} x{target_counts[name]}" for name in sorted(retargeted)
         )
 
-    jobs = load_jobs(root)
+    coverage_meta = {
+        "coverage_file": snapshot.get("file"),
+        "captured_on": captured_on,
+        "age_days": age_days,
+        "merged_rows": snapshot.get("merged_rows"),
+        "merged_unique_urls": snapshot.get("merged_unique_urls"),
+        "ranking_rows": snapshot.get("ranking_rows"),
+        "ranking_counts": snapshot.get("ranking_counts"),
+        "aggregate_fit_counts": snapshot.get("aggregate_fit_counts"),
+        "drafted_target_count": snapshot.get("drafted_target_count"),
+        "drafted_target_status_counts": target_counts,
+        "current_limits": snapshot.get("limits") or {},
+    }
+
+    jobs = load_corpus(root)
     job_fit = Counter(str(job.get("fit") or "unset") for job in jobs)
     ranked_jobs = sum(value for key, value in job_fit.items() if key != "unset")
 
     checks = [
-        {"id": "index", "label": "Index is populated", "status": "pass" if file_count else "attention", "detail": f"{file_count} files indexed; {fts_count} text bodies searchable."},
-        {"id": "bundles", "label": "Bundle relationships resolve", "status": "pass" if groups else "attention", "detail": f"{len(groups)} normalized bundles discovered."},
-        {"id": "coverage", "label": "Coverage snapshot is current", "status": "attention" if (age_days is None or age_days > 7) else "pass", "detail": coverage_detail},
-        {"id": "fit-coverage", "label": "Ranked jobs carry a fit score", "status": "pass" if (jobs and ranked_jobs == len(jobs)) else ("attention" if jobs else "manual"), "detail": f"{ranked_jobs} of {len(jobs)} job records carry a fit score; {dict(sorted(job_fit.items()))}."},
-        {"id": "render-freshness", "label": "Rendered artifacts are current", "status": "attention" if stale else "pass", "detail": f"{len(stale)} PDF render(s) older than a DOCX source."},
-        {"id": "submission-approval", "label": "Application submission approval gate", "status": "manual", "detail": "Review and explicit submit approval are required; Dossier exposes no automatic submit action."},
-        {"id": "followup-date", "label": "Follow-ups have confirmed application dates", "status": "attention" if actionable_without_date else "pass", "detail": "No follow-up cadence runs without an explicit Applied YYYY-MM-DD record." if not actionable_without_date else f"Application row(s) without a confirmed date: {actionable_without_date}."},
-        {"id": "real-event", "label": "Interview/offer/negotiation/outcome event evidence", "status": "manual", "detail": "These workflows may continue only after the user supplies or confirms the real event; status labels alone are not event evidence."},
-        {"id": "source-limits", "label": "Board limits are documented", "status": "pass", "detail": "Blocked, manual-only, unavailable, and public-feed policies are included in the source ledger below."},
+        {"id": "index", "label": "Index is populated", "status": "pass" if file_count else "attention",
+         "detail": f"{file_count} files indexed; {fts_count} text bodies searchable."},
+        {"id": "bundles", "label": "Bundle relationships resolve", "status": "pass" if groups else "attention",
+         "detail": f"{len(groups)} normalized bundles discovered."},
+        {"id": "coverage", "label": "Coverage snapshot is current",
+         "status": "attention" if (age_days is None or age_days > source_engine.END_HINT) else "pass",
+         "detail": coverage_detail},
+        {"id": "fit-coverage", "label": "Ranked jobs carry a fit score",
+         "status": "pass" if (jobs and ranked_jobs == len(jobs)) else ("attention" if jobs else "manual"),
+         "detail": f"{ranked_jobs} of {len(jobs)} job records carry a fit score; "
+                   f"{dict(sorted(job_fit.items()))}."},
+        {"id": "render-freshness", "label": "Rendered artifacts are current",
+         "status": "attention" if stale else "pass",
+         "detail": f"{len(stale)} PDF render(s) older than a DOCX source."},
+        {"id": "submission-approval", "label": "Application submission approval gate", "status": "manual",
+         "detail": "Review and explicit submit approval are required; Dossier exposes no automatic submit action."},
+        {"id": "followup-date", "label": "Follow-ups have confirmed application dates",
+         "status": "attention" if actionable_without_date else "pass",
+         "detail": "No follow-up cadence runs without an explicit Applied YYYY-MM-DD record."
+                   if not actionable_without_date
+                   else f"Application row(s) without a confirmed date: {actionable_without_date}."},
+        {"id": "real-event", "label": "Interview/offer/negotiation/outcome event evidence", "status": "manual",
+         "detail": "These workflows may continue only after the user supplies or confirms the real event; "
+                   "status labels alone are not event evidence."},
+        {"id": "source-limits", "label": "Board limits are documented", "status": "pass",
+         "detail": "Blocked, manual-only, unavailable, and public-feed policies are included in the "
+                   "source ledger below."},
     ]
-    manual_sources = [name for name, item in source_status.items() if item.get("manual_request")]
+    manual_sources = sorted(name for name, item in source_status.items() if item.get("manual_request"))
     return {
         "generated_on": date.today().isoformat(),
         "checks": checks,
-        "counts": {"files": file_count, "fts_bodies": fts_count, "bundles": len(groups), "stale_renders": len(stale), "history_rows": len(history)},
+        "counts": {"files": file_count, "fts_bodies": fts_count, "bundles": len(groups),
+                   "stale_renders": len(stale), "history_rows": len(history)},
         "status_counts": dict(status_counts),
         "job_fit_counts": dict(sorted(job_fit.items())),
         "ranked_job_count": ranked_jobs,
@@ -170,17 +111,18 @@ def audit_workspace(root: Path, conn) -> dict:
         "stale": stale,
         "source_status": source_status,
         "manual_sources": manual_sources,
-        "confirmed_application_dates": {str(key): value.isoformat() for key, value in dates.items()},
+        "confirmed_application_dates": {str(key): value for key, value in sorted(dates.items())},
         "history": history,
     }
 
 
 def build_handoff(root: Path, conn) -> dict:
     audit = audit_workspace(root, conn)
-    jobs = load_jobs(root)
+    jobs = load_corpus(root)
     job_summary = Counter(str(job.get("fit", "unknown")) for job in jobs)
     file_manifest = [dict(row) for row in conn.execute(
-        "SELECT rel, ext, size, mtime_ns, sha256, kind, stem_key, role, meta_json, indexed_at, extract_error FROM files ORDER BY rel"
+        "SELECT rel, ext, size, mtime_ns, sha256, kind, stem_key, role, meta_json, indexed_at, extract_error "
+        "FROM files ORDER BY rel"
     ).fetchall()]
     packet = {
         "workspace": str(root),

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
-import hashlib, os, shutil, tempfile
+import hashlib, os, shutil
 
 class PathEscape(ValueError): pass
 class Conflict(RuntimeError): pass
@@ -19,7 +19,7 @@ def resolve_in_root(root:Path, rel:str)->Path:
         raise PathEscape("absolute paths are not accepted")
     root=root.resolve(); p=(root / rel).resolve()
     try: p.relative_to(root)
-    except ValueError: raise PathEscape("path escapes root")
+    except ValueError: raise PathEscape("path escapes root") from None
     return p
 def _matches(path, expect):
     if not path.exists(): return expect is None

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import mimetypes
-import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -20,6 +19,11 @@ from ..safety import Conflict, FileStamp, PathEscape, atomic_write, resolve_in_r
 def _loopback_origin(origin: str) -> bool:
     parsed = urlparse(origin)
     return parsed.scheme in {"http", "https"} and parsed.hostname in {"127.0.0.1", "localhost"}
+
+
+#: Routes that hold the connection open. Declared here so a client (or a test
+#: sweeping the API) can tell a stream from a request that returns.
+STREAMING_PATHS = frozenset({"/api/events"})
 
 
 def create_app(config: AppConfig) -> FastAPI:
@@ -151,15 +155,28 @@ def create_app(config: AppConfig) -> FastAPI:
         return resolve_bundle(connection, rel).__dict__
 
     @app.get("/api/events")
-    async def events():
+    async def events(seconds: int = 300):
+        """Server-sent file events.
+
+        Bounded on purpose. An unbounded stream is an endpoint any naive client
+        — including a script enumerating the API — hangs on forever. The bound
+        is generous enough for the UI, which reconnects, and finite enough that
+        nothing can block indefinitely.
+        """
+        budget = min(max(seconds, 1), 3600)
+        deadline = asyncio.get_event_loop().time() + budget
+
         async def stream():
             yield "data: {\"type\":\"connected\"}\n\n"
-            while True:
+            while asyncio.get_event_loop().time() < deadline:
+                remaining = deadline - asyncio.get_event_loop().time()
                 try:
-                    event = await asyncio.wait_for(app.state.events.get(), timeout=15)
+                    event = await asyncio.wait_for(app.state.events.get(), timeout=min(15, remaining))
                     yield f"data: {json.dumps(event)}\n\n"
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
+            yield "data: {\"type\":\"closed\"}\n\n"
+
         return StreamingResponse(stream(), media_type="text/event-stream")
 
     @app.get("/api/render")
@@ -199,18 +216,18 @@ def create_app(config: AppConfig) -> FastAPI:
 
     @app.get("/api/jobs")
     def jobs():
-        from ..domain_jobs import load_jobs
-        return load_jobs(config.root)
+        from ..engine.corpus import load as load_corpus
+        return load_corpus(config.root)
 
     @app.get("/api/jobs/history")
     def job_history():
-        from ..domain_jobs import parse_history
-        return parse_history(config.root / "job-history.md")
+        from ..engine.tracker import parse as parse_tracker
+        return parse_tracker(config.root)
 
     @app.get("/api/jobs/due")
     def jobs_due():
-        from ..domain_jobs import due_items
-        return due_items(config.root)
+        from ..engine.tracker import cadence
+        return cadence(config.root)["entries"]
 
     @app.get("/api/jobs/feeds")
     def feed_catalog():

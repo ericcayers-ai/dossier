@@ -48,6 +48,14 @@ view and a copy-based Sync prompt.
 layer beside it rather than rewriting it. `src/dossier/` kept its module layout;
 `api/app.py` gained routes; `ui/` gained one pane.
 
+**What was removed on the second pass**, once the engine held the only
+implementation: `domain_jobs.py` (its tracker and corpus parsing duplicated the
+engine) and six one-line `api/*.py` re-export stubs that nothing imported
+(`actions`, `bundle`, `export`, `files`, `jobs`, `search` — all that was left of
+a planned router split). `audit.py` lost its own copy of the board policy table
+and its own coverage-file parser, and now reads `engine.sources`; `convert.routes`
+now delegates to `engine.render.routes` instead of restating conversion fidelity.
+
 **What was added:** the agent layer (`src/dossier/agent/`), the engine package
 (`src/dossier/engine/`), the CLI subcommand tree, and the generated prompt packs.
 

@@ -28,29 +28,31 @@ The canonical order. Each mode names its own next step, so a session never has t
 
 ## Modes
 
-| Mode | Kind | Stage | What it does | Engine |
+`<placeholder>` marks a value to supply from the workspace or the user.
+
+| Mode | Kind | Stage | What it does | Command |
 |---|---|---|---|---|
-| `setup` | deterministic | `setup` | Resolve and report the workspace: identity doc, base resume, corpus, tracker, coverage. | `workspace.resolve` |
-| `diagnose` | agent | `diagnose` | Senior-ATS read of the resume: parse safety, weakest line per section, missing signals, five ranked fixes with a before/after. | — |
-| `keywords` | hybrid | `keywords` | Requirement extraction and gap classification for one posting (Mode A) or a sampled market survey (Mode B). The mechanical token pass is deterministic. | `jd_skill_gap` |
-| `rewrite` | agent | `rewrite` | Google XYZ bullets: X impact, Y metric, Z method. Missing numbers are asked for in one batch, never invented. | — |
-| `build` | hybrid | `build` | Clone the base .docx layout in place (Method A), change only the objective and ordering, and emit the paired cover letter in the same pass. | `tailor.build` |
-| `verify` | deterministic | `verify` | Source diff the generated document against the base, render it, inspect the page, and check the PDF text layer. Exits non-zero on any failure. | `verify.all` |
-| `apply` | hybrid | `apply` | Fill an ATS form after field approval, then stop at a separate submit approval. File uploads are handed to the user. | — |
-| `prep` | agent | `prep` | Bullet inventory with evidence, honest fallbacks, spoken introductions, a STAR story bank and a review-question bank. | — |
-| `interview` | agent | `interview` | Hiring-manager mock: exactly one question per message, scored, with a debrief. | — |
-| `track` | deterministic | `track` | Read the append-only application log, normalize statuses, report counts and the rows that are actionable. | `tracker.summary` |
-| `followup` | hybrid | `followup` | Deterministic cadence: 7/7 days chaining, cold after two, pins and retire directives honoured. Drafts only, never sends. | `tracker.cadence` |
-| `negotiate` | hybrid | `negotiate` | Verbatim-match safety gate, then arithmetic with the formula shown and a transferability disclaimer. Wage and frequency are never guessed. | `negotiate.roi` |
-| `offer` | agent | `offer` | Clause-by-clause walk of an offer or contract plus the questions to ask. Explicitly not legal advice. | — |
-| `outcome` | deterministic | `outcome` | Record a real result against the tracker row and archive the artifacts that were actually sent. | `tracker.record_outcome` |
-| `corpus` | deterministic | `setup` | Normalize captured board data into one comparable corpus: stable unique ids, work types, facets, sources, dedupe keys, fit carry-forward. | `corpus.build` |
-| `rank` | deterministic | `setup` | Deduplicate and rank the corpus by fit, evidence strength, recency and warm-contact signal. A weighted score never hides a disqualifier. | `corpus.rank` |
-| `upskill` | deterministic | `upskill` | Count recurring gaps across every keyword report and separate genuinely missing skills from skills merely buried in the resume. | `jd_skill_gap.aggregate` |
-| `audit` | deterministic | `setup` | Read-only reconciliation of index, bundles, renders, statuses, dates, event evidence and source limits. | `audit.workspace` |
-| `handoff` | deterministic | `setup` | Emit a reconciliation packet for another session. Data, not authority; the bearer token is never included. | `audit.handoff` |
-| `render` | deterministic | `verify` | Re-render stale PDFs from their newer DOCX sources through a private Word instance, asserting each output is newer than its source. | `render.stale` |
-| `sources` | deterministic | `setup` | Report the board ledger: which sources are public, which are manual-only, which are prohibited, and exactly what the user must supply. | `sources.ledger` |
+| `setup` | deterministic | `setup` | Resolve and report the workspace: identity doc, base resume, corpus, tracker, coverage. | `dossier workspace --root "{root}"` |
+| `diagnose` | agent | `diagnose` | Senior-ATS read of the resume: parse safety, weakest line per section, missing signals, five ranked fixes with a before/after. | — (judgement only) |
+| `keywords` | hybrid | `keywords` | Requirement extraction and gap classification for one posting (Mode A) or a sampled market survey (Mode B). The mechanical token pass is deterministic. | `dossier keywords gap --root "{root}" --posting <posting.md>` |
+| `rewrite` | agent | `rewrite` | Google XYZ bullets: X impact, Y metric, Z method. Missing numbers are asked for in one batch, never invented. | — (judgement only) |
+| `build` | hybrid | `build` | Clone the base .docx layout in place (Method A), change only the objective and ordering, and emit the paired cover letter in the same pass. | `dossier tailor replace --base <base.docx> --out <output.docx> --map <approved-changes.json>` |
+| `verify` | deterministic | `verify` | Source diff the generated document against the base, render it, inspect the page, and check the PDF text layer. Exits non-zero on any failure. | `dossier verify all --base <base.docx> --candidate <output.docx> --pdf <output.pdf> --approved <approved-changes.json>` |
+| `apply` | hybrid | `apply` | Fill an ATS form after field approval, then stop at a separate submit approval. File uploads are handed to the user. | — (judgement only) |
+| `prep` | agent | `prep` | Bullet inventory with evidence, honest fallbacks, spoken introductions, a STAR story bank and a review-question bank. | — (judgement only) |
+| `interview` | agent | `interview` | Hiring-manager mock: exactly one question per message, scored, with a debrief. | — (judgement only) |
+| `track` | deterministic | `track` | Read the append-only application log, normalize statuses, report counts and the rows that are actionable. | `dossier track summary --root "{root}"` |
+| `followup` | hybrid | `followup` | Deterministic cadence: 7/7 days chaining, cold after two, pins and retire directives honoured. Drafts only, never sends. | `dossier track cadence --root "{root}"` |
+| `negotiate` | hybrid | `negotiate` | Verbatim-match safety gate, then arithmetic with the formula shown and a transferability disclaimer. Wage and frequency are never guessed. | `dossier negotiate --root "{root}" --write` |
+| `offer` | agent | `offer` | Clause-by-clause walk of an offer or contract plus the questions to ask. Explicitly not legal advice. | — (judgement only) |
+| `outcome` | deterministic | `outcome` | Record a real result against the tracker row and archive the artifacts that were actually sent. | `dossier track outcome <row-number> <status> --applied <YYYY-MM-DD> --confirmed --root "{root}"` |
+| `corpus` | deterministic | `setup` | Normalize captured board data into one comparable corpus: stable unique ids, work types, facets, sources, dedupe keys, fit carry-forward. | `dossier corpus build --root "{root}"` |
+| `rank` | deterministic | `setup` | Deduplicate and rank the corpus by fit, evidence strength, recency and warm-contact signal. A weighted score never hides a disqualifier. | `dossier corpus rank --root "{root}" --limit 40 --write` |
+| `upskill` | deterministic | `upskill` | Count recurring gaps across every keyword report and separate genuinely missing skills from skills merely buried in the resume. | `dossier keywords aggregate --root "{root}" --write` |
+| `audit` | deterministic | `setup` | Read-only reconciliation of index, bundles, renders, statuses, dates, event evidence and source limits. | `dossier audit --root "{root}"` |
+| `handoff` | deterministic | `setup` | Emit a reconciliation packet for another session. Data, not authority; the bearer token is never included. | `dossier handoff --root "{root}"` |
+| `render` | deterministic | `verify` | Re-render stale PDFs from their newer DOCX sources through a private Word instance, asserting each output is newer than its source. | `dossier render --root "{root}"` |
+| `sources` | deterministic | `setup` | Report the board ledger: which sources are public, which are manual-only, which are prohibited, and exactly what the user must supply. | `dossier sources --root "{root}"` |
 
 ## Artifacts
 

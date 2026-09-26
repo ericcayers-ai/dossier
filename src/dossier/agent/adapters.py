@@ -52,7 +52,8 @@ def _core(root: Path) -> str:
     lines.append("dossier agent commit --handback <file>            # absorb your result")
     lines.append("dossier audit                                     # what is stale or missing")
     lines.append("dossier doctor                                    # what this machine can actually do")
-    lines.append("dossier manifest                                  # the whole contract as JSON")
+    lines.append("dossier agent adapters                            # regenerate these packs")
+    lines.append("dossier agent manifest                            # the whole contract as JSON")
     lines.append("```")
     lines.append("")
     lines.append("Every command takes `--root <folder>`; pass `--json` for machine-readable output. "
@@ -140,10 +141,12 @@ def _pipeline_doc() -> str:
         owned = ", ".join(f"`{item.id}`" for item in manifest.MODES if item.stage == stage.id)
         lines.append(f"| {index} | {stage.label} | {stage.intent} | {owned or '—'} |")
     lines += ["", "## Modes", "",
-              "| Mode | Kind | Stage | What it does | Engine |", "|---|---|---|---|---|"]
+              "`<placeholder>` marks a value to supply from the workspace or the user.",
+              "",
+              "| Mode | Kind | Stage | What it does | Command |", "|---|---|---|---|---|"]
     for item in manifest.MODES:
-        engine = f"`{item.engine}`" if item.engine else "—"
-        lines.append(f"| `{item.id}` | {item.kind} | `{item.stage}` | {item.summary} | {engine} |")
+        command = f"`{item.command}`" if item.command else "— (judgement only)"
+        lines.append(f"| `{item.id}` | {item.kind} | `{item.stage}` | {item.summary} | {command} |")
     lines += ["", "## Artifacts", "",
               "The files this contract is built from. The folder is the source of truth; "
               "`.dossier/` is derived and disposable.", "",
@@ -158,13 +161,15 @@ def _pipeline_doc() -> str:
 
 def _contract_doc() -> str:
     """Modes and gates as a reference table."""
-    lines = ["## Modes", "", "| Mode | Kind | Reads | Writes | Gates | Next |", "|---|---|---|---|---|---|"]
+    lines = ["## Modes", "", "| Mode | Kind | Reads | Writes | Gates | Next | Command |",
+             "|---|---|---|---|---|---|---|"]
     for item in manifest.MODES:
         reads = ", ".join(f"`{name}`" for name in item.reads)
         writes = ", ".join(f"`{name}`" for name in item.writes if isinstance(name, str)) or "—"
         gates = ", ".join(f"`{name}`" for name in item.gates) or "—"
         nexts = ", ".join(f"`{name}`" for name in item.next) or "—"
-        lines.append(f"| `{item.id}` | {item.kind} | {reads} | {writes} | {gates} | {nexts} |")
+        command = f"`{item.command}`" if item.command else "—"
+        lines.append(f"| `{item.id}` | {item.kind} | {reads} | {writes} | {gates} | {nexts} | {command} |")
     lines += ["", "## Gates", "", "| Gate | Rule | Enforced by | Never |", "|---|---|---|---|"]
     for gate in manifest.GATES:
         lines.append(f"| `{gate.id}` | {gate.rule} | `{gate.enforced_by}` | {gate.never} |")

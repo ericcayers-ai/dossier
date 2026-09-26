@@ -155,3 +155,98 @@ on run after that sibling was renamed — while appearing intact.
 checked before anything it produces is shown to a user. `dossier` commands work
 the same way: gate commands exit non-zero, so assert on the exit code rather than
 reading prose.
+**Test:** `tests/test_matrix.py` executes every command the contract declares.
+
+## 13. An engine function name is not a command line
+
+**Expected:** a brief's "run these first" commands would run.
+**Actual:** 6 of 21 modes handed the model a command argparse rejects —
+`dossier jd_skill_gap` (it is `dossier keywords gap`), `dossier tracker cadence`
+(it is `dossier track cadence`), `dossier tailor build` (it is
+`dossier tailor replace`). The command was being derived from the `engine` field
+by splitting on a dot and hoping.
+**Why:** the two are different things. `tracker.cadence` names a function;
+`dossier track cadence` names a command line, and the mapping between them is a
+decision, not a transformation.
+**Rule:** each mode declares its own `command` in `MODE_COMMANDS`, with `<...>`
+marking a value the caller must supply, and the brief marks a command `runnable`
+only when it has no placeholder.
+**Test:** `test_every_declared_command_parses`,
+`test_every_self_contained_command_runs`.
+
+## 14. A gate that names code which does not exist is decoration
+
+**Expected:** the manifest's `engine` and `enforced_by` fields would point at the
+code doing the enforcing.
+**Actual:** `tailor.build`, `corpus.build`, `audit.workspace`, `render.stale`,
+`negotiate.roi`, `audit.handoff` and a bare `jd_skill_gap` all named symbols that
+were never written under those names. A reader following the contract landed
+nowhere.
+**Rule:** engine references are full paths from the package root
+(`engine.corpus.combine`, `agent.workspace.resolve`, `audit.build_handoff`) and a
+test resolves every one of them.
+**Test:** `test_every_declared_engine_symbol_exists`,
+`test_every_gate_enforcer_symbol_resolves`.
+
+## 15. An unbounded stream is a trap for every other client
+
+**Expected:** a script enumerating the API would get an answer from each route.
+**Actual:** it hung forever on `/api/events`, whose loop never ends. The route was
+fine for the one UI that knew about it and fatal for anything else, including the
+test that was supposed to be checking the API surface.
+**Rule:** `/api/events` is bounded by a `seconds` parameter (default 300),
+declared in `STREAMING_PATHS`, and covered by its own test rather than the sweep.
+**Test:** `test_the_streaming_route_is_declared_and_bounded`.
+
+## 16. `AppConfig.create` describes a layout; it does not create it
+
+**Expected:** `dossier audit --root <new folder>` would audit.
+**Actual:** `sqlite3.OperationalError: unable to open database file`, because
+`.dossier/` did not exist yet. `create_app` had always called `ensure()` first, so
+the bug only lived on the command line — which is exactly where a person meets it
+first.
+**Rule:** `cli._open_index` calls `ensure()` and crawls once when the index is
+empty.
+**Test:** `test_every_self_contained_command_runs`.
+
+## 17. Two copies of one rule drift
+
+**Expected:** one answer per question.
+**Actual:** the repository held four pairs of the same rule: `domain_jobs` and the
+engine both parsed the tracker and loaded the corpus; `audit.SOURCE_POLICIES`
+restated `engine.sources.POLICIES`; `convert.routes` and `engine.render.routes`
+each declared conversion fidelity; the workspace resolver and the importer each
+re-implemented "is this the user's base document?".
+**Why:** each pair was written at a different time by a different path, and
+nothing compared them.
+**Rule:** one implementation per rule — `engine.tracker`, `engine.corpus`,
+`engine.sources`, `engine.render`, `engine.tailor` — with the older surface
+delegating to it or removed. `domain_jobs` and six unreferenced `api/*` re-export
+stubs were deleted outright.
+**Test:** `test_every_declared_engine_symbol_exists` plus the engine suites.
+
+## 18. A prerequisite named for something nothing resolves is a permanent lie
+
+**Expected:** the Build mode would stop telling a model it needs a base document
+once the workspace had one.
+**Actual:** it declared `needs=("base.docx",)`. The resolver's keys are
+`base`, `resume`, `docx`, `posting`, `root`, `identity`, `offer`, `outcome`,
+`user` — so `base.docx` matched nothing and reported itself unresolved forever,
+in a workspace that already had `base-resume.docx`.
+**Why:** the value was written as a filename where the field wanted a key, and
+nothing compared the two lists.
+**Rule:** `manifest.NEED_KEYS` is the closed set, `MANIFEST.USER_SUPPLIED` marks
+the ones only the user holds, and a test rejects any other value.
+**Test:** `test_every_declared_need_is_a_known_key`.
+
+## 19. The section a model is told to run first should not be below the fold
+
+**Expected:** a rendered brief with one of each section.
+**Actual:** an edit left two identical `## Inputs you may open` sections, and the
+`## Run these first` block sat under forty lines of resolved file paths — so on a
+real screen the commands were off the bottom of a scrollable card. A duplicated
+heading hides a section silently; nobody re-reads a rendered packet to notice.
+**Rule:** the commands render immediately after the workspace facts, and tests
+assert both section uniqueness and that order.
+**Test:** `test_the_rendered_brief_has_no_duplicate_section`,
+`test_the_commands_come_before_the_file_list`.

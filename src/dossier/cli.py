@@ -181,29 +181,44 @@ def _workspace(args) -> int:
     return 0
 
 
-def _audit(args) -> int:
-    from . import audit as audit_module
+def _open_index(root: Path, reindex: bool = False):
+    """Open the workspace index, creating it and crawling once when it is empty.
+
+    `AppConfig.create` only describes the layout; without `ensure()` the
+    `.dossier` directory does not exist and SQLite cannot create its file, so
+    the first `dossier audit` on a fresh folder used to die with
+    "unable to open database file".
+    """
     from .config import AppConfig
     from .db import open_db
     from .indexer import crawl
 
-    root = _require_root(getattr(args, "root", None))
-    if args.reindex:
-        config = AppConfig.create(root)
-        connection = open_db(config.db_path)
-        stats = crawl(config, connection)
-        if not args.json:
-            print(f"reindexed: seen={stats.seen} indexed={stats.indexed} errors={stats.errors}")
-        connection.close()
-    config = AppConfig.create(root)
+    config = AppConfig.create(root).ensure()
     connection = open_db(config.db_path)
+    indexed = connection.execute("SELECT count(*) FROM files").fetchone()[0]
+    stats = crawl(config, connection) if (reindex or indexed == 0) else None
+    return config, connection, stats
+
+
+def _audit(args) -> int:
+    from . import audit as audit_module
+
+    root = _require_root(getattr(args, "root", None))
+    _config, connection, stats = _open_index(root, reindex=args.reindex)
     try:
         result = audit_module.audit_workspace(root, connection)
     finally:
         connection.close()
     if args.json:
-        _emit(result, True)
+        payload = dict(result)
+        payload["indexed_now"] = (
+            {"seen": stats.seen, "indexed": stats.indexed, "errors": stats.errors}
+            if stats is not None else None
+        )
+        _emit(payload, True)
     else:
+        if stats is not None:
+            print(f"indexed now: seen={stats.seen} indexed={stats.indexed} errors={stats.errors}")
         print(f"audit {result['generated_on']}")
         for check in result["checks"]:
             print(f"  [{check['status']:>9}] {check['label']} — {check['detail']}")
@@ -213,12 +228,9 @@ def _audit(args) -> int:
 
 def _handoff(args) -> int:
     from . import audit as audit_module
-    from .config import AppConfig
-    from .db import open_db
 
     root = _require_root(getattr(args, "root", None))
-    config = AppConfig.create(root)
-    connection = open_db(config.db_path)
+    _config, connection, _stats = _open_index(root)
     try:
         result = audit_module.build_handoff(root, connection)
     finally:
@@ -314,6 +326,12 @@ def _track(args) -> int:
                                         note=args.note or "")
         _emit(result, args.json)
         return 0 if result.get("written") else 1
+    if action == "followup":
+        result = tracker.append_followup(root, args.number, args.date,
+                                         channel=args.channel or "", contact=args.contact or "",
+                                         note=args.note or "")
+        _emit(result, args.json)
+        return 0 if result.get("written") else 1
     raise SystemExit(f"unknown track action {action}")
 
 
@@ -401,13 +419,17 @@ def _render(args) -> int:
         return 0
     root = _require_root(getattr(args, "root", None))
     result = render.render_stale(root)
+    if result.get("stale"):
+        from datetime import date
+        result["report"] = str(render.write_report(
+            root, f"render-{date.today().isoformat()}.json", result))
     if result.get("failed"):
         _emit(result, args.json)
         return 1
     _emit(result, args.json,
-          f"stale={result['stale']} rebuilt={result['rebuilt']} failed={len(result['failed'])}")
+          f"stale={result['stale']} rebuilt={result['rebuilt']} failed={len(result['failed'])}"
+          + (f" report={result['report']}" if result.get("report") else ""))
     if args.visual and result.get("rebuilt_detail"):
-        from .engine import verify
         for entry in result["rebuilt_detail"]:
             png = render.pdf_to_png(root / entry["pdf"],
                                     root / ".dossier" / "render" / (Path(entry["pdf"]).stem + ".png"))
@@ -624,7 +646,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     track = add("track", "application log and follow-up cadence")
     track_sub = track.add_subparsers(dest="track_action", required=True)
-    for action_name in ("summary", "cadence", "outcome"):
+    for action_name in ("summary", "cadence", "outcome", "followup"):
         child = track_sub.add_parser(action_name)
         child.add_argument("--root", default=argparse.SUPPRESS)
         child.add_argument("--json", action="store_true")
@@ -636,6 +658,12 @@ def build_parser() -> argparse.ArgumentParser:
     outcome.add_argument("--confirmed", action="store_true",
                          help="the user confirmed they submitted it")
     outcome.add_argument("--note", default="")
+    follow = track_sub.choices["followup"]
+    follow.add_argument("number", type=int, help="tracker row number")
+    follow.add_argument("--date", required=True, help="YYYY-MM-DD the follow-up was sent")
+    follow.add_argument("--channel", default="", help="email | linkedin | phone | other")
+    follow.add_argument("--contact", default="")
+    follow.add_argument("--note", default="")
     track.set_defaults(handler=_track)
 
     keywords = add("keywords", "requirement extraction and gap classification")

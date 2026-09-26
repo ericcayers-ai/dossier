@@ -24,7 +24,19 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from ..domain_jobs import canonical_status
+#: The tracker's status vocabulary. Aliases are normalized case-insensitively so
+#: a log written by hand over months still compares cleanly.
+STATUS_ALIASES = {
+    "draft": "drafted", "drafted": "drafted", "to apply": "queued",
+    "queued": "queued", "applied": "applied", "responded": "responded",
+    "interview": "interview", "offer": "offer", "rejected": "rejected",
+    "withdrawn": "withdrawn", "closed": "withdrawn",
+}
+
+
+def canonical_status(value: str) -> str:
+    """Normalize a status cell to the canonical vocabulary."""
+    return STATUS_ALIASES.get(str(value).casefold().strip(), str(value).casefold().strip())
 
 DEFAULT_CADENCE = {
     "applied_first": 7, "applied_subsequent": 7, "applied_max_followups": 2,
@@ -82,7 +94,7 @@ def parse(root: Path | str) -> list[dict]:
     The `#N` references in a follow-ups log point at these row numbers, so the
     numbering has to match what a human counts in the file.
     """
-    path = Path(root) / "job-history.md"
+    path = Path(root) / "job-history.md" if Path(root).is_dir() else Path(root)
     if not path.exists():
         return []
     records: list[dict] = []
@@ -104,9 +116,13 @@ def parse(root: Path | str) -> list[dict]:
             continue
         number += 1
         if mapping:
-            def cell(field: str, default: str = "") -> str:
-                index = mapping.get(field)
-                return cells[index] if index is not None and index < len(cells) else default
+            columns = mapping
+            values = cells
+
+            def cell(field: str, default: str = "", *, columns=columns, values=values) -> str:
+                index = columns.get(field)
+                return values[index] if index is not None and index < len(values) else default
+
             record = {
                 "number": number,
                 "date": cell("date"),
@@ -118,19 +134,24 @@ def parse(root: Path | str) -> list[dict]:
                 "notes": cell("notes"),
             }
         else:
-            padded = cells + [""] * (6 - len(cells))
+            padded = cells + [""] * (7 - len(cells))
             record = {
                 "number": number,
                 "date": padded[0], "company": padded[1], "role": padded[2],
                 "fit": padded[3], "resume": padded[4],
-                "status": canonical_status(padded[5]), "notes": padded[6] if len(padded) > 6 else "",
+                "status": canonical_status(padded[5]), "notes": padded[6],
             }
         records.append(record)
     return records
 
 
-def _applied_dates(root: Path) -> tuple[dict[int, str], dict[int, str]]:
-    """(applied date per row, source) from the tracker's notes and the follow-up log."""
+def applied_dates(root: Path | str) -> tuple[dict[int, str], dict[int, str]]:
+    """(confirmed applied date per row, where that date came from).
+
+    Reads the tracker's own notes and the follow-up log, preferring whichever
+    names a date. A row's date column is usually the evaluation date, not the
+    submission date, so it is deliberately not used as a fallback.
+    """
     dates: dict[int, str] = {}
     source: dict[int, str] = {}
     for record in parse(root):
@@ -152,7 +173,7 @@ def _applied_dates(root: Path) -> tuple[dict[int, str], dict[int, str]]:
 def summary(root: Path | str) -> dict:
     records = parse(root)
     counts = Counter(record["status"] for record in records)
-    dates, sources = _applied_dates(root)
+    dates, sources = applied_dates(root)
     actionable = [record for record in records if record["status"] in ACTIONABLE]
     return {
         "path": str(Path(root) / "job-history.md"),
@@ -214,7 +235,7 @@ def cadence(root: Path | str, today: dt.date | None = None, overdue_only: bool =
     by_app = _followups(content)
     overrides = _directives(content, OVERRIDE_RE)
     cleared = _directives(content, CLEARED_RE)
-    applied, sources = _applied_dates(root)
+    applied, sources = applied_dates(root)
     today = today or dt.date.today()
 
     entries = []

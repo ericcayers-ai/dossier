@@ -76,7 +76,7 @@ def test_route_returns_nothing_for_unrelated_text():
 def test_pipeline_from_walks_the_next_chain():
     chain = agent.pipeline_from("build")
     assert chain[0] == "build"
-    assert "verify" in chain
+    assert chain[1] == "verify", "build declares verify as its next step"
     assert len(chain) == len(set(chain))
 
 
@@ -177,6 +177,23 @@ def test_brief_renders_markdown_with_every_section(tmp_path):
                     "## Run these first", "## Hard gates", "## Prove it", "## Hand back"):
         assert heading in text, f"missing {heading}"
     assert "Claude Code" in text
+
+
+def test_the_rendered_brief_has_no_duplicate_section(tmp_path):
+    """A duplicated heading silently hides a whole section behind a scrollbar —
+    the packet is long enough that nobody reads it twice to notice."""
+    root = _make_workspace(tmp_path / "Tailored")
+    text = brief.render(brief.build(root, "build"))
+    headings = [line for line in text.splitlines() if line.startswith("## ")]
+    assert len(headings) == len(set(headings)), f"duplicated headings: {headings}"
+
+
+def test_the_commands_come_before_the_file_list(tmp_path):
+    """`Run these first` has to be reachable on the first screenful, or the
+    section a model is told to run first sits below the fold."""
+    root = _make_workspace(tmp_path / "Tailored")
+    text = brief.render(brief.build(root, "build"))
+    assert text.index("## Run these first") < text.index("## Inputs you may open")
 
 
 def test_system_prompt_lists_both_halves_of_the_contract(tmp_path):

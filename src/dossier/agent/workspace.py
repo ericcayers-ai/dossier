@@ -15,13 +15,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 
-from ..domain_jobs import canonical_status, parse_history
+from ..engine import tailor
+from ..engine.tracker import canonical_status, parse as parse_tracker
 
 IDENTITY_SUFFIX = "-IDENTITY.md"
 SKIP_DIRS = {".dossier", ".git", "__pycache__", "node_modules", ".venv", ".pytest_cache"}
-
-# A tailored output is named LastName_Resume_... by convention; the base never is.
-_TAILORED = re.compile(r"resume[_-][a-z0-9]", re.IGNORECASE)
 
 
 @dataclass
@@ -85,19 +83,12 @@ def _walk(root: Path) -> list[Path]:
 
 
 def _is_base_document(path: Path) -> bool:
-    """A base .docx is a resume the user wrote, not one this pipeline produced.
+    """A resume the user wrote, not one this pipeline produced.
 
-    Tailored outputs are named `Lastname_Resume_<Role>_<Date>.docx` or end in
-    `_CoverLetter`. The base is any other .docx that says 'resume' in its name.
+    Delegates to the engine so the resolver and the importer cannot disagree
+    about which file is the source of truth.
     """
-    stem = path.stem
-    if path.suffix.casefold() != ".docx":
-        return False
-    if stem.casefold().endswith("_coverletter"):
-        return False
-    if _TAILORED.search(stem):
-        return False
-    return "resume" in stem.casefold() or "cv" in stem.casefold()
+    return tailor.is_base_document(path)
 
 
 def _newest(paths: list[Path]) -> Path | None:
@@ -186,7 +177,7 @@ def _corpus_state(root: Path) -> dict:
 
 def _tracker_state(root: Path) -> dict:
     history_path = root / "job-history.md"
-    records = parse_history(history_path)
+    records = parse_tracker(root)
     counts: dict[str, int] = {}
     for record in records:
         status = canonical_status(record.get("status", "unknown"))
@@ -268,10 +259,7 @@ def resolve(root: Path | str) -> Workspace:
     postings = sorted(by_suffix.get(".md", []), key=lambda p: p.name)
     postings = [p for p in postings if p.name.casefold().startswith(("job-posting-", "posting-"))]
     keywords = [p for p in by_suffix.get(".md", []) if p.name.casefold().startswith(("keywords-", "keyword-"))]
-    artefacts = [
-        p for p in by_suffix.get(".docx", [])
-        if not p.name.casefold().endswith("_coverletter.docx") and _TAILORED.search(p.stem)
-    ]
+    artefacts = [p for p in by_suffix.get(".docx", []) if tailor.is_generated_document(p)]
     renders = by_suffix.get(".pdf", [])
     proofs = [p for p in by_suffix.get(".png", []) if re.search(r"-page-\d+", p.name, re.IGNORECASE)]
 

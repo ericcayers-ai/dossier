@@ -35,7 +35,7 @@
 .agent-brief .bar { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
 .agent-brief .bar .grow { flex: 1; }
 .agent-brief .bar b { font-size: 13px; }
-.agent-brief pre { margin: 0; padding: 16px; max-height: 46vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 11.5px/1.65 var(--code); }
+.agent-brief pre { margin: 0; padding: 16px; max-height: 56vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 11.5px/1.65 var(--code); }
 
 .agent-gates { margin-top: 26px; border-top: 1px solid var(--rule); padding-top: 18px; }
 .agent-gates table { width: 100%; border-collapse: collapse; font-size: 13px; }
