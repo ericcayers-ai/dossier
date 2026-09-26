@@ -7,10 +7,12 @@ name = "dossier"
 version = "0.1.0"
 description = "Local-first document dossier explorer"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn[standard]", "watchfiles", "python-docx", "pymupdf", "pypdf", "pillow", "docx2pdf", "jinja2"]
+dependencies = ["fastapi", "uvicorn[standard]", "watchfiles", "python-docx", "pymupdf", "pypdf", "pillow", "docx2pdf", "jinja2", "defusedxml"]
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
+# Windows DOCX rendering drives a private Word instance through COM.
+windows = ["pywin32"]
 
 [project.scripts]
 dossier = "dossier.cli:main"

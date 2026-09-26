@@ -104,6 +104,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:fo
 .jobs-tabs { padding: 0 0 14px; border-bottom: 1px solid var(--rule); }
 .jobs-tabs button { border-bottom: 2px solid transparent; padding: 7px 0; margin-right: 18px; }
 .jobs-tabs button.active { border-color: var(--signal); }
+.jobs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.jobs-tools .filter { flex: 1 1 240px; width: auto; }
+.jobs-tools .chips { flex-wrap: nowrap; gap: 5px; padding: 0 0 0 14px; border-left: 1px solid var(--rule); }
+.jobs-tools .kbd { margin-left: auto; padding-left: 14px; border-left: 1px solid var(--rule); color: var(--ink-quiet); white-space: nowrap; }
+.table-wrap tbody .empty { padding: 22px 4px; }
 .table-wrap { overflow: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-table th, .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }

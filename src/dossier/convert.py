@@ -9,6 +9,21 @@ import threading
 import tempfile
 
 
+def _pymupdf():
+    """PyMuPDF under its supported module name, falling back to the `fitz` alias.
+
+    `fitz` is deprecated and prints a warning through whatever stream was
+    current when it was first imported, which raises inside a test runner whose
+    capture is already closed.
+    """
+    try:
+        import pymupdf
+        return pymupdf
+    except ImportError:
+        import fitz
+        return fitz
+
+
 @dataclass
 class RendererInfo:
     name: str
@@ -92,11 +107,11 @@ def convert(src, target, opts=None):
     if src.resolve() == target.resolve():
         raise ValueError("source and target must differ")
     if ext == ".pdf" and target_ext == ".png":
-        import fitz
-        document = fitz.open(str(src))
+        pymupdf = _pymupdf()
+        document = pymupdf.open(str(src))
         if not document.page_count:
             raise ValueError("PDF has no pages")
-        document[0].get_pixmap(matrix=fitz.Matrix(150 / 72, 150 / 72), alpha=False).save(str(target))
+        document[0].get_pixmap(matrix=pymupdf.Matrix(150 / 72, 150 / 72), alpha=False).save(str(target))
         return target
     if ext == ".docx" and target_ext == ".pdf":
         if not available_renderers()["word"].available:

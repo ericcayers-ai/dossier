@@ -1,0 +1,54 @@
+/* Agent pane — the injectable contract, rendered on the same light table.
+   Square panels, 1px rules, two chromatic tokens only (--signal, --stale). */
+
+.agent-pane { padding: 26px 30px 40px; overflow: auto; height: 100%; }
+.agent-head { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 22px; }
+.agent-head h1 { margin: 0 0 4px; font-size: 25px; }
+.agent-head p { margin: 0; color: var(--ink-quiet); max-width: 74ch; }
+.agent-head .grow { flex: 1; }
+.agent-version { font: 11px/1.6 var(--code); color: var(--ink-quiet); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.agent-next { border: 1px solid var(--rule); border-left: 3px solid var(--signal); padding: 14px 16px; margin-bottom: 22px; background: var(--sheet); }
+.agent-next.needs-user { border-left-color: var(--stale); }
+.agent-next .row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.agent-next .mode { font-weight: 600; font-size: 15px; }
+.agent-next .reason { margin: 8px 0 0; color: var(--ink-quiet); max-width: 90ch; }
+.agent-next ul { margin: 10px 0 0; padding-left: 18px; font: 12px/1.7 var(--code); color: var(--ink-quiet); word-break: break-all; }
+
+.agent-kind { font: 10px/1 var(--code); text-transform: uppercase; letter-spacing: 0.07em; padding: 3px 6px; border: 1px solid var(--rule); color: var(--ink-quiet); }
+.agent-kind.deterministic { color: var(--signal); border-color: var(--signal); }
+.agent-kind.agent { color: var(--ink); }
+.agent-kind.hybrid { color: var(--stale); border-color: var(--stale); }
+
+.agent-columns { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 26px; align-items: start; }
+@media (max-width: 900px) { .agent-columns { grid-template-columns: 0 minmax(0, 1fr); } .agent-modes { display: none; } }
+
+.agent-modes h2, .agent-gates h2, .agent-facts h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-quiet); margin: 0 0 10px; }
+.agent-modes ul { list-style: none; margin: 0; padding: 0; }
+.agent-modes li { border-bottom: 1px solid var(--rule); }
+.agent-modes button { width: 100%; text-align: left; background: none; border: 0; padding: 8px 6px; cursor: pointer; color: inherit; display: flex; gap: 8px; align-items: baseline; font: inherit; }
+.agent-modes button:hover { background: color-mix(in oklch, var(--signal) 8%, transparent); }
+.agent-modes button[aria-current="true"] { background: color-mix(in oklch, var(--signal) 14%, transparent); }
+.agent-modes button span { flex: 1; }
+
+.agent-brief { border: 1px solid var(--rule); background: var(--sheet); }
+.agent-brief .bar { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+.agent-brief .bar .grow { flex: 1; }
+.agent-brief .bar b { font-size: 13px; }
+.agent-brief pre { margin: 0; padding: 16px; max-height: 46vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 11.5px/1.65 var(--code); }
+
+.agent-gates { margin-top: 26px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.agent-gates table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.agent-gates th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-quiet); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--rule); font-weight: 500; }
+.agent-gates td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.agent-gates code { font: 11.5px/1.5 var(--code); color: var(--ink-quiet); }
+
+.agent-facts { margin-top: 26px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.agent-facts dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 0; font-size: 13px; }
+.agent-facts dt { color: var(--ink-quiet); }
+.agent-facts dd { margin: 0; word-break: break-word; }
+.agent-blockers { margin: 12px 0 0; padding: 0; list-style: none; }
+.agent-blockers li { border-left: 3px solid var(--stale); padding: 6px 10px; margin-bottom: 6px; background: color-mix(in oklch, var(--stale) 7%, transparent); font-size: 13px; }
+.agent-sessions { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
+.agent-sessions li { border-bottom: 1px solid var(--rule); padding: 6px 0; display: flex; gap: 10px; color: var(--ink-quiet); }
+.agent-sessions li b { color: var(--ink); font-weight: 500; }

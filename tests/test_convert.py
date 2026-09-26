@@ -1,6 +1,7 @@
 import csv
 import json
 
+import pytest
 from docx import Document
 
 from dossier.convert import convert, routes
@@ -30,9 +31,9 @@ def test_csv_json_round_trip(tmp_path):
 
 
 def test_pdf_to_png(tmp_path):
-    import fitz
+    pymupdf = pytest.importorskip("pymupdf")
     pdf = tmp_path / "one.pdf"
-    document = fitz.open()
+    document = pymupdf.open()
     page = document.new_page()
     page.insert_text((72, 72), "Dossier render")
     document.save(pdf)

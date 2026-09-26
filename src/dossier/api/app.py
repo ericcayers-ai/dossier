@@ -225,4 +225,102 @@ def create_app(config: AppConfig) -> FastAPI:
     def ai_handoff():
         return build_handoff(config.root, connection)
 
+    # -- agent layer -------------------------------------------------------
+    @app.get("/api/agent/manifest")
+    def agent_manifest():
+        from ..agent import contract
+        return contract()
+
+    @app.get("/api/agent/status")
+    def agent_status():
+        from ..agent import loop
+        return loop.status(config.root)
+
+    @app.get("/api/agent/next")
+    def agent_next():
+        from ..agent import loop
+        return loop.next_unit(config.root)
+
+    @app.get("/api/agent/route")
+    def agent_route(q: str = "", limit: int = 4):
+        from ..agent import route as route_request
+        matches = route_request(q, limit=min(max(limit, 1), 10))
+        return {"request": q, "matches": matches,
+                "confident": bool(matches and matches[0]["score"] >= 10)}
+
+    @app.get("/api/agent/brief")
+    def agent_brief(mode: str, text: str = "", format: str = "json"):
+        from ..agent import brief as brief_module
+        packet = brief_module.build(config.root, mode, text)
+        if format == "markdown":
+            return Response(brief_module.render(packet), media_type="text/markdown")
+        return packet.to_dict()
+
+    @app.get("/api/agent/prompt")
+    def agent_prompt():
+        from ..agent import brief as brief_module
+        return Response(brief_module.system_prompt(config.root), media_type="text/markdown")
+
+    @app.get("/api/agent/adapters")
+    def agent_adapters():
+        from ..agent import adapters
+        packs = adapters.packs(config.root)
+        return {
+            "packs": sorted(packs),
+            "current": {rel: adapters.verify_block(config.root, rel) for rel in packs},
+        }
+
+    @app.post("/api/agent/commit")
+    def agent_commit(payload: dict):
+        from ..agent import loop
+        return loop.commit(config.root, payload)
+
+    # -- engine surfaces ---------------------------------------------------
+    @app.get("/api/workspace")
+    def workspace_state():
+        from ..agent import workspace as workspace_module
+        return workspace_module.resolve(config.root).to_dict()
+
+    @app.get("/api/doctor")
+    def doctor():
+        from ..engine import doctor as doctor_module
+        return doctor_module.report(config.root)
+
+    @app.get("/api/sources")
+    def sources():
+        from ..engine import sources as sources_module
+        return sources_module.ledger(config.root)
+
+    @app.get("/api/track")
+    def track_summary():
+        from ..engine import tracker
+        return tracker.summary(config.root)
+
+    @app.get("/api/track/cadence")
+    def track_cadence(overdue: bool = False):
+        from ..engine import tracker
+        return tracker.cadence(config.root, overdue_only=overdue)
+
+    @app.get("/api/corpus")
+    def corpus_summary(limit: int = 40):
+        from ..engine import corpus
+        jobs = corpus.load(config.root)
+        if not jobs:
+            return {"present": False, "rows": 0}
+        report = corpus.rank_report(jobs, limit=min(max(limit, 1), 200))
+        report["present"] = True
+        report["hash"] = corpus.aggregate_hash(jobs)
+        return report
+
+    @app.get("/api/verify")
+    def verify_summary(base: str = "", candidate: str = "", pdf: str = "",
+                       expected_pages: int = 0):
+        from ..engine import verify as verify_module
+        return verify_module.all(
+            resolve_in_root(config.root, base) if base else None,
+            resolve_in_root(config.root, candidate) if candidate else None,
+            resolve_in_root(config.root, pdf) if pdf else None,
+            expected_pages=expected_pages or None,
+        )
+
     return app

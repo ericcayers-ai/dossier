@@ -27,3 +27,19 @@ export const api={
  audit:()=>request<Audit>('/api/audit'),
  handoff:()=>request<{packet:Record<string,unknown>;prompt:string}>('/api/ai/handoff'),
 };
+export type AgentMode={id:string;label:string;stage:string;kind:string;summary:string};
+export type AgentGate={id:string;rule:string;enforced_by:string;never:string};
+export type AgentContract={schema_version:string;summary:string;stages:Array<{id:string;label:string;intent:string}>;modes:AgentMode[];gates:AgentGate[];artifacts:Array<{name:string;role:string;required:boolean}>};
+export type AgentUnit={mode:string;label:string;stage:string;kind:string;reason:string;summary:string;needs_user?:boolean;blocking?:boolean;targets?:string[]};
+export type AgentStatus={root:string;updated?:string|null;sessions:number;last?:unknown;blockers:string[];counts:Record<string,number>;next:AgentUnit;recent:Array<{at:string;mode:string;status:string;artifacts:string[]}>};
+export type WorkspaceState={root:string;name:string;counts:Record<string,number>;identity_doc?:{rel:string}|null;corpus:Record<string,any>;tracker:Record<string,any>;coverage:Record<string,any>;ready:string[];blockers:string[]};
+export const agentApi={
+  contract:()=>request<AgentContract>('/api/agent/manifest'),
+  status:()=>request<AgentStatus>('/api/agent/status'),
+  next:()=>request<AgentUnit>('/api/agent/next'),
+  route:(q:string)=>request<{request:string;matches:Array<AgentMode&{score:number}>;confident:boolean}>(`/api/agent/route?q=${encodeURIComponent(q)}`),
+  brief:async(mode:string)=>{const response=await fetch(`/api/agent/brief?mode=${encodeURIComponent(mode)}&format=markdown`,{headers:authHeaders()});if(!response.ok)throw new Error(`${response.status} ${response.statusText}`);return response.text()},
+  workspace:()=>request<WorkspaceState>('/api/workspace'),
+  doctor:()=>request<{verdict:string;capabilities:Record<string,boolean>;blockers:string[];platform:Record<string,string>}>('/api/doctor'),
+};
+
