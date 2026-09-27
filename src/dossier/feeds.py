@@ -1,6 +1,16 @@
 from dataclasses import dataclass
 
-PROHIBITED = {"linkedin", "indeed", "glassdoor", "seek", "workday"}
+# Derived from the single policy table rather than restated as five names: two copies of this
+# set is the drift docs/LESSONS.md warns about. The guard refuses everything the policy does
+# not permit automated access to, so it is prohibited PLUS manual_only — not just the two
+# `prohibited` boards. A per-workspace `.dossier/sources.json` can change the policy layer,
+# but fetching still needs a real public adapter, which these boards do not have, so opening
+# a policy never turns into silent scraping.
+from .engine.sources import POLICIES
+
+FETCHABLE_POLICIES = ("official_public", "partner_only")
+PROHIBITED = {name for name, entry in POLICIES.items()
+              if entry["policy"] not in FETCHABLE_POLICIES}
 ENDPOINTS = {
     "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{board}/jobs",
     "lever": "https://api.lever.co/v0/postings/{site}?mode=json",

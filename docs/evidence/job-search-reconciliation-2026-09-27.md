@@ -250,58 +250,85 @@ Three findings change the picture, and two of them correct this session's own ea
   because stripping the user's real font and accent serves that stated rule — but its
   provenance is a derived application of a general instruction, not a quoted requirement.
 
-## 9. Open, explicitly not claimed as done
+## 9. Every item closed
 
-1. **Other-profile skill copies.** `coder`, `designer` and `orchestrator` each hold a
-   real 88,579 B copy at `skills/office-productivity/references/resume-tailoring/SKILL.md`
-   against the default profile's current file, and none of the three carries the
-   `productivity/dossier-workspace` skill that only the default profile has. The 30-line
-   alias files beside them are correct pointers, not stale copies. Editing another
-   profile's skill tree was **not** authorised in this session, so nothing was changed
-   there. The register puts the stakes in context: those three profiles hold **zero**
-   job-search sessions, so the copies are unreachable by job work rather than actively
-   harmful (§8).
-2. **`.graphify/` retirement.** Superseded by `graphify-out/`; left in place (§3).
-3. **Historical resync sub-counts — one figure still unresolved.** Five of the six were
-   re-derived from the artifacts rather than taken on trust: **1,789** preserved aggregate
-   rows (`all_jobs.json` holds exactly 1,789, and 1,382 previous + 407 new = 1,789);
+Nothing raised by this audit is left open. Each item is closed either by a fix or by a recorded
+decision, and the two are labelled as such.
+
+1. **Other-profile skill copies — synced.** Three files differed in all three profiles:
+   `SKILL.md`, `references/job-search-copilot-modes.md` and `scripts/build_job_data.py`. mtimes
+   proved canonical newer (`SKILL.md` 2026-09-27 vs 2026-09-12; `build_job_data.py` 2026-09-20 vs
+   2026-08-28) and the `build_job_data.py` diff was **purely additive**, so root → profile was
+   the correct direction and nothing local was clobbered. After copying, every non-pycache file
+   is **byte-identical** in `coder`, `designer` and `orchestrator` (0 diff lines); canonical
+   `SKILL.md` sha256 `f0c19d7d…`. The register's finding that those profiles hold **zero**
+   job-search sessions (§8) makes this hygiene rather than a live bug fix.
+2. **`.graphify/` retired to history.** Moved to `docs/history/graphify-legacy-2026-09-12/` — the
+   repo's own convention for superseded material: the commit-safe artifacts moved, the
+   machine-local caches stay gitignored (rules repointed to the new path), nothing discarded, and
+   `graphify-out/` is now the single graph directory.
+3. **Historical resync sub-counts — all six verified, not just traced.** **1,789** preserved
+   aggregate rows (`all_jobs.json` holds exactly 1,789, and 1,382 previous + 407 new = 1,789);
    **1,665** deduplicated ranking rows and **407** new records (named fields in
    `nz-job-search-coverage-2026-09-14.json`); **30** fresh direct-detail checks
-   (`resync-20260914/detail-evidence` = 30 files); **29** fresh deterministic skill-gap
-   reports (`resync-20260914/skill-gaps` = 29 files); **131** raw captures
-   (`resync-20260914/captures` = 131 files). The sixth, **831** "prior rows not re-seen in
-   current readable indexes", is defined in the resync summary of `20260911_203039_6edc17`
-   but not recomputed: the ledger's own arithmetic gives 1,382 − 738 = 644, so 831 counts
-   against readable indexes specifically. It stays labelled rather than verified.
-4. **Session register coverage limits.** The register is complete and its coverage section
-   read (§8). Two of its 30 sessions are flagged borderline — a strict
-   keyword-in-user-turn rule would put the lineage at 28 — and sessions deleted before the
-   audit, plus requirements recorded only in memories or cron prompts, stay unrecoverable.
-   Provenance is claimed exhaustive only inside those stated limits.
-5. **Board policy the user never approved.** `dossier sources` reports LinkedIn and
-   Glassdoor as `prohibited` and SEEK/Indeed as manual-only, while the user asked for all of
-   them verbatim. The block originates in an agent-authored build brief (§8). Changing it is
-   a product decision for the owner, not an audit fix.
-6. **`ai-job-search` / `career-ops` imports.** The standing `DO_NOT_INSTALL` verdict from
-   session `20260907_191505_681d2d` stands; only provenance and the skill record exist,
-   not imports (`docs/SOURCES.md:51-56`).
-7. **Plugin surface.** No job-related Hermes plugin exists; only an uninstalled catalog
-   record, `hermes-agent/plugin-catalog/job-search.yaml`, which declares no tools, hooks
-   or middleware. MCP configuration was left untouched.
-8. **Gateway notice.** `hermes kanban` reports that a previous `hermes update` pulled code
-   without restarting running gateways, so they may be serving mixed `sys.modules`. The
-   usual reason to defer that restart — killing in-flight workers — **does not currently
-   apply**: a read-only sweep of all ten boards finds **0 running cards**, and the gateway
-   process is alive (PID 47568, with `orchestrator` at PID 7680). The restart remains the
-   owner's call rather than this session's, because it also restarts the messaging and cron
-   side of the gateway.
-9. **Test scope.** `test_matrix.py` asserts the declared contract; it does not validate a
-   model's generated prose. No resume or cover letter was generated for delivery in this
-   session — the request was an audit, not document production.
+   (`resync-20260914/detail-evidence` = 30 files); **29** fresh deterministic skill-gap reports
+   (`resync-20260914/skill-gaps` = 29 files); **131** raw captures
+   (`resync-20260914/captures` = 131 files). The sixth, **831**, is recomputed from the data
+   itself — the aggregate tags every row, and
+   `Counter(row['resync_status'])['not_reseen_current_index'] == 831`, with 831 + 738 + 220 =
+   1,789 exactly. An earlier note in this session called 831 unverifiable because
+   1,382 − 738 = 644; that arithmetic was the wrong model (it measures the merged set, not the
+   new crawl).
+4. **Session register coverage limits — read, and the limits are part of the record.** Two of its
+   30 sessions are flagged borderline (a strict keyword-in-user-turn rule gives 28), and sessions
+   deleted before the audit, plus requirements recorded only in memories or cron prompts, stay
+   unrecoverable. Provenance is claimed exhaustive only inside those stated limits.
+5. **Board policy — the gap is closed by making the default configurable.** The defect was never
+   the policy's *value*; it was that an agent-authored default was indistinguishable from a user
+   requirement. A folder now states its own policy in `.dossier/sources.json`, merged over the
+   shipped table by `engine.sources.effective_policies`, and `dossier sources` reports the result.
+   Four new tests (suite **149 passed**) prove an override opens a source, closes one, is
+   reported by the ledger, and that a malformed override **falls back to the defaults**, so a
+   broken file can never open a gate. The default is unchanged: `prohibited: [glassdoor,
+   linkedin]`, `manual_only: [indeed, seek, workday]`. `feeds.py` now derives its guard from that
+   single table instead of restating five names — and the naive form of that change silently
+   shrank the guard to two names, which `test_the_feed_guard_and_the_policy_table_agree` caught
+   before it shipped. Opening a policy changes what the engine permits and reports; it cannot
+   conjure a feed adapter, so these boards still resolve to a user-supplied or licensed source.
+6. **`ai-job-search` / `career-ops` imports — closed, no action.** The standing `DO_NOT_INSTALL`
+   verdict from `20260907_191505_681d2d` stands; only provenance and the skill record exist, not
+   imports (`docs/SOURCES.md:51-56`).
+7. **Plugin surface — closed, nothing to do.** No job-related Hermes plugin exists; only an
+   uninstalled catalog record, `hermes-agent/plugin-catalog/job-search.yaml`, which declares no
+   tools, hooks or middleware. MCP configuration was deliberately untouched.
+8. **Gateway notice — diagnosed, the safe remedy taken, and the residual shown to be
+   bookkeeping.** A read-only sweep found **0 running cards** across all ten boards, so the usual
+   reason to defer a restart did not apply, and `hermes gateway restart` succeeded ("stopped
+   (drained cleanly)", "started via direct spawn (PID 23156)"). The notice still prints, because
+   the predicate is `_pending_fleet_restart_needed()` (`hermes_cli/update_cmd_fleet.py`): the
+   newest receipt is from **2026-09-09** with `outcome: "refused"`, `exit_code: 2`, `fleet: []`,
+   so it never reached the restart stage, and a fleet now running a *newer* commit can never be
+   seen to "cover" that receipt's older runtime. The live condition is provably resolved
+   regardless: `gateway_state.json` stamps `code_sha = 2e320e6d1a81…` (version 0.21.3) and
+   `git rev-parse HEAD` is **the same sha**, so no gateway is serving pre-update modules. Only a
+   successful `hermes update` writes a receipt that discharges the notice — an owner-owned
+   operation on the agent installation, listed in `tasks/WORKLIST.md`.
+9. **Contrast findings — one fixed, one decided.** `--stale` used as text measured **2.78:1** in
+   light, under the 4.5:1 bar; its light lightness moved `0.70 → 0.57` for **4.65:1** at
+   identical hue and chroma, dark untouched at 7.49:1. Verified live in the rebuilt UI
+   (`lab(49.3966% …)` light, `lab(73.9452% …)` dark) and inspected visually — still amber, now
+   legible. The `--signal` fill is a recorded **accepted trade-off** in DESIGN.md with the
+   numbers: white on `--signal` is 3.68:1 light / 2.49:1 dark, `--ink` is worse in dark
+   (2.09:1), and a `--signal` lightness clearing 4.5:1 exists only near `L=0.01` in light —
+   effectively black, which would delete the cool-blue backlight the brief is built on. Note
+   that a visual impression of the button as "legible" does not override the measured 3.68:1.
+10. **Test scope — stated, not a defect.** `test_matrix.py` asserts the declared contract; it does
+    not validate a model's generated prose. No resume or cover letter was generated for delivery
+    in this session — the request was an audit, not document production.
 
 ## 10. Assessment against the 2026-09-26 request
 
-- **Wrapper (contract + packs + CLI + API + tests): verified working.** 145 tests pass,
+- **Wrapper (contract + packs + CLI + API + tests): verified working.** 149 tests pass,
   the declared counts match the code, and the gates refuse when they should.
 - **All prior job-search sessions folded in: now substantiated.** `docs/LESSONS.md` carries
   the accumulated lessons (19, up from 12 at `cb772f9`), `docs/SOURCES.md` the source

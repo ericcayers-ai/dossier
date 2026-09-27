@@ -5,7 +5,7 @@
   --ink-quiet: oklch(.52 .02 260);
   --rule: oklch(.90 .008 255);
   --signal: oklch(.62 .17 255);
-  --stale: oklch(.70 .16 62);
+  --stale: oklch(.57 .16 62);
   --ui: Inter, ui-sans-serif, system-ui, sans-serif;
   --prose: "Source Serif 4", Georgia, serif;
   --code: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;

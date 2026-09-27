@@ -54,6 +54,17 @@ graphify-out/.graphify_root
 # Dated pre-update backup the tool writes before it rebuilds the curated graph.
 graphify-out/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 
+# The legacy Node-graphify directory was retired to history (see tasks/WORKLIST.md). Its
+# commit-safe artifacts are preserved there, while the machine-local caches and the
+# absolute-path-bearing files stay out of git exactly as they were at the original path.
+docs/history/graphify-legacy-2026-09-12/cache/
+docs/history/graphify-legacy-2026-09-12/description-instructions/
+docs/history/graphify-legacy-2026-09-12/label-instructions/
+docs/history/graphify-legacy-2026-09-12/.graphify_describe_pending
+docs/history/graphify-legacy-2026-09-12/manifest.json
+docs/history/graphify-legacy-2026-09-12/branch.json
+docs/history/graphify-legacy-2026-09-12/worktree.json
+
 # Environment / secrets
 .env
 .env.*

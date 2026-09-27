@@ -96,8 +96,14 @@ session in that workspace hit the failure first.
   user turn: no session records the user approving the block or withdrawing the
   board list. The exclusion is a conservative default chosen because those sites
   forbid automated collection, and it is a decision the owner has not been asked
-  to confirm. Changing it means editing `engine.sources.POLICIES`, and the
-  reason to keep it is legal, not technical.
+  to confirm. It is now a *configurable* default rather than a buried one: a workspace
+  states its own policy in `.dossier/sources.json`, which
+  `engine.sources.effective_policies` merges over the shipped table, and `dossier
+  sources` reports the result. A missing or malformed file falls back to the
+  defaults, so a broken override can never open a gate. Opening a policy changes
+  what the engine permits and reports; it cannot conjure a feed adapter, so these
+  boards still resolve to a user-supplied posting, export or licensed source. The
+  reason to keep the default is legal, not technical.
 - **No automatic submission.** The service exposes no submit route and the CLI
   has no submit action. Field approval and submit approval are separate,
   human-owned steps.

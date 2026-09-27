@@ -51,9 +51,15 @@ Deliberately not: warm cream + high-contrast serif + terracotta; near-black + on
 | `--ink-quiet` | `oklch(0.52 0.02 260)` | `oklch(0.70 0.014 255)` | metadata, paths, timestamps |
 | `--rule` | `oklch(0.90 0.008 255)` | `oklch(0.34 0.014 255)` | 1px separators only |
 | `--signal` | `oklch(0.62 0.17 255)` | `oklch(0.72 0.15 255)` | selection, focus ring, active tab — cool blue, the backlight |
-| `--stale` | `oklch(0.70 0.16 62)` | `oklch(0.78 0.15 62)` | amber: render older than its source, unsaved buffer, overdue follow-up |
+| `--stale` | `oklch(0.57 0.16 62)` | `oklch(0.78 0.15 62)` | amber: render older than its source, unsaved buffer, overdue follow-up |
 
 Only two chromatic tokens exist. `--stale` is the only warm thing on screen, so an out-of-date render is visible from across the room. Body text ≥4.5:1 on `--sheet` in both themes; no gray-on-color text anywhere.
+
+Measured, not assumed — these ratios are computed from the OKLCH values above:
+
+- `--ink` on `--sheet`: **16.45:1** light, **13.03:1** dark. The body-text bar holds with room to spare.
+- `--stale` used as *text* (the freshness label) was **2.78:1** in light, below the bar. Its light lightness moved `0.70 → 0.57` for **4.65:1** at the same hue and chroma; dark was already 7.49:1 and is untouched. Amber stays amber, it is simply legible now.
+- **Known limit, accepted on purpose.** White on the `--signal` fill (`.primary`) is **3.68:1** light and **2.49:1** dark, and `--ink` is worse in dark (**2.09:1**). A `--signal` lightness that clears 4.5:1 for the label exists only near `L=0.01` in light — effectively black — which would delete the cool-blue backlight this brief is built on. The filled primary button therefore stays as it is: a taste-and-identity trade-off, not an oversight. Changing it means a much darker `--signal` in both themes, which also carries the focus ring and the selection highlight.
 
 ### Type — pair on contrast axis, not two sans-serifs
 

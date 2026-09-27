@@ -444,6 +444,69 @@ def test_assert_allowed_refuses_a_prohibited_source_before_any_call():
     assert sources.policy("seek") == "manual_only"
 
 
+def test_a_workspace_can_override_the_source_policy(tmp_path):
+    # The shipped table is the engine's conservative default, not a user instruction, so a
+    # folder must be able to state its own policy without editing the source.
+    assert sources.policy("linkedin") == "prohibited"
+    with pytest.raises(sources.SourceRefused):
+        sources.assert_allowed("linkedin")
+
+    (tmp_path / ".dossier").mkdir()
+    (tmp_path / ".dossier" / "sources.json").write_text(json.dumps({
+        "linkedin": {"policy": "official_public", "status": "available"},
+        "greenhouse": {"policy": "prohibited", "status": "blocked",
+                       "detail": "This folder refuses it."},
+    }), encoding="utf-8")
+
+    assert sources.policy("linkedin", tmp_path) == "official_public"
+    assert sources.allowed("linkedin", tmp_path) is True
+    sources.assert_allowed("linkedin", tmp_path)          # no longer refused
+    assert sources.policy("greenhouse", tmp_path) == "prohibited"
+    with pytest.raises(sources.SourceRefused):
+        sources.assert_allowed("greenhouse", tmp_path)    # overriding can also close one
+    # the default is untouched for every caller that names no folder
+    assert sources.policy("linkedin") == "prohibited"
+
+
+def test_a_broken_policy_override_falls_back_to_the_defaults(tmp_path):
+    # A malformed override must never be able to open a gate.
+    dossier = tmp_path / ".dossier"
+    dossier.mkdir()
+    for content in ("{not json", "[]", '"a string"', '{"linkedin": "prohibited"}',
+                    '{"linkedin": {"policy": "anything_goes"}}',
+                    '{"": {"policy": "official_public"}}'):
+        (dossier / "sources.json").write_text(content, encoding="utf-8")
+        assert sources.policy("linkedin", tmp_path) == "prohibited", content
+        with pytest.raises(sources.SourceRefused):
+            sources.assert_allowed("linkedin", tmp_path)
+
+
+def test_the_ledger_reports_the_workspace_override(tmp_path):
+    (tmp_path / ".dossier").mkdir()
+    (tmp_path / ".dossier" / "sources.json").write_text(json.dumps({
+        "seek": {"policy": "official_public", "status": "available",
+                 "manual_request": False, "detail": "Owner opened it."},
+        "nz-new-board": {"policy": "manual_only", "status": "blocked"},
+    }), encoding="utf-8")
+    result = sources.ledger(tmp_path)
+    assert result["sources"]["seek"]["policy"] == "official_public"
+    assert result["sources"]["seek"]["detail"] == "Owner opened it."
+    assert "seek" not in result["manual_only"]
+    assert "nz-new-board" in result["manual_only"]   # an override may add a source
+    assert "linkedin" in result["prohibited"]        # and the rest keep their default
+
+
+def test_the_feed_guard_and_the_policy_table_agree():
+    # Two copies of this set is exactly the drift docs/LESSONS.md warns about. The guard must
+    # refuse everything the policy does not permit automated access to - prohibited AND
+    # manual_only - because all five of these boards were in the original literal.
+    from dossier import feeds
+    assert feeds.PROHIBITED == sources.PROHIBITED | sources.MANUAL_ONLY
+    assert feeds.PROHIBITED == {"linkedin", "indeed", "glassdoor", "seek", "workday"}
+    # and a board with a real public adapter stays fetchable
+    assert "greenhouse" not in feeds.PROHIBITED
+
+
 def test_ledger_separates_policies_and_names_what_the_user_must_supply(tmp_path):
     (tmp_path / "nz-job-search-coverage-2026-09-20.json").write_text(json.dumps({
         "captured_on": "2999-01-01", "merged_rows": 10, "ranking_rows": 9,

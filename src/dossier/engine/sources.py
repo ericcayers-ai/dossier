@@ -50,6 +50,51 @@ POLICIES: dict[str, dict] = {
 PROHIBITED = {name for name, entry in POLICIES.items() if entry["policy"] == "prohibited"}
 MANUAL_ONLY = {name for name, entry in POLICIES.items() if entry["policy"] == "manual_only"}
 
+# The table above is the engine's conservative default, not a user instruction: several of
+# these boards forbid automated collection, which is why they start refused. A workspace can
+# therefore adjust the policy for its own folder with `.dossier/sources.json` rather than
+# editing this file, so the choice belongs to the folder's owner. A missing, malformed or
+# non-dict override falls back to the defaults, because a broken override must never be able
+# to open a gate.
+WORKSPACE_POLICY_FILE = ".dossier/sources.json"
+POLICY_VALUES = ("official_public", "partner_only", "manual_only", "prohibited")
+
+
+def effective_policies(root: Path | str | None = None) -> dict[str, dict]:
+    """The default policy table merged with the workspace's own override file.
+
+    Opening a policy only changes what the engine reports and permits; fetching a board
+    still needs a real public adapter, so a source with no adapter fails loudly instead of
+    quietly sourcing data from somewhere unverified.
+    """
+    if root is None:
+        return POLICIES
+    try:
+        override = json.loads(
+            (Path(root) / WORKSPACE_POLICY_FILE).read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return POLICIES
+    if not isinstance(override, dict):
+        return POLICIES
+
+    merged = {name: dict(entry) for name, entry in POLICIES.items()}
+    for raw_name, raw_entry in override.items():
+        name = str(raw_name).strip().casefold()
+        if not name or not isinstance(raw_entry, dict):
+            continue
+        if raw_entry.get("policy") not in POLICY_VALUES:
+            continue
+        entry = merged.setdefault(name, {
+            "policy": "manual_only", "status": "blocked", "manual_request": True,
+            "detail": "Declared by this workspace's own sources.json.",
+        })
+        for field in ("policy", "status", "manual_request", "detail"):
+            if field in raw_entry:
+                entry[field] = raw_entry[field]
+    return merged
+
+
 END_HINT = 7  # days before a coverage snapshot is reported stale
 
 _HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -74,22 +119,22 @@ _INSTRUCTION_HINT = re.compile(
 )
 
 
-def policy(source: str) -> str:
-    return POLICIES.get(source.strip().casefold(), {}).get("policy", "manual_only")
+def policy(source: str, root: Path | str | None = None) -> str:
+    return effective_policies(root).get(source.strip().casefold(), {}).get("policy", "manual_only")
 
 
-def allowed(source: str) -> bool:
-    return policy(source) not in {"prohibited"}
+def allowed(source: str, root: Path | str | None = None) -> bool:
+    return policy(source, root) not in {"prohibited"}
 
 
 class SourceRefused(PermissionError):
     """Raised before any network call for a prohibited source."""
 
 
-def assert_allowed(source: str) -> None:
+def assert_allowed(source: str, root: Path | str | None = None) -> None:
     """Refuse a prohibited source before a request is ever made."""
     name = source.strip().casefold()
-    entry = POLICIES.get(name)
+    entry = effective_policies(root).get(name)
     if entry and entry["policy"] == "prohibited":
         raise SourceRefused(
             f"{name} is prohibited for automated access: {entry['detail']} "
@@ -206,8 +251,9 @@ def coverage(root: Path | str) -> dict:
 def ledger(root: Path | str) -> dict:
     """Per-source policy plus whatever the newest capture actually recorded."""
     snapshot = coverage(root)
+    table = effective_policies(root)
     rows: dict[str, dict] = {}
-    for name, entry in POLICIES.items():
+    for name, entry in table.items():
         rows[name] = {
             "policy": entry["policy"],
             "status": entry["status"],
@@ -234,8 +280,8 @@ def ledger(root: Path | str) -> dict:
         "captured": snapshot.get("present", False),
         "coverage": snapshot,
         "sources": dict(sorted(rows.items(), key=lambda item: (-(item[1].get("records") or 0), item[0]))),
-        "prohibited": sorted(PROHIBITED),
-        "manual_only": sorted(MANUAL_ONLY),
+        "prohibited": sorted(n for n, e in table.items() if e["policy"] == "prohibited"),
+        "manual_only": sorted(n for n, e in table.items() if e["policy"] == "manual_only"),
         "needs_user_supply": manual,
         "limits": snapshot.get("limits", {}),
         "rule": (
