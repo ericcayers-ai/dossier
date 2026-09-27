@@ -86,6 +86,18 @@ session in that workspace hit the failure first.
 - **No scraping of LinkedIn, Indeed, Glassdoor, SEEK or Workday.** Those are
   registered as `prohibited` or `manual_only`; the runner refuses before a
   network call. That refusal is a feature, not a gap.
+
+  **Provenance, so this is not mistaken for a user requirement.** The user asked
+  for these boards by name — "i want to look through seek nz, indeed, trademe
+  jobs, literally all available main job searches" (session
+  `20260828_164736_7672b9`) — and requested the widest possible coverage in
+  `20260911_203039_6edc17`. The block itself originates in an agent-authored
+  build brief (`20260912_035239_4c86f4`, the Dossier backend slice), not in a
+  user turn: no session records the user approving the block or withdrawing the
+  board list. The exclusion is a conservative default chosen because those sites
+  forbid automated collection, and it is a decision the owner has not been asked
+  to confirm. Changing it means editing `engine.sources.POLICIES`, and the
+  reason to keep it is legal, not technical.
 - **No automatic submission.** The service exposes no submit route and the CLI
   has no submit action. Field approval and submit approval are separate,
   human-owned steps.

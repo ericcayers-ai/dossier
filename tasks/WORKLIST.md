@@ -67,13 +67,28 @@ result is machine-verified but not owner-confirmed, the item says so.
   `api_*.py` stubs and has no `engine/` or `agent/` nodes. Remaining: deletion is
   destructive to pre-existing tracked content, so it waits on the owner — `git rm -r
   .graphify` is the whole job.
-- [ ] **P2** — Repair the 147 dangling-endpoint edges in the new graph (doc-derived edges
-  whose targets do not match AST ids). Receipt: `graphify diagnose` health warning from
-  the build. Remaining: an id-reconciliation pass; the graph is usable meanwhile.
-- [ ] **P3** — Re-derive the historical resync sub-counts (1,665 / 407 / 831 / 30 / 29 /
-  131) against the 1,789-row `all_boards_data/all_jobs.json` and the 724-member zip.
-  Receipt: only the 1,789 and 724 totals were confirmed. Remaining: a full pass; they are
-  currently labelled historical, not verified.
+- [x] **P2** — Graph integrity: **no repair was needed.** Receipt:
+  `graphify diagnose multigraph --graph graphify-out/graph.json` → 987 nodes, 1773 links,
+  `dangling_endpoint_edges: 0`, `missing_endpoint_edges: 0`, `collapsed …: 0`,
+  `exact_duplicate_edges: 0`. The 147 dangling / 4 self-loop / 66 collapsed figures printed
+  during the build were measured on the **raw extraction** — the same output says so
+  ("normal graph.json is post-build; raw producer loss must be measured earlier") — and the
+  build resolves them. An earlier version of this list called that an unrepaired defect in
+  the delivered graph; that was wrong. The 3 residual self-loops are `calls` edges at
+  confidence 1.0 on genuinely recursive functions (`tree_node()` `api/app.py:85`,
+  `walk()` `extract.py:13`, `flatten()` `ui/src/App.tsx:16`), each confirmed against source.
+- [x] **P3** — Re-derive the historical resync sub-counts. Receipt: **five of six recomputed
+  exactly** from the artifacts — 1,789 aggregate rows (`all_jobs.json` = 1,789 rows and
+  1,382 + 407 = 1,789), 1,665 ranking rows and 407 new records (named fields in
+  `nz-job-search-coverage-2026-09-14.json`), 30 detail checks
+  (`resync-20260914/detail-evidence` = 30 files), 29 skill-gap reports
+  (`resync-20260914/skill-gaps` = 29 files), 131 captures
+  (`resync-20260914/captures` = 131 files). Also recounted: `NZ-JobSearch-Resync-2026-09-14.zip`
+  = **724 members, 0 directory entries** — exact.
+- [ ] **P3** — One resync figure stays unverified: **831** "prior rows not re-seen in current
+  readable indexes". Receipt: defined in the resync summary of `20260911_203039_6edc17`,
+  but the ledger's arithmetic gives 1,382 − 738 = 644, so 831 counts against readable
+  indexes specifically. Remaining: reproduce that narrower count, or leave it labelled.
 - [ ] **P1** — Board policy the user never approved. The user asked verbatim for "seek nz,
   indeed, trademe jobs, literally all available main job searches"; the engine instead
   hard-blocks exactly those (`dossier sources` → `glassdoor` `prohibited`, SEEK/Indeed
@@ -91,7 +106,8 @@ result is machine-verified but not owner-confirmed, the item says so.
   describe earlier content; their `source_file` paths are correct and every other
   `source_file` in the graph resolves (2,684 checked, 0 unresolvable). Remaining: run
   `graphify update <path>` after doc edits land.
-- [ ] **P3** — Confirm the gateway notice `hermes kanban` prints ("a previous
-  `hermes update` pulled new code but did not restart running gateways"). Receipt: the
-  warning appears on every kanban invocation. Remaining: owner-scheduled, since a restart
-  would kill in-flight workers on other boards.
+- [ ] **P3** — Gateway restart is now **safe but not taken**. Receipt: a read-only sweep of
+  all ten boards finds **0 running cards** (no `running` status anywhere), and the gateway
+  process is alive (PID 47568, `orchestrator` PID 7680). Remaining: an owner call, because
+  the restart also bounces the messaging and cron side of the gateway — the in-flight-worker
+  reason to defer it no longer applies.

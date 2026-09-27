@@ -86,11 +86,21 @@ Rebuilt with the installed Python `graphifyy` workflow:
 - Outputs: `graph.json`, `graph.html` (840,006 bytes), `GRAPH_REPORT.md`,
   `manifest.json` (87 files), `cost.json`, `.graphify_labels.json`.
 
-**Graph health warning, surfaced rather than hidden:** 147 dangling-endpoint edges,
-4 self-loop edges, 66 collapsed undirected edges. The dangling edges are doc-derived
-edges whose target ids do not match the AST naming — the AST/LLM id-mismatch class this
-diagnostic exists to catch. The graph is usable and queryable; the warning is not
-repaired here.
+**Graph health, checked against the delivered artifact.** The build printed a warning
+measured on the **raw extraction** — "147 dangling-endpoint edges, 4 self-loop edges, 66
+collapsed undirected edges" — and the same output states the caveat: *"normal graph.json is
+post-build; raw producer loss must be measured earlier."* Re-running the diagnostic
+independently against the committed `graphify-out/graph.json` reports **0 dangling, 0
+missing-endpoint, 0 external-reference, 0 duplicate and 0 collapsed edges** across 987 nodes
+and 1773 links: the build resolves them. An earlier revision of this record reported the raw
+figures as an unrepaired defect in the delivered graph. That was wrong, and the correction
+is recorded rather than quietly overwritten.
+
+The one residual is **3 self-loop edges**, and all three are correct rather than corruption:
+each is a `calls` edge at confidence 1.0 (`EXTRACTED`) on a genuinely recursive function —
+`tree_node()` (`src/dossier/api/app.py:85`, calls itself at L97), `walk()`
+(`src/dossier/extract.py:13`, calls itself twice), and `flatten()` (`ui/src/App.tsx:16`).
+All three were confirmed against source.
 
 **Vintage caveat.** The semantic pass read the evidence document at its pre-rewrite
 revision, so the nodes sourced from that file describe its earlier content even though
@@ -236,29 +246,40 @@ Three findings change the picture, and two of them correct this session's own ea
    job-search sessions, so the copies are unreachable by job work rather than actively
    harmful (§8).
 2. **`.graphify/` retirement.** Superseded by `graphify-out/`; left in place (§3).
-3. **Graph integrity warning.** 147 dangling-endpoint edges remain unrepaired (§3).
-4. **Historical aggregate sub-counts.** The 1,789-row `all_boards_data/all_jobs.json` and
-   the 724-member resync zip were cross-checked against `docs/SOURCES.md`, but the
-   1,665 / 407 / 831 / 30 / 29 / 131 sub-counts were not re-derived.
-5. **Session register coverage limits.** The register is complete and its coverage section
+3. **Historical resync sub-counts — one figure still unresolved.** Five of the six were
+   re-derived from the artifacts rather than taken on trust: **1,789** preserved aggregate
+   rows (`all_jobs.json` holds exactly 1,789, and 1,382 previous + 407 new = 1,789);
+   **1,665** deduplicated ranking rows and **407** new records (named fields in
+   `nz-job-search-coverage-2026-09-14.json`); **30** fresh direct-detail checks
+   (`resync-20260914/detail-evidence` = 30 files); **29** fresh deterministic skill-gap
+   reports (`resync-20260914/skill-gaps` = 29 files); **131** raw captures
+   (`resync-20260914/captures` = 131 files). The sixth, **831** "prior rows not re-seen in
+   current readable indexes", is defined in the resync summary of `20260911_203039_6edc17`
+   but not recomputed: the ledger's own arithmetic gives 1,382 − 738 = 644, so 831 counts
+   against readable indexes specifically. It stays labelled rather than verified.
+4. **Session register coverage limits.** The register is complete and its coverage section
    read (§8). Two of its 30 sessions are flagged borderline — a strict
    keyword-in-user-turn rule would put the lineage at 28 — and sessions deleted before the
    audit, plus requirements recorded only in memories or cron prompts, stay unrecoverable.
    Provenance is claimed exhaustive only inside those stated limits.
-6. **Board policy the user never approved.** `dossier sources` reports LinkedIn and
+5. **Board policy the user never approved.** `dossier sources` reports LinkedIn and
    Glassdoor as `prohibited` and SEEK/Indeed as manual-only, while the user asked for all of
    them verbatim. The block originates in an agent-authored build brief (§8). Changing it is
    a product decision for the owner, not an audit fix.
-7. **`ai-job-search` / `career-ops` imports.** The standing `DO_NOT_INSTALL` verdict from
+6. **`ai-job-search` / `career-ops` imports.** The standing `DO_NOT_INSTALL` verdict from
    session `20260907_191505_681d2d` stands; only provenance and the skill record exist,
    not imports (`docs/SOURCES.md:51-56`).
-8. **Plugin surface.** No job-related Hermes plugin exists; only an uninstalled catalog
+7. **Plugin surface.** No job-related Hermes plugin exists; only an uninstalled catalog
    record, `hermes-agent/plugin-catalog/job-search.yaml`, which declares no tools, hooks
    or middleware. MCP configuration was left untouched.
-9. **Gateway notice.** `hermes kanban` reports that a previous `hermes update` pulled code
-   without restarting running gateways. Not actioned: a restart would kill in-flight
-   workers on other boards.
-10. **Test scope.** `test_matrix.py` asserts the declared contract; it does not validate a
+8. **Gateway notice.** `hermes kanban` reports that a previous `hermes update` pulled code
+   without restarting running gateways, so they may be serving mixed `sys.modules`. The
+   usual reason to defer that restart — killing in-flight workers — **does not currently
+   apply**: a read-only sweep of all ten boards finds **0 running cards**, and the gateway
+   process is alive (PID 47568, with `orchestrator` at PID 7680). The restart remains the
+   owner's call rather than this session's, because it also restarts the messaging and cron
+   side of the gateway.
+9. **Test scope.** `test_matrix.py` asserts the declared contract; it does not validate a
    model's generated prose. No resume or cover letter was generated for delivery in this
    session — the request was an audit, not document production.
 
