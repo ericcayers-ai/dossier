@@ -43,6 +43,14 @@ result is machine-verified but not owner-confirmed, the item says so.
   comments on each card.
 - [x] **P2** — Doc audit: 60 markdown files, 5 relative links, 2 broken (both here) —
   repaired; re-run reports 0 broken.
+- [x] **P1** — Session acceptance register completed and preserved at
+  [docs/evidence/acceptance-criteria-register-2026-09-27.md](../docs/evidence/acceptance-criteria-register-2026-09-27.md).
+  Receipt: 30 in-scope sessions, 66 user-stated criteria, 9 contradictions, plus the
+  agent-authored constraints held separately; independently verified — all 30 session ids
+  exist in `default/state.db` (0 missing), store = 1,239 sessions / 211,466 messages, and
+  every sampled quote resolves to a real `role='user'` row. Per-profile scope: default 30,
+  coder 0, designer 0, orchestrator 0. Four personal specifics redacted before it entered
+  the repo, listed in that file's own note.
 
 ## Open
 
@@ -50,8 +58,10 @@ result is machine-verified but not owner-confirmed, the item says so.
   `designer` and `orchestrator` each hold a real 88,579 B
   `skills/office-productivity/references/resume-tailoring/SKILL.md`, and none carries
   `productivity/dossier-workspace`. Receipt: byte counts from live `find`; the 30-line
-  alias files beside them are correct pointers, not stale. Remaining: an explicit
-  decision, because another profile's skill tree was outside this session's authority.
+  alias files beside them are correct pointers, not stale. The register lowers the stakes:
+  those three profiles hold **zero** job-search sessions. Remaining: an explicit decision,
+  because another profile's skill tree was outside this session's authority — and with no
+  job work there, declining is a reasonable answer.
 - [ ] **P2** — Retire the legacy `.graphify/` directory (5 tracked files, Sep 12) now that
   `graphify-out/` is canonical. Receipt: `.graphify/graph.json` still lists deleted
   `api_*.py` stubs and has no `engine/` or `agent/` nodes. Remaining: deletion is
@@ -64,10 +74,13 @@ result is machine-verified but not owner-confirmed, the item says so.
   131) against the 1,789-row `all_boards_data/all_jobs.json` and the 724-member zip.
   Receipt: only the 1,789 and 724 totals were confirmed. Remaining: a full pass; they are
   currently labelled historical, not verified.
-- [ ] **P3** — Read the session acceptance register's coverage limits before any claim of
-  exhaustive session provenance. Receipt: the register is being produced separately;
-  title-less subagent sessions and non-default profiles were the known blind spots.
-  Remaining: adjudicate its coverage section against this worklist.
+- [ ] **P1** — Board policy the user never approved. The user asked verbatim for "seek nz,
+  indeed, trademe jobs, literally all available main job searches"; the engine instead
+  hard-blocks exactly those (`dossier sources` → `glassdoor` `prohibited`, SEEK/Indeed
+  manual-only). Receipt: the block is mandated in the *agent-authored* build brief
+  `20260912_035239_4c86f4`, a child session of the user's own planning session
+  (`parent=20260912_025629_1cd811`), and no user turn approved or revoked it. Remaining: an
+  owner decision — this is product behaviour, not an audit fix.
 - [ ] **P3** — Decide on the two new contrast findings from §5 of the evidence file
   (white on `--signal` 3.68:1 light / 2.49:1 dark; `--stale` as text 2.78:1 in light).
   Receipt: computed from the declared OKLCH tokens in `ui/src/tokens.css`. Remaining:

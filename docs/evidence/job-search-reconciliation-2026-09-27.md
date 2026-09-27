@@ -184,7 +184,47 @@ historical at `docs/history/PLAN-2026-09-15.md`, with a stub left at the old pat
 `graft/INDEX.md` and its script source were inspected; the capability is the `scripts/`
 module, not a CLI named `graft` (`graft ask` exits 127).
 
-## 8. Open, explicitly not claimed as done
+## 8. Session acceptance register
+
+The read-only lineage audit completed and is preserved at
+[docs/evidence/acceptance-criteria-register-2026-09-27.md](acceptance-criteria-register-2026-09-27.md):
+30 in-scope sessions, 66 user-stated criteria, 9 recorded contradictions, plus a section
+holding agent-authored constraints deliberately excluded from the 66. Four personal
+specifics were redacted before it entered the repository; that file's own note lists them.
+
+Independently verified rather than taken on trust: all 30 session ids exist in
+`default/state.db` (0 missing), the store holds 1,239 sessions / 211,466 messages, and
+every quoted string sampled resolves to a real `role='user'` row.
+
+Per-profile scope: **default 30, coder 0, designer 0, orchestrator 0.** No job-search user
+turn has ever been typed in `coder`, `designer` or `orchestrator`, which makes the stale
+skill copies there unreachable rather than urgent (§9.1).
+
+Three findings change the picture, and two of them correct this session's own earlier work:
+
+- **The board hard-block was authored by an agent, not the user.** The user asked verbatim
+  for "seek nz, indeed, trademe jobs, literally all available main job searches"
+  (`20260828_164736_7672b9`). The Dossier backend brief `20260912_035239_4c86f4` — a
+  *child* session of the user's own planning session
+  (`parent=20260912_025629_1cd811`) — mandates "policy hard-block for prohibited
+  LinkedIn/Indeed/Glassdoor/SEEK/Workday". No user turn approved the block or revoked the
+  board list, and `dossier sources` still reports `glassdoor` as `policy: prohibited,
+  status: blocked`. This is a product decision the user was never asked about.
+- **MCP is a three-way contradiction.** Requested in `20260827_023310_e8919f` and
+  `20260828_164736_7672b9`, then forbidden by the user's own standing rule in
+  `20260825_220817_c174c0` ("no more signing into these mcps i dont need mcps"), while the
+  same backend brief blocks the boards an MCP would have served.
+- **Two spine claims in the earlier audit were presented as user requirements when they are
+  derived.** "Drafted vs applied; only user confirmation moves a row to applied" traces to
+  the user as "Application submission requires your review and explicit approval" plus
+  "Follow-ups require a confirmed application date" — the stricter drafted/applied split is
+  imported design policy. Likewise "no personal colour/font/accent values in the shared
+  skill" is derived from the user's general "make sure this skill doesnt have anything
+  personal to me in it"; the user never named colour or font. The §2 edit still stands,
+  because stripping the user's real font and accent serves that stated rule — but its
+  provenance is a derived application of a general instruction, not a quoted requirement.
+
+## 9. Open, explicitly not claimed as done
 
 1. **Other-profile skill copies.** `coder`, `designer` and `orchestrator` each hold a
    real 88,579 B copy at `skills/office-productivity/references/resume-tailoring/SKILL.md`
@@ -192,37 +232,46 @@ module, not a CLI named `graft` (`graft ask` exits 127).
    `productivity/dossier-workspace` skill that only the default profile has. The 30-line
    alias files beside them are correct pointers, not stale copies. Editing another
    profile's skill tree was **not** authorised in this session, so nothing was changed
-   there.
+   there. The register puts the stakes in context: those three profiles hold **zero**
+   job-search sessions, so the copies are unreachable by job work rather than actively
+   harmful (§8).
 2. **`.graphify/` retirement.** Superseded by `graphify-out/`; left in place (§3).
 3. **Graph integrity warning.** 147 dangling-endpoint edges remain unrepaired (§3).
 4. **Historical aggregate sub-counts.** The 1,789-row `all_boards_data/all_jobs.json` and
    the 724-member resync zip were cross-checked against `docs/SOURCES.md`, but the
    1,665 / 407 / 831 / 30 / 29 / 131 sub-counts were not re-derived.
-5. **Session acceptance register.** A register is being produced separately; until its
-   coverage limits are read, session provenance is **not** claimed exhaustive. Title-less
-   subagent sessions and non-default profiles were the known blind spots.
-6. **`ai-job-search` / `career-ops` imports.** The standing `DO_NOT_INSTALL` verdict from
+5. **Session register coverage limits.** The register is complete and its coverage section
+   read (§8). Two of its 30 sessions are flagged borderline — a strict
+   keyword-in-user-turn rule would put the lineage at 28 — and sessions deleted before the
+   audit, plus requirements recorded only in memories or cron prompts, stay unrecoverable.
+   Provenance is claimed exhaustive only inside those stated limits.
+6. **Board policy the user never approved.** `dossier sources` reports LinkedIn and
+   Glassdoor as `prohibited` and SEEK/Indeed as manual-only, while the user asked for all of
+   them verbatim. The block originates in an agent-authored build brief (§8). Changing it is
+   a product decision for the owner, not an audit fix.
+7. **`ai-job-search` / `career-ops` imports.** The standing `DO_NOT_INSTALL` verdict from
    session `20260907_191505_681d2d` stands; only provenance and the skill record exist,
    not imports (`docs/SOURCES.md:51-56`).
-7. **Plugin surface.** No job-related Hermes plugin exists; only an uninstalled catalog
+8. **Plugin surface.** No job-related Hermes plugin exists; only an uninstalled catalog
    record, `hermes-agent/plugin-catalog/job-search.yaml`, which declares no tools, hooks
    or middleware. MCP configuration was left untouched.
-8. **Gateway notice.** `hermes kanban` reports that a previous `hermes update` pulled code
+9. **Gateway notice.** `hermes kanban` reports that a previous `hermes update` pulled code
    without restarting running gateways. Not actioned: a restart would kill in-flight
    workers on other boards.
-9. **Test scope.** `test_matrix.py` asserts the declared contract; it does not validate a
+10. **Test scope.** `test_matrix.py` asserts the declared contract; it does not validate a
    model's generated prose. No resume or cover letter was generated for delivery in this
    session — the request was an audit, not document production.
 
-## 9. Assessment against the 2026-09-26 request
+## 10. Assessment against the 2026-09-26 request
 
 - **Wrapper (contract + packs + CLI + API + tests): verified working.** 145 tests pass,
   the declared counts match the code, and the gates refuse when they should.
-- **All prior job-search sessions folded in: partial.** `docs/LESSONS.md` carries the
-  accumulated lessons (19, up from 12 at `cb772f9`) and `docs/SOURCES.md` the source
-  provenance, but there is no per-session register yet, so this row stays partial (§8.5).
+- **All prior job-search sessions folded in: now substantiated.** `docs/LESSONS.md` carries
+  the accumulated lessons (19, up from 12 at `cb772f9`), `docs/SOURCES.md` the source
+  provenance, and §8's register records all 30 in-scope sessions and 66 user-stated
+  criteria with their contradictions — within the coverage limits the register states.
 - **"No gaps, stubs, bugs or mistakes": not claimed.** Concrete code and documentation
-  defects were found and fixed (§2); the items in §8 remain open and are labelled so.
+  defects were found and fixed (§2); the items in §9 remain open and are labelled so.
 - **Privacy check.** No private content was added; user-specific values were stripped from
   the shared skill, and identity references point back at the user's own
   `DEVELOPER-IDENTITY.md` without reproducing its contents.
