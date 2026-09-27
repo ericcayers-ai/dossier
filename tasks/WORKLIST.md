@@ -96,10 +96,15 @@ because they are owner-owned operations on other systems, listed at the end.
   trade-off**, with the numbers: white on `--signal` is 3.68:1 light / 2.49:1 dark, `--ink` is
   worse in dark (2.09:1), and a lightness that clears 4.5:1 exists only near `L=0.01` in light
   — i.e. black, which would delete the cool-blue backlight the brief is built on.
-- [x] **P3** — Graph refresh after the doc edits: **done for code and docs.**
-  `graphify update .` re-extracted the code graph (→ 999 nodes, 1786 edges, 101 communities,
-  health clean) and wrote a dated backup; its own closing line states it covers code only, so
-  the document nodes were refreshed separately through the assistant extraction path.
+- [x] **P3** — Graph refresh after the doc edits: **both halves done.** `graphify update .`
+  re-extracted the code graph without an LLM (→ 999 / 1786, dated backup written, health clean),
+  and its own closing line states it covers code only — so the document half was refreshed the
+  way that line prescribes, via a subagent extraction over the five changed documents. Final
+  committed graph: **1032 nodes, 1821 edges, 103 communities, 0 unnamed**, with `graphify
+  diagnose multigraph` reporting **0 dangling, 0 missing-endpoint, 0 collapsed, 0 duplicate**
+  and only the 3 recursive self-loops. The merge's own 2 collapsed same-endpoint pairs were
+  deduped rather than reported, and the stale label signature file was removed (it described
+  101 communities against the current 103).
 - [x] **P3** — Gateway restart: **taken**, after a read-only sweep found **0 running cards**
   across all ten boards. Receipt: `hermes gateway restart` → "stopped (drained cleanly)",
   "started via direct spawn (PID 23156)"; board still readable afterwards.

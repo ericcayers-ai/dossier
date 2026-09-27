@@ -75,16 +75,17 @@ Rebuilt with the installed Python `graphifyy` workflow:
 - Semantic pass (one chunk, dispatched to a subagent as the pipeline requires):
   122 nodes / 78 edges / 3 hyperedges, validated clean — 0 duplicate ids, 0 edges
   missing `confidence_score`, every `file_type` inside the allowed six.
-- Result: **999 nodes, 1786 edges, 101 communities, 0 unnamed** as committed. *Historical:*
-  the first build produced 987 nodes / 1773 edges / 96 communities, which is the figure any
-  earlier note of this session quotes.
-- **Refresh attempted and it worked, for code.** `graphify update .` re-extracted the code
-  graph without an LLM and grew it to the 999/1786 figure, writing a dated pre-update backup
-  to `graphify-out/2026-09-27/` and re-verifying clean afterwards (0 dangling, 0
-  missing-endpoint, 0 collapsed, 0 duplicates; still the same 3 recursive self-loops). Its
-  own closing line states the boundary: *"Code graph updated. For doc/paper/image changes run
-  /graphify --update in your AI assistant."* So the document-derived nodes were **not**
-  refreshed and still reflect their 21:02 revision — the vintage caveat below stands.
+- Result: **1032 nodes, 1821 edges, 103 communities, 0 unnamed** as committed. *Historical:* the
+  first build produced 987 / 1773 / 96, and the code-only refresh 999 / 1786 / 101; any earlier
+  note in this session quotes one of those.
+- **Refresh, in two halves, because the tool splits them.** `graphify update .` re-extracted the
+  **code** graph without an LLM (→ 999 / 1786, a dated backup written to
+  `graphify-out/2026-09-27/`, health clean afterwards), and its own closing line states the
+  boundary: *"Code graph updated. For doc/paper/image changes run /graphify --update in your AI
+  assistant."* The **document** half was then refreshed the way that line prescribes — a subagent
+  extraction over the five documents that had changed, validated clean (78 nodes / 88 edges /
+  3 hyperedges; no bad ids, `file_type`s, duplicates or missing scores) and replacing their 45
+  stale nodes and 51 stale edges.
 - **Naming limitation, recorded not buried.** Communities are named from their highest-degree
   hub node. For code clusters this lands well (`tailor.py`, `corpus.py`, `manifest.py`,
   `cli.py`), but a cluster whose hub is a standard-library import inherits that name — one
@@ -107,10 +108,16 @@ measured on the **raw extraction** — "147 dangling-endpoint edges, 4 self-loop
 collapsed undirected edges" — and the same output states the caveat: *"normal graph.json is
 post-build; raw producer loss must be measured earlier."* Re-running the diagnostic
 independently against the committed `graphify-out/graph.json` reports **0 dangling, 0
-missing-endpoint, 0 external-reference, 0 duplicate and 0 collapsed edges** across 987 nodes
-and 1773 links: the build resolves them. An earlier revision of this record reported the raw
-figures as an unrepaired defect in the delivered graph. That was wrong, and the correction
-is recorded rather than quietly overwritten.
+missing-endpoint, 0 external-reference, 0 duplicate and 0 collapsed edges** across 1032 nodes
+and 1821 links: the build resolves them. An earlier revision of this record reported the raw
+figures as an unrepaired defect in the delivered graph. That was wrong, and the correction is
+recorded rather than quietly overwritten.
+
+One integrity artifact *did* come from this session's own work, and it was fixed rather than
+reported: merging the document chunk produced 2 collapsed same-endpoint pairs, because
+`graph.json` is a simple undirected graph and a second edge on an existing pair collapses at
+build time. The edges are now deduped explicitly, keeping the strongest of each pair rather than
+letting the build choose silently.
 
 The one residual is **3 self-loop edges**, and all three are correct rather than corruption:
 each is a `calls` edge at confidence 1.0 (`EXTRACTED`) on a genuinely recursive function —
@@ -118,14 +125,17 @@ each is a `calls` edge at confidence 1.0 (`EXTRACTED`) on a genuinely recursive 
 (`src/dossier/extract.py:13`, calls itself twice), and `flatten()` (`ui/src/App.tsx:16`).
 All three were confirmed against source.
 
-**Vintage caveat.** The semantic pass read the evidence document at its pre-rewrite
-revision, so the nodes sourced from that file describe its earlier content even though
-their `source_file` now points correctly at the current path. Every other `source_file`
-in the graph resolves to a real file (2,684 checked, 0 unresolvable). A `graphify update`
-after future doc edits is the intended refresh path.
+**Vintage: resolved.** The earlier caveat — that the document nodes described a pre-rewrite
+revision of the evidence file — no longer applies: all five changed documents were re-extracted
+above, and the graph now carries the acceptance register it previously had no nodes for (a query
+for it returns `Acceptance-Criteria Register 2026-09-27` and `Register Redaction Note`). Every
+`source_file` in the graph resolves to a real file. The label signature file was **removed rather
+than left stale**: it described 101 communities against the current 103, which would have been a
+false record.
 
-Legacy `.graphify/` is now superseded but **was not deleted** — it is pre-existing
-tracked content this session did not create. Removal is a one-line `git rm -r .graphify`.
+Legacy `.graphify/` was retired, not deleted: it now lives at
+`docs/history/graphify-legacy-2026-09-12/`, git having recorded the move as renames, with its
+machine-local caches still gitignored so `graphify-out/` is the single graph directory.
 
 ## 4. Document pipeline verified end to end
 
