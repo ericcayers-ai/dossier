@@ -73,6 +73,11 @@ result is machine-verified but not owner-confirmed, the item says so.
   Receipt: computed from the declared OKLCH tokens in `ui/src/tokens.css`. Remaining:
   these are outside DESIGN.md's stated bar, so they are a design decision, not a defect
   to silently fix.
+- [ ] **P3** — Refresh the graph's evidence-document nodes on the next `graphify update`.
+  Receipt: the semantic pass read that file before its final revision, so those nodes
+  describe earlier content; their `source_file` paths are correct and every other
+  `source_file` in the graph resolves (2,684 checked, 0 unresolvable). Remaining: run
+  `graphify update <path>` after doc edits land.
 - [ ] **P3** — Confirm the gateway notice `hermes kanban` prints ("a previous
   `hermes update` pulled new code but did not restart running gateways"). Receipt: the
   warning appears on every kanban invocation. Remaining: owner-scheduled, since a restart

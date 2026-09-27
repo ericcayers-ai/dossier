@@ -92,6 +92,12 @@ edges whose target ids do not match the AST naming — the AST/LLM id-mismatch c
 diagnostic exists to catch. The graph is usable and queryable; the warning is not
 repaired here.
 
+**Vintage caveat.** The semantic pass read the evidence document at its pre-rewrite
+revision, so the nodes sourced from that file describe its earlier content even though
+their `source_file` now points correctly at the current path. Every other `source_file`
+in the graph resolves to a real file (2,684 checked, 0 unresolvable). A `graphify update`
+after future doc edits is the intended refresh path.
+
 Legacy `.graphify/` is now superseded but **was not deleted** — it is pre-existing
 tracked content this session did not create. Removal is a one-line `git rm -r .graphify`.
 
