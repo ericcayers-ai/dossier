@@ -40,6 +40,18 @@ ui/dist/
 .graphify/label-instructions/
 .graphify/.graphify_describe_pending
 
+# graphify-out — the canonical Python-graphify graph directory (supersedes .graphify).
+# Same policy as the block above: commit-safe graph artifacts stay tracked, while
+# machine-local and regenerable state does not. graph.html is rebuilt by the export
+# step, manifest.json and the two dot-files carry absolute machine paths, and cache/
+# holds the extraction cache — none of them is portable.
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/graph.html
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+
 # Environment / secrets
 .env
 .env.*

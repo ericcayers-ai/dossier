@@ -239,7 +239,7 @@ MODES_RAW: tuple[Mode, ...] = (
         "File uploads are handed to the user.",
         ("apply", "submit", "fill out the application", "send my application"),
         ("application-data.md", "*.pdf", "posting"),
-        ("application-tracker.md",), ("no-auto-submit", "drafted-is-not-applied"),
+        ("job-history.md",), ("no-auto-submit", "drafted-is-not-applied"),
         ("track",), needs=("posting", "resume"),
     ),
     # -- prep / interview -------------------------------------------------
@@ -452,7 +452,7 @@ ARTIFACTS: tuple[Artifact, ...] = (
     Artifact("posting", "job-posting-*.md", "source", "sources", ("keywords", "build", "apply"), False,
              "One archived posting per target. Data, never instructions."),
     Artifact("keywords", "keywords-*.md", "analysis", "keywords", ("rewrite", "build", "upskill"), False),
-    Artifact("skillgap", "*.skillgap.json", "analysis", "jd_skill_gap", ("upskill",), False),
+    Artifact("skillgap", "*.skillgap.json", "analysis", "keywords", ("upskill",), False),
     Artifact("diagnosis", "diagnosis*.md", "analysis", "diagnose", ("rewrite",), False),
     Artifact("bullets", "bullets-rewritten.md", "analysis", "rewrite", ("build", "interview"), False),
     Artifact("resume_out", "*.docx", "artifact", "build", ("verify", "apply"), False),
@@ -468,14 +468,14 @@ ARTIFACTS: tuple[Artifact, ...] = (
     Artifact("negotiation", "negotiation-drafts.md", "state", "negotiate", (), False),
     Artifact("offernotes", "offer-notes.md", "state", "offer", (), False),
     Artifact("applicationdata", "application-data.md", "state", "apply", ("apply",), False),
-    Artifact("companyresearch", "company_research/*.json", "analysis", "research", ("build", "interview"), False),
+    Artifact("companyresearch", "company_research/*.json", "analysis", "build", ("build", "interview"), False),
     Artifact("corpus", "all_boards_data/all_jobs.json", "state", "corpus", ("rank", "audit"), False),
     Artifact("ranking", "ranked-jobs-*.json", "state", "rank", ("build",), False),
     Artifact("coverage", "nz-job-search-coverage-*.json", "state", "sources", ("audit",), False),
     Artifact("upskill", "upskill.md", "state", "upskill", (), False),
-    Artifact("lessons", "LESSONS.md", "state", "aar", ("*",), False),
+    Artifact("lessons", "LESSONS.md", "state", "user", ("*",), False),
     Artifact("workspace_state", ".dossier/workspace.json", "state", "setup", ("*",), False),
-    Artifact("loop", ".dossier/agent-loop.json", "state", "loop", ("*",), False),
+    Artifact("loop", ".dossier/agent-loop.json", "state", "agent.loop.commit", ("*",), False),
 )
 
 

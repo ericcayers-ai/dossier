@@ -214,8 +214,8 @@ def packs(root: Path | str) -> dict[str, dict]:
                 "4. `dossier agent commit --root <folder> --handback <file>` absorbs the result "
                 "and advances the loop.\n\n"
                 "## Why this shape\n\n"
-                "- A 90 KB skill document is not reliably executable by a model under time "
-                "pressure. A brief with real paths and real commands is.\n"
+                "- The full resume-tailoring reference is too long to use as a task packet. "
+                "A brief with real paths and real commands is easier to execute.\n"
                 "- The engine holds the state, so the model does not need memory across sessions.\n"
                 "- Gates live in code, so a model that drifts is caught by a failing command "
                 "rather than by good intentions.\n\n"
@@ -224,7 +224,7 @@ def packs(root: Path | str) -> dict[str, dict]:
                 f"- `{name}` — managed block, regenerated from the manifest"
                 for name in ("AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursor/rules/dossier.mdc")
             ) + "\n\n" + full,
-            "header": "# Injecting any model into Dossier\n\n",
+            "header": "",
         },
         ".cursor/rules/dossier.mdc": {
             "body": full,

@@ -14,7 +14,7 @@ Modes and gates, generated from `src/dossier/agent/manifest.py`. Do not edit by 
 | `rewrite` | agent | `resume.md`, `keywords*.md` | `bullets-rewritten.md` | `no-fabrication` | `interview` | — |
 | `build` | hybrid | `base.docx`, `posting`, `keywords*.md`, `identity` | `*.docx`, `*_CoverLetter.docx` | `no-fabrication`, `base-document`, `layout-clone` | `verify` | `dossier tailor replace --base <base.docx> --out <output.docx> --map <approved-changes.json>` |
 | `verify` | deterministic | `*.docx`, `base.docx` | `verification-*.json` | `no-fabrication`, `layout-clone`, `rendered-inspection`, `text-layer` | `track` | `dossier verify all --base <base.docx> --candidate <output.docx> --pdf <output.pdf> --approved <approved-changes.json>` |
-| `apply` | hybrid | `application-data.md`, `*.pdf`, `posting` | `application-tracker.md` | `no-auto-submit`, `drafted-is-not-applied` | `track` | — |
+| `apply` | hybrid | `application-data.md`, `*.pdf`, `posting` | `job-history.md` | `no-auto-submit`, `drafted-is-not-applied` | `track` | — |
 | `prep` | agent | `resume.md`, `bullets-rewritten.md`, `posting` | `interview-prep/story-bank.md`, `interview-prep/overview.md` | `no-fabrication` | `interview` | — |
 | `interview` | agent | `resume.md`, `interview-prep/story-bank.md` | `interview-prep/interview-log.md` | `no-fabrication` | `track` | — |
 | `track` | deterministic | `job-history.md` | `.dossier/tracker.json` | `drafted-is-not-applied` | `followup` | `dossier track summary --root "{root}"` |

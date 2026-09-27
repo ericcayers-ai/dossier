@@ -65,7 +65,7 @@ The files this contract is built from. The folder is the source of truth; `.doss
 | base | `base.docx` | source | user | `build` | yes |
 | posting | `job-posting-*.md` | source | sources | `keywords`, `build`, `apply` | no |
 | keywords | `keywords-*.md` | analysis | keywords | `rewrite`, `build`, `upskill` | no |
-| skillgap | `*.skillgap.json` | analysis | jd_skill_gap | `upskill` | no |
+| skillgap | `*.skillgap.json` | analysis | keywords | `upskill` | no |
 | diagnosis | `diagnosis*.md` | analysis | diagnose | `rewrite` | no |
 | bullets | `bullets-rewritten.md` | analysis | rewrite | `build`, `interview` | no |
 | resume_out | `*.docx` | artifact | build | `verify`, `apply` | no |
@@ -79,12 +79,12 @@ The files this contract is built from. The folder is the source of truth; `.doss
 | negotiation | `negotiation-drafts.md` | state | negotiate | — | no |
 | offernotes | `offer-notes.md` | state | offer | — | no |
 | applicationdata | `application-data.md` | state | apply | `apply` | no |
-| companyresearch | `company_research/*.json` | analysis | research | `build`, `interview` | no |
+| companyresearch | `company_research/*.json` | analysis | build | `build`, `interview` | no |
 | corpus | `all_boards_data/all_jobs.json` | state | corpus | `rank`, `audit` | no |
 | ranking | `ranked-jobs-*.json` | state | rank | `build` | no |
 | coverage | `nz-job-search-coverage-*.json` | state | sources | `audit` | no |
 | upskill | `upskill.md` | state | upskill | — | no |
-| lessons | `LESSONS.md` | state | aar | `*` | no |
+| lessons | `LESSONS.md` | state | user | `*` | no |
 | workspace_state | `.dossier/workspace.json` | state | setup | `*` | no |
-| loop | `.dossier/agent-loop.json` | state | loop | `*` | no |
+| loop | `.dossier/agent-loop.json` | state | agent.loop.commit | `*` | no |
 <!-- dossier:contract:end -->

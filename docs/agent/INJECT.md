@@ -1,6 +1,3 @@
-# Injecting any model into Dossier
-
-
 <!-- dossier:contract:start -->
 # Injecting any model into Dossier
 
@@ -17,7 +14,7 @@ Dossier is a job-search engine with a language-model socket. The engine owns eve
 
 ## Why this shape
 
-- A 90 KB skill document is not reliably executable by a model under time pressure. A brief with real paths and real commands is.
+- The full resume-tailoring reference is too long to use as a task packet. A brief with real paths and real commands is easier to execute.
 - The engine holds the state, so the model does not need memory across sessions.
 - Gates live in code, so a model that drifts is caught by a failing command rather than by good intentions.
 

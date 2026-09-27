@@ -31,10 +31,11 @@ The helper scripts were **reimplemented in the package**, not imported. The skil
 scripts and the package would otherwise be two copies of the same algorithm,
 which is exactly how the cadence and the facet builder drift apart.
 
-**What did not survive:** the prose alone. A 136 KB skill document is not
-reliably executable by a model under time pressure, which is the whole reason the
-engine and the brief exist. The skill remains the deeper reference on the nine
-Hermes hosts that have it; this repository is the executable form.
+**What did not survive as executable logic:** prose-only steps. The longer
+skill remains the judgement and document-workflow reference; the engine and
+its brief own mechanical decisions and gates. The skill remains installed
+in the default Hermes profile. Other profiles are separate installations
+and are not asserted to be in sync.
 
 ## 2. The Dossier app
 

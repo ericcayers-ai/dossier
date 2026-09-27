@@ -2,19 +2,17 @@
 
 A local-first job-search workspace with a language-model socket.
 
-Dossier owns the mechanical work of a job search — indexing a folder, normalising
-a 23-board job corpus, deduplicating it, cloning a resume's layout, rendering it,
-diffing it against the base, checking what an ATS will actually read, tracking
-applications, computing follow-up dates, gating a negotiation claim. A language
-model owns the judgement work — writing an objective, scoring a fit, drafting a
-letter, running a mock interview — and injects itself through a contract that
-lives in this repository.
+Dossier owns the mechanical work of a job search: indexing a folder,
+normalising captured listings across boards, deduplicating them, cloning a
+resume's layout, rendering it, comparing it with the base, checking PDF text
+extraction, tracking applications, computing follow-up dates, and checking
+negotiation claims. A language model owns judgement: writing an objective,
+scoring fit, drafting a letter, and running a mock interview. It uses the
+contract in this repository.
 
-That split is the whole point. A 136 KB skill document is not reliably executable
-by a model under time pressure, and a model with no memory of last week's session
-cannot be trusted to decide what to do next. So the engine holds the state and
-enforces the gates, and the model gets a brief with real paths, real commands and
-a JSON handback.
+That split keeps the full resume-tailoring reference available without asking
+a model to carry it through every step. The engine holds state and enforces
+gates; the model gets a brief with real paths, commands, and a JSON handback.
 
 ---
 
@@ -38,12 +36,12 @@ Any capable model — Hermes, Claude Code, Codex, Cursor, Gemini, or a plain cha
 window — plugs in the same way:
 
 ```bash
-dossier agent status                      # workspace facts, open blockers, next unit
-dossier agent next                        # the single next unit of work, with its reason
-dossier agent route "tailor my resume"    # which mode is this request
-dossier agent brief --mode build --markdown > brief.md
+uv run dossier agent status --root "C:\path\to\your\job-search-folder"
+uv run dossier agent next --root "C:\path\to\your\job-search-folder"
+uv run dossier agent route "tailor my resume" --root "C:\path\to\your\job-search-folder"
+uv run dossier agent brief --mode build --markdown --root "C:\path\to\your\job-search-folder" > brief.md
 #   ... hand brief.md to the model, it does the work and returns the handback JSON ...
-dossier agent commit --handback result.json
+uv run dossier agent commit --handback result.json --root "C:\path\to\your\job-search-folder"
 ```
 
 `dossier agent brief` is self-contained: the objective, the resolved input paths,
@@ -78,11 +76,13 @@ dossier verify  source-diff | text-layer | visual | all
 dossier tailor  inspect | blocks | replace | cover-letter | import
 ```
 
-Every command takes `--root <folder>` and `--json`. Gate commands exit non-zero
-on failure, so a batch script can assert on the exit code instead of reading
-prose. `tests/test_matrix.py` parses and executes every command the contract
-declares, and sweeps every API route, so a command that argparse would reject
-fails the suite rather than the session.
+Workspace commands require `--root <folder>`; repository-wide `agent manifest`
+does not. Use `uv run dossier` from the repo root or the installed
+`.venv/Scripts/dossier.exe` when `dossier` is not on `PATH`. Gate commands exit
+non-zero on failure, so a batch script can assert on the exit code instead of
+reading prose. `tests/test_matrix.py` parses and executes every command the
+contract declares, and sweeps every API route. A rejected command fails the
+suite rather than the session.
 
 `dossier agent manifest` prints the whole contract as JSON, including the exact
 command line for each mode and the code that enforces each gate.

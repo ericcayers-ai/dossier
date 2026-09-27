@@ -185,6 +185,22 @@ def test_every_declared_need_is_a_known_key():
     assert not unknown, f"modes declare needs with no resolvable key: {unknown}"
 
 
+def test_apply_writes_the_canonical_tracker():
+    assert "job-history.md" in manifest.mode("apply").writes
+    assert manifest.mode("track").reads == ("job-history.md",)
+
+
+def test_every_artifact_names_a_real_producer():
+    """An artifact's producer is a mode, the user, or a real engine function."""
+    unknown = [
+        (item.name, item.producer) for item in manifest.ARTIFACTS
+        if item.producer != "user"
+        and item.producer not in manifest.MODE_INDEX
+        and resolve_symbol(f"dossier.{item.producer}") is None
+    ]
+    assert not unknown, f"artifacts naming a missing producer: {unknown}"
+
+
 def test_every_mode_reaches_the_generated_docs():
     pipeline = adapters._pipeline_doc()
     contract = adapters._contract_doc()
