@@ -29,11 +29,13 @@ because they are owner-owned operations on other systems, listed at the end.
 - [x] **P1** — `PLAN.md` superseded (0 of 76 boxes checked, described deleted modules); moved
   to `docs/history/PLAN-2026-09-15.md`.
 - [x] **P1** — Code-context graph rebuilt as `graphify-out/`, then refreshed. Receipt:
-  `graphify diagnose multigraph` → **999 nodes, 1786 edges, 0 dangling, 0 missing-endpoint,
+  `graphify diagnose multigraph` → **1032 nodes, 1821 edges, 0 dangling, 0 missing-endpoint,
   0 collapsed, 0 duplicate**; `engine` + `agent` + `api` modules all present;
   `graphify query "where is the board policy enforced"` → `policy()` `engine/sources.py:77`.
-  *Historical:* the first build was 987/1773/96, and the "147 dangling-endpoint edges" an
-  earlier note reported were raw-extraction figures the build resolves — corrected below.
+  *Historical:* the figures moved as the graph was refreshed (987/1773/96 first build →
+  999/1786 code refresh → 1032/1821 once the documents were re-extracted), and the "147
+  dangling-endpoint edges" an earlier note reported were raw-extraction figures the build
+  resolves.
 - [x] **P1** — Session acceptance register completed and preserved at
   [docs/evidence/acceptance-criteria-register-2026-09-27.md](../docs/evidence/acceptance-criteria-register-2026-09-27.md).
   Receipt: 30 in-scope sessions, 66 user-stated criteria, 9 contradictions, agent-authored

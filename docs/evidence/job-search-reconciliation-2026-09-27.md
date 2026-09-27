@@ -93,9 +93,12 @@ Rebuilt with the installed Python `graphifyy` workflow:
   `pytest` name three more. The tool says as much itself ("Run `graphify label` to refresh
   names with the LLM"). They are cosmetic labels on a correct graph, left as-is rather than
   hand-patched out of step with `GRAPH_REPORT.md`.
-- Coverage by area: `engine` 195, `agent` 94, `api` 45, `cli` 25, other 552. All 14
-  probed modules present: manifest, brief, loop, adapters, workspace, tailor, verify,
-  corpus, tracker, negotiate, jd_skill_gap, render, sources, audit.
+- Coverage by area (1032 nodes): `engine` 195, `tests` 188, `ui` 135, `docs` 104, `agent` 94,
+  `core` 80, `api` 45, `cli` 25, `tasks` 10, 76 with no `source_file` (stdlib/vendor nodes). All
+  14 probed modules present: manifest, brief, loop, adapters, workspace, tailor, verify, corpus,
+  tracker, negotiate, jd_skill_gap, render, sources, audit. An earlier figure here bucketed 552
+  nodes as "other" because it tested for `'/tests/'` and `'/ui/'` and the graph stores those
+  paths without a leading slash — a classification bug in the count, not in the graph.
 - Queryable with citations: `graphify query "where is the drafted-is-not-applied gate
   enforced"` → `manifest.py L57`, `engine/tracker.py` (`applied_dates() L148`,
   `cadence() L229`, `parse() L91`, `summary() L173`), `docs/CONTRACT.md`,
