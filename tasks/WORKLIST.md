@@ -101,11 +101,17 @@ result is machine-verified but not owner-confirmed, the item says so.
   Receipt: computed from the declared OKLCH tokens in `ui/src/tokens.css`. Remaining:
   these are outside DESIGN.md's stated bar, so they are a design decision, not a defect
   to silently fix.
-- [ ] **P3** — Refresh the graph's evidence-document nodes on the next `graphify update`.
-  Receipt: the semantic pass read that file before its final revision, so those nodes
-  describe earlier content; their `source_file` paths are correct and every other
-  `source_file` in the graph resolves (2,684 checked, 0 unresolvable). Remaining: run
-  `graphify update <path>` after doc edits land.
+- [x] **P3** — Graph refresh after the doc edits: **attempted, and it refreshes code only.**
+  Receipt: `graphify update .` → "Rebuilt: 999 nodes, 1786 edges, 101 communities", health
+  clean afterwards (0 dangling, 0 collapsed, 0 duplicates), and it wrote a dated pre-update
+  backup to `graphify-out/2026-09-27/`. Its own closing line sets the boundary — "Code graph
+  updated. For doc/paper/image changes run /graphify --update in your AI assistant" — so the
+  document-derived nodes still sit at their 21:02 revision.
+- [ ] **P3** — Refresh the graph's **document** nodes (needs the LLM path, not `update`), and
+  optionally improve four hub-named communities. Receipt: `graphify update` reports 7
+  unclassified files and names the doc boundary; the poor labels are `pathlib` (25-node
+  engine cluster), `compilerOptions`, `dependencies`, `pytest`. Remaining: run the assistant
+  `--update` flow, or leave the vintage caveat in the evidence record as the honest state.
 - [ ] **P3** — Gateway restart is now **safe but not taken**. Receipt: a read-only sweep of
   all ten boards finds **0 running cards** (no `running` status anywhere), and the gateway
   process is alive (PID 47568, `orchestrator` PID 7680). Remaining: an owner call, because

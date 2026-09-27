@@ -75,7 +75,23 @@ Rebuilt with the installed Python `graphifyy` workflow:
 - Semantic pass (one chunk, dispatched to a subagent as the pipeline requires):
   122 nodes / 78 edges / 3 hyperedges, validated clean — 0 duplicate ids, 0 edges
   missing `confidence_score`, every `file_type` inside the allowed six.
-- Result: **987 nodes, 1773 edges, 96 communities, 0 unnamed.**
+- Result: **999 nodes, 1786 edges, 101 communities, 0 unnamed** as committed. *Historical:*
+  the first build produced 987 nodes / 1773 edges / 96 communities, which is the figure any
+  earlier note of this session quotes.
+- **Refresh attempted and it worked, for code.** `graphify update .` re-extracted the code
+  graph without an LLM and grew it to the 999/1786 figure, writing a dated pre-update backup
+  to `graphify-out/2026-09-27/` and re-verifying clean afterwards (0 dangling, 0
+  missing-endpoint, 0 collapsed, 0 duplicates; still the same 3 recursive self-loops). Its
+  own closing line states the boundary: *"Code graph updated. For doc/paper/image changes run
+  /graphify --update in your AI assistant."* So the document-derived nodes were **not**
+  refreshed and still reflect their 21:02 revision — the vintage caveat below stands.
+- **Naming limitation, recorded not buried.** Communities are named from their highest-degree
+  hub node. For code clusters this lands well (`tailor.py`, `corpus.py`, `manifest.py`,
+  `cli.py`), but a cluster whose hub is a standard-library import inherits that name — one
+  25-node engine cluster is called `pathlib`, and `compilerOptions`, `dependencies` and
+  `pytest` name three more. The tool says as much itself ("Run `graphify label` to refresh
+  names with the LLM"). They are cosmetic labels on a correct graph, left as-is rather than
+  hand-patched out of step with `GRAPH_REPORT.md`.
 - Coverage by area: `engine` 195, `agent` 94, `api` 45, `cli` 25, other 552. All 14
   probed modules present: manifest, brief, loop, adapters, workspace, tailor, verify,
   corpus, tracker, negotiate, jd_skill_gap, render, sources, audit.
