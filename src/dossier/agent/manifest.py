@@ -46,6 +46,7 @@ STAGES: tuple[Stage, ...] = (
     Stage("offer", "Offer", "Clause-by-clause review and questions to ask. Not legal advice."),
     Stage("outcome", "Outcome", "Record the real result and mine the pattern."),
     Stage("upskill", "Upskill", "Aggregate recurring genuine gaps across every keyword report."),
+    Stage("trajectory", "Trajectory", "Connect grounded experiences, contacts, touchpoints, meetings, opportunities and milestones into a sequential path."),
 )
 
 
@@ -364,6 +365,15 @@ MODES_RAW: tuple[Mode, ...] = (
         ("source-policy", "partial-is-not-exhaustive"), ("corpus",),
         engine="engine.sources.ledger", needs=("root",),
     ),
+    Mode(
+        "trajectory", "Trajectory", "trajectory", "hybrid",
+        "Review the local career DAG and propose evidence-grounded next branches; "
+        "proposals are copied for review, never applied or submitted.",
+        ("trajectory tree", "career pathway", "networking branch", "generate next branch"),
+        (".dossier/tree.json", "job-history.md", "all_boards_data/all_jobs.json"),
+        (), ("no-fabrication", "drafted-is-not-applied", "no-auto-submit"), (),
+        engine="engine.tree.to_ascii", needs=("root",),
+    ),
 )
 
 # The exact command line that performs each mode's mechanical half, with
@@ -393,6 +403,7 @@ MODE_COMMANDS: dict[str, str] = {
     "handoff": 'dossier handoff --root "{root}"',
     "render": 'dossier render --root "{root}"',
     "sources": 'dossier sources --root "{root}"',
+    "trajectory": 'dossier tree view --root "{root}"',
 }
 
 MODES: tuple[Mode, ...] = tuple(
@@ -476,6 +487,8 @@ ARTIFACTS: tuple[Artifact, ...] = (
     Artifact("lessons", "LESSONS.md", "state", "user", ("*",), False),
     Artifact("workspace_state", ".dossier/workspace.json", "state", "setup", ("*",), False),
     Artifact("loop", ".dossier/agent-loop.json", "state", "agent.loop.commit", ("*",), False),
+    Artifact("trajectory_tree", ".dossier/tree.json", "state", "trajectory", ("trajectory", "*"), False,
+             "Validated local career DAG; explicit user actions update it, source files remain read-only."),
 )
 
 

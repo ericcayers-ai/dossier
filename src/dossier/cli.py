@@ -297,6 +297,41 @@ def _corpus(args) -> int:
     raise SystemExit(f"unknown corpus action {action}")
 
 
+def _tree(args) -> int:
+    from .engine import tree
+
+    root = _require_root(getattr(args, "root", None))
+    action = args.tree_action
+    if action == "status":
+        _emit(tree.status(root), args.json)
+        return 0
+    if action == "add":
+        payload = {
+            "id": args.id,
+            "type": args.node_type,
+            "title": args.title,
+            "state": args.state,
+            "date": args.date,
+            "details": args.details,
+        }
+        _emit(tree.upsert_node(root, payload), args.json)
+        return 0
+    if action == "link":
+        _emit(tree.link_nodes(root, args.parent, args.child), args.json)
+        return 0
+    if action == "view":
+        if args.json:
+            _emit(tree.graph(root), True)
+        else:
+            print(tree.to_ascii(root) if args.format == "ascii" else tree.to_mermaid(root))
+        return 0
+    if action == "sync":
+        result = tree.sync(root)
+        _emit(result, args.json)
+        return 0 if result["sources_present"] else 1
+    raise SystemExit(f"unknown tree action {action}")
+
+
 def _track(args) -> int:
     from .engine import tracker
 
@@ -643,6 +678,27 @@ def build_parser() -> argparse.ArgumentParser:
     corpus_sub.choices["rank"].add_argument("--write", action="store_true")
     corpus_sub.choices["propagate"].add_argument("--ranking", required=True)
     corpus.set_defaults(handler=_corpus)
+
+    trajectory = add("tree", "career trajectory DAG")
+    trajectory_sub = trajectory.add_subparsers(dest="tree_action", required=True)
+    for action_name in ("status", "add", "link", "view", "sync"):
+        child = trajectory_sub.add_parser(action_name)
+        child.add_argument("--root", default=argparse.SUPPRESS)
+        child.add_argument("--json", action="store_true")
+    node = trajectory_sub.choices["add"]
+    node.add_argument("--id")
+    node.add_argument("--type", dest="node_type", required=True, choices=[
+        "experience", "contact", "touchpoint", "meeting", "opportunity", "milestone",
+    ])
+    node.add_argument("--title", required=True)
+    node.add_argument("--state", default="planned", choices=["planned", "active", "complete", "cancelled"])
+    node.add_argument("--date", help="YYYY-MM-DD")
+    node.add_argument("--details", default="")
+    link = trajectory_sub.choices["link"]
+    link.add_argument("--parent", required=True)
+    link.add_argument("--child", required=True)
+    trajectory_sub.choices["view"].add_argument("--format", choices=["ascii", "mermaid"], default="ascii")
+    trajectory.set_defaults(handler=_tree)
 
     track = add("track", "application log and follow-up cadence")
     track_sub = track.add_subparsers(dest="track_action", required=True)

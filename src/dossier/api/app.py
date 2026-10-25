@@ -105,11 +105,76 @@ def create_app(config: AppConfig) -> FastAPI:
         return {"ok": True, "root": str(config.root), "indexed": count}
 
     @app.get("/api/tree")
-    def tree(dir: str = ""):
+    def tree(dir: str = "", view: str = "files"):
+        if view == "trajectory":
+            if dir:
+                raise HTTPException(400, "dir cannot be used with trajectory view")
+            from ..engine import tree as trajectory_tree
+            return trajectory_tree.graph(config.root)
+        if view != "files":
+            raise HTTPException(400, "view must be files or trajectory")
         path = resolve_in_root(config.root, dir)
         if not path.is_dir():
             raise HTTPException(404, "directory not found")
         return tree_node(path).get("children", [])
+
+    @app.get("/api/tree/export")
+    def tree_export(format: str = "ascii"):
+        from ..engine import tree as trajectory_tree
+        if format == "ascii":
+            content = trajectory_tree.to_ascii(config.root)
+        elif format == "mermaid":
+            content = trajectory_tree.to_mermaid(config.root)
+        else:
+            raise HTTPException(400, "format must be ascii or mermaid")
+        return Response(content, media_type="text/plain; charset=utf-8")
+
+    @app.post("/api/tree/nodes")
+    def tree_upsert_node(payload: dict):
+        from ..engine import tree as trajectory_tree
+        try:
+            return trajectory_tree.upsert_node(config.root, payload)
+        except trajectory_tree.TreeError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/api/tree/links")
+    def tree_link_nodes(payload: dict):
+        from ..engine import tree as trajectory_tree
+        try:
+            return trajectory_tree.link_nodes(config.root, payload.get("parent_id"), payload.get("child_id"))
+        except trajectory_tree.TreeError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/api/tree/sync")
+    def tree_sync(payload: dict | None = None):
+        from ..engine import tree as trajectory_tree
+        try:
+            return trajectory_tree.sync(config.root)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(400, f"trajectory source sync failed: {exc}") from exc
+
+    @app.post("/api/tree/packet")
+    def tree_packet(payload: dict):
+        from ..engine import tree as trajectory_tree
+        try:
+            def _nonnegative_integer(value: object, name: str) -> int:
+                if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                    raise trajectory_tree.TreeError(f"{name} must be a non-negative integer")
+                return value
+            if not isinstance(payload.get("query", ""), str):
+                raise trajectory_tree.TreeError("query must be a string")
+            limit = _nonnegative_integer(payload.get("limit", 40), "limit")
+            if limit == 0:
+                raise trajectory_tree.TreeError("limit must be positive")
+            context_limit = _nonnegative_integer(payload.get("context_limit", 200), "context_limit")
+            return trajectory_tree.generate_next_packet(
+                config.root,
+                limit=limit,
+                query=payload.get("query", ""),
+                context_limit=context_limit,
+            )
+        except trajectory_tree.TreeError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.get("/api/file")
     def get_file(rel: str):
