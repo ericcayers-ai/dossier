@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..engine import tailor
 from ..engine.tracker import canonical_status, parse as parse_tracker
+from ..copy import plural
 
 IDENTITY_SUFFIX = "-IDENTITY.md"
 SKIP_DIRS = {".dossier", ".git", "__pycache__", "node_modules", ".venv", ".pytest_cache"}
@@ -138,7 +139,7 @@ def _corpus_state(root: Path) -> dict:
             "board_folders": boards,
             "board_folders_count": len(boards),
             "detail": (
-                f"{len(boards)} board folder(s) present but no aggregate. "
+                f"{plural(len(boards),'board folder')} present but no aggregate. "
                 "Run `dossier corpus build` to merge them."
                 if boards else "No captured board data and no aggregate."
             ),
@@ -308,7 +309,7 @@ def resolve(root: Path | str) -> Workspace:
     if not workspace.base_documents:
         outside = workspace.base_candidates_outside_root
         hint = (
-            " Candidate(s) found outside this folder: "
+            " Candidates found outside this folder: "
             + ", ".join(f"`{doc.path}`" for doc in outside[:3])
             + ". Ask the user which one is their base, then import it with "
             "`dossier tailor import` before generating anything."
@@ -334,7 +335,7 @@ def resolve(root: Path | str) -> Workspace:
         )
     if not workspace.corpus.get("present") and workspace.corpus.get("board_folders_count"):
         workspace.blockers.append(
-            f"{workspace.corpus['board_folders_count']} captured board folder(s) have no merged "
+            f"{plural(workspace.corpus['board_folders_count'],'captured board folder')} have no merged "
             "aggregate; run `dossier corpus build` before ranking or tailoring from them."
         )
     if workspace.coverage.get("stale"):
@@ -348,7 +349,7 @@ def resolve(root: Path | str) -> Workspace:
     if workspace.base_documents:
         ready.append("document generation can run (base .docx present)")
     if workspace.postings:
-        ready.append(f"{len(workspace.postings)} archived posting(s) available as tailoring targets")
+        ready.append(f"{plural(len(workspace.postings),'archived posting')} available as tailoring targets")
     if workspace.corpus.get("present"):
         ready.append(f"corpus loaded: {workspace.corpus.get('rows')} rows from "
                      f"{workspace.corpus.get('sources_count')} boards")
@@ -362,5 +363,11 @@ def write_state(workspace: Workspace, dossier_dir: Path) -> Path:
     """Persist the resolved state beside the index so a later session reuses it."""
     dossier_dir.mkdir(parents=True, exist_ok=True)
     target = dossier_dir / "workspace.json"
-    target.write_text(json.dumps(workspace.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+    # Re-resolving the workspace replaces a real file, so the previous snapshot
+    # goes to the trash first (gate: never-only-copy). The workspace root is the
+    # folder holding `.dossier`.
+    from ..safety import trash_then_write_text
+
+    trash_then_write_text(dossier_dir.parent, target,
+                          json.dumps(workspace.to_dict(), indent=2, ensure_ascii=False))
     return target

@@ -20,9 +20,13 @@ import re
 import unicodedata
 from datetime import date
 from pathlib import Path
+from ..copy import plural
 
-# policy: official_public | partner_only | manual_only | prohibited
+# policy: official_public | partner_only | user_supplied | manual_only | prohibited
 POLICIES: dict[str, dict] = {
+    "web": {"policy": "user_supplied", "status": "available", "manual_request": False,
+            "detail": "A page the user named. Fetching it is the user's instruction; the host map "
+                      "in dossier.scrape.guard still resolves known boards to their own policy first."},
     "greenhouse": {"policy": "official_public", "status": "available", "manual_request": False,
                    "detail": "Read-only public company-board endpoint."},
     "lever": {"policy": "official_public", "status": "available", "manual_request": False,
@@ -35,6 +39,12 @@ POLICIES: dict[str, dict] = {
                  "detail": "Read-only remote feed."},
     "arbeitnow": {"policy": "official_public", "status": "available", "manual_request": False,
                   "detail": "Read-only public feed; re-check current usage limits."},
+    "remoteok": {"policy": "official_public", "status": "available", "manual_request": False,
+                 "detail": "Read-only JSON board (the first array element is a legal notice, not a job)."},
+    "jobicy": {"policy": "official_public", "status": "available", "manual_request": False,
+               "detail": "Read-only remote feed with cursor pagination."},
+    "weworkremotely": {"policy": "official_public", "status": "available", "manual_request": False,
+                       "detail": "Public RSS category feed; parsed with defusedxml."},
     "linkedin": {"policy": "prohibited", "status": "blocked", "manual_request": True,
                  "detail": "Automated scraping and activity are prohibited; use a user export or a manual link."},
     "indeed": {"policy": "manual_only", "status": "blocked", "manual_request": True,
@@ -57,7 +67,7 @@ MANUAL_ONLY = {name for name, entry in POLICIES.items() if entry["policy"] == "m
 # non-dict override falls back to the defaults, because a broken override must never be able
 # to open a gate.
 WORKSPACE_POLICY_FILE = ".dossier/sources.json"
-POLICY_VALUES = ("official_public", "partner_only", "manual_only", "prohibited")
+POLICY_VALUES = ("official_public", "partner_only", "user_supplied", "manual_only", "prohibited")
 
 
 def effective_policies(root: Path | str | None = None) -> dict[str, dict]:
@@ -123,23 +133,91 @@ def policy(source: str, root: Path | str | None = None) -> str:
     return effective_policies(root).get(source.strip().casefold(), {}).get("policy", "manual_only")
 
 
+#: The only policies a network fetch may use. `manual_only` means the user
+#: supplies the posting by hand; it is not permission to fetch. `user_supplied`
+#: means the user named this exact page — it authorises that page, not a crawl of
+#: the site, which is why the host map is consulted before the declaration.
+FETCHABLE_POLICIES = ("official_public", "partner_only", "user_supplied")
+
+
+def permitted(source: str, root: Path | str | None = None) -> bool:
+    """One predicate for the `source-policy` gate, shared by the ledger and the guard.
+
+    `dossier.feeds` used to treat `manual_only` as prohibited while this module
+    treated only `prohibited` as blocked, so the ledger and the fetch guard could
+    disagree about the same board. Both now ask this question.
+    """
+    return policy(source, root) in FETCHABLE_POLICIES
+
+
 def allowed(source: str, root: Path | str | None = None) -> bool:
-    return policy(source, root) not in {"prohibited"}
+    """True only for a source this workspace may fetch automatically."""
+    return permitted(source, root)
 
 
 class SourceRefused(PermissionError):
-    """Raised before any network call for a prohibited source."""
+    """Raised before any network call for a source the policy does not permit."""
 
 
 def assert_allowed(source: str, root: Path | str | None = None) -> None:
-    """Refuse a prohibited source before a request is ever made."""
+    """Refuse a non-fetchable source before a request is ever made."""
     name = source.strip().casefold()
+    if permitted(name, root):
+        return
     entry = effective_policies(root).get(name)
-    if entry and entry["policy"] == "prohibited":
-        raise SourceRefused(
-            f"{name} is prohibited for automated access: {entry['detail']} "
-            "Use a user-supplied link, export or licensed integration instead."
-        )
+    detail = entry["detail"] if entry else "no policy entry; it is treated as manual-only."
+    raise SourceRefused(
+        f"{name} is not permitted for automated access ({policy(name, root)}): {detail} "
+        "Use a user-supplied link, export or licensed integration instead."
+    )
+
+
+#: The naming convention a captured posting uses, so ingestion can tell a
+#: posting (third-party text, sanitised) from the user's own documents.
+POSTING_PREFIXES = ("job-posting-", "posting-")
+
+#: Fields a board capture can put raw posting prose into.
+POSTING_TEXT_FIELDS = ("description", "summary", "content", "body")
+
+
+def is_posting(path_or_name: Path | str) -> bool:
+    return Path(path_or_name).name.casefold().startswith(POSTING_PREFIXES)
+
+
+def read_posting(path: Path | str, source: str | None = None) -> dict:
+    """Read a posting file and hand back its sanitised text plus the findings.
+
+    Every engine read of a posting goes through here, so `posting-is-data` holds
+    at ingestion instead of only when a human remembers to run `dossier sanitize`.
+    """
+    path = Path(path)
+    text = path.read_text(encoding="utf-8", errors="replace")
+    result = sanitize(text, source or path.stem)
+    result["path"] = str(path)
+    return result
+
+
+def sanitize_row(row: dict) -> dict:
+    """Sanitise the free-text fields of one corpus row.
+
+    A board capture can carry the whole posting body in `description`; a row that
+    still contains instruction-shaped text is the same hazard as a posting file,
+    so it is cleaned on the way out of the API and the findings are attached.
+    """
+    if not isinstance(row, dict):
+        return row
+    findings: list[dict] = []
+    for field in POSTING_TEXT_FIELDS:
+        value = row.get(field)
+        if not isinstance(value, str) or not value:
+            continue
+        cleaned = sanitize(value, source=str(row.get("source") or "unknown"))
+        if cleaned["flagged"]:
+            row[field] = cleaned["clean"]
+            findings.extend({**finding, "field": field} for finding in cleaned["findings"])
+    if findings:
+        row["_postings_sanitized"] = findings
+    return row
 
 
 def sanitize(text: str, source: str = "unknown") -> dict:
@@ -243,7 +321,7 @@ def coverage(root: Path | str) -> dict:
         "limit_count": len(limits),
         "detail": (
             f"{path.name} captured {captured_on}; {data.get('merged_rows')} merged rows, "
-            f"{data.get('ranking_rows')} ranked, {age_days if age_days is not None else '?'} day(s) old."
+            f"{data.get('ranking_rows')} ranked, {age_days if age_days is not None else '?'} days old."
         ),
     }
 

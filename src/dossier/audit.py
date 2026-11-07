@@ -15,6 +15,7 @@ import json
 from .engine import sources as source_engine
 from .engine.corpus import load as load_corpus
 from .engine.tracker import applied_dates, parse as parse_tracker
+from .copy import plural
 
 READY_CHECKS = 9
 
@@ -83,14 +84,14 @@ def audit_workspace(root: Path, conn) -> dict:
                    f"{dict(sorted(job_fit.items()))}."},
         {"id": "render-freshness", "label": "Rendered artifacts are current",
          "status": "attention" if stale else "pass",
-         "detail": f"{len(stale)} PDF render(s) older than a DOCX source."},
+         "detail": f"{plural(len(stale),'PDF render')} older than a DOCX source."},
         {"id": "submission-approval", "label": "Application submission approval gate", "status": "manual",
          "detail": "Review and explicit submit approval are required; Dossier exposes no automatic submit action."},
         {"id": "followup-date", "label": "Follow-ups have confirmed application dates",
          "status": "attention" if actionable_without_date else "pass",
          "detail": "No follow-up cadence runs without an explicit Applied YYYY-MM-DD record."
                    if not actionable_without_date
-                   else f"Application row(s) without a confirmed date: {actionable_without_date}."},
+                   else f"{plural(actionable_without_date,'application row')} without a confirmed date."},
         {"id": "real-event", "label": "Interview/offer/negotiation/outcome event evidence", "status": "manual",
          "detail": "These workflows may continue only after the user supplies or confirms the real event; "
                    "status labels alone are not event evidence."},

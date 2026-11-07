@@ -18,6 +18,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from ..safety import trash_then_write_text
+from ..copy import plural
+
 FREQUENCY_MAP = {
     "daily": 260, "weekly": 52, "biweekly": 26, "bi-weekly": 26,
     "monthly": 12, "quarterly": 4, "annually": 1, "yearly": 1,
@@ -230,7 +233,7 @@ def analyze(story_bank_text: str, resume_text: str, wage=None, frequency=None, o
 
     if excluded_unverified:
         warnings.append(
-            f"{excluded_unverified} quantified claim(s) were excluded: no matching figure "
+            f"{plural(excluded_unverified,'quantified claim')} were excluded: no matching figure "
             "found verbatim in the resume (safety gate)."
         )
     if not stories:
@@ -308,5 +311,6 @@ def write_drafts(root: Path | str, result: dict) -> Path:
         for warning in result["warnings"]:
             lines.append(f"- {warning}")
         lines.append("")
-    target.write_text("\n".join(lines), encoding="utf-8")
+    # A re-run replaces the previous drafts, so the old file is filed first.
+    trash_then_write_text(root, target, "\n".join(lines))
     return target

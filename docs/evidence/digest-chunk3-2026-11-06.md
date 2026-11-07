@@ -1,0 +1,67 @@
+# Digest chunk 3 — DIGESTS.md lines 721-1080
+
+Range: `<home>/OneDrive/Documents/deepseek-harness/default-workspace/reelkit/DIGESTS.md`
+lines **721-1080**, read line by line (33 entry headings, `## 46.` at line 726 through
+`## 78.` at line 1077; the tail of §45 at line 721 and §79 at line 1087 fall outside).
+Target repo: `<home>/OneDrive/Desktop/Programs/dossier` — nothing inside it was edited.
+Verdicts: **APPLIED** = the rule changed this repo; **HONOURED** = the rule binds and the repo
+already satisfies it; **N/A** = the reel's domain is not this repo. Every evidence cell is a
+command I ran this pass, its result, or a file:line I read.
+
+| n | id | what it is | rule that could bind dossier | verdict | evidence I observed |
+|---|---|---|---|---|---|
+| 46 | `De82EmlP5ow` | Replica: eleven-skill clone-and-parity method | a port needs a parity score against the original | N/A | The repo already ruled on it: `docs/REEL-ADOPTION-2026-10-27.md:22` — row `B - replica parity method \| no \| Nothing is cloned from an upstream product: the base is the user's own .docx`; enforced by gate `base-document` (`src/dossier/agent/manifest.py:68`) |
+| 47 | `Del5Lx1gmsc` | 3DCodeVerse: execution + numeric measurement vetoes visual claims | a "looks right" claim needs a number computed in code | HONOURED | `src/dossier/engine/verify.py:147` `def visual(pdf, expected_pages=None, margin_tol=4.0, ...)` → box bounds at `:175-176`; gate `rendered-inspection` (`manifest.py:87`) "not 'visually verified' until a rendered page image was produced"; `verify.py:14` `all()` exits non-zero on any failure |
+| 48 | `DcrqbqZRVvC` | 20 visual tells of vibecoded apps | no gradient heroes, no glass, no cursor glow, no uppercase eyebrows, consistent spacing | APPLIED | `grep -rniE "gradient" ui/src` → **0**; `grep -rniE "backdrop-filter\|glassmorph\|blur\(" ui/src` → **0**; `grep -c box-shadow ui/src/tokens.css` → **2** (a 4 px-scale token sheet); `grep -o "·" -r ui/src \| wc -l` → **18**. Residual: type stack is still `Inter` (`ui/src/tokens.css:83 --ui: Inter, ui-sans-serif…`) — deliberate, no webfont fetched |
+| 49 | `DdS5oHtPvcA` | 20 production giveaways (title, meta, lang, maps, bundle) | per-route title, meta description, `lang`, favicon, no source maps, small bundle | APPLIED | `ui/index.html` carries `lang="en"`, `<meta name="description" content="A local-first job-search workspace…">`, `<link rel="icon" … /favicon.svg>`, `<title>Dossier</title>`; `ui/src/App.tsx:133` `document.title=\`${label} \| Dossier\``; `find ui/dist -name "*.map" \| wc -l` → **0**; `grep -rl sourceMappingURL ui/dist \| wc -l` → **0**; `ui/vite.config.ts` sets no `sourcemap` |
+| 50 | `DeT9vepG-11` | GeoSpy AI image→location | none — there is no image-geolocation surface | N/A | `grep -rniE "geoloc\|exif" src ui/src` → 0 matches; runtime deps are `fastapi, python-docx, pymupdf, pypdf, pillow, httpx` (`pyproject.toml:12`) |
+| 51 | `DfC3_uyAuWY` | 3 Claude Design defaults: cursor glow, eyebrow above every header, subtext under every header | no cursor-following glow; no repeated eyebrow+h2+subtext triad | APPLIED | `ui/src/agent.css:4` states the rule in the stylesheet: "Section headings are sentence case, weight 600 — **no uppercase eyebrows**"; `grep -rniE "cursor-follow\|spotlight\|mousemove\|mouseenter" ui/src` → **0**; `grep -rniE "eyebrow\|pane-lead\|subtext" ui/src` → only that comment; 21 `<h2>` in `ui/src/panes` with no `lead` class anywhere |
+| 52 | `DfEDtarzGN5` | XERJ: local Rust BM25/vector search behind MCP | local BM25 full-text with cited spans; do not stand up another MCP server | HONOURED | `src/dossier/db.py:17` `CREATE VIRTUAL TABLE files_fts USING fts5(rel UNINDEXED,body,tokenize='unicode61')`; `db.py:37` `def search(c,q,limit=50)` ranks `ORDER BY rank` and returns `snippet(files_fts,1,'<mark>','</mark>','…',12)` spans; no vector store (`grep -riE "embedding\|faiss\|chromadb\|rerank" src ui/src` → 0) and `grep -rli mcp src` → **0** |
+| 53 | `De1mAq9oaDP` | rederive (`.rederive/map.md` + `log.md`) | a queryable repo map plus a decision log | HONOURED | `graft/INDEX.md` (809 B) is the map, `docs/DECISIONS.md` the decision log; both present in the repo root listing |
+| 54 | `DfAnKQgB8U1` | 20 niche exploit vectors on vibecoded apps | path traversal, per-route auth, no source maps in prod, no user enumeration | APPLIED | `tests/test_api.py:197` `test_no_route_answers_a_path_that_escapes_the_workspace`, `:213` `test_every_declared_api_route_is_behind_the_token`, `:115` restore-outside-trash; ran `.venv/Scripts/python.exe -m pytest -o addopts="" -q tests/test_api.py` → **12 passed in 25.07s**; 0 `.map` in `ui/dist` |
+| 55 | `DfDlUNVNui4` | the 6 pre-build documents (TRD, APP-FLOW, DESIGN-BRIEF, SCHEMA, PLAN, PRD) | all six exist before code | APPLIED | `ls docs/design` → `TRD.md APP-FLOW.md DESIGN-BRIEF.md SCHEMA.md PLAN.md PRD.md`, each opening with the reel id (e.g. `docs/design/TRD.md:3` "Reel `DfDlUNVNui4` doc 1"). Honest note: they are **unfilled templates** (459-792 B each; TRD.md:3 "Map into `ARCHITECTURE.md` when accepted") — the filled equivalents are `ARCHITECTURE.md`, `DESIGN.md` (17,581 B), `PLAN.md`, `PIPELINE.md` |
+| 56 | `De55X5_TFTK` | authority up front + `guard.py` that explains a blocked command | a refused destructive action must print the sanctioned path, not just fail | HONOURED | `src/dossier/safety.py:8` `class PathEscape(ValueError)`, `:9` `class Conflict(RuntimeError)`, messages at `:21` "absolute paths are not accepted", `:24` "path escapes root"; `src/dossier/api/app.py:77` registers `@app.exception_handler(PathEscape)` and calls at `:267,:414,:442`; covered by the 12 passing API tests |
+| 57 | `DeWwPtmDvqV` | 5 open-source SaaS killers (finance, CAD, video, diagrams) | none — no finance/CAD/render surface | N/A | `ui/package.json` dependencies are React 19 + CodeMirror/Lezer only (no three/pdf/aggrid); `grep -rniE "net worth\|etf" src ui/src` → 0 |
+| 58 | `DbtRdg6keww` | production RAG: curate, measure retrieval, eval before trusting | measure a corpus before trusting anything built on it | HONOURED | `src/dossier/agent/manifest.py:172` gate `fit-is-measured`, enforced by `dossier.engine.evaluation + dossier identity eval` (`:177`); `grep -c "^    Gate(" manifest.py` → **18** gates, `grep -c "^    Mode("` → **27** modes, matching the repo profile |
+| 59 | `DfEs_kpv6Vo` | extract visual tokens from reference work into a design system | a written DESIGN brief before component code | HONOURED | `DESIGN.md` 17,581 B (dated Nov 4) at repo root; `.ui-ux-master/direction.md` present alongside `scope.md`, `measure.py`, `receipts/` |
+| 60 | `DbRG7YAMRHV` | GeoLibre cloud-native GIS (COG/PMTiles) | none — no geospatial rendering | N/A | `grep -rniE "pmtiles\|\bvoxel\|three\.js\|gltf" src ui/src` → 0; no GIS dependency in `ui/package.json` or `pyproject.toml` |
+| 61 | `DbzU9xZxGfR` | PolyLayout indoor 3D reconstruction | none — no 3D reconstruction | N/A | same grep as §60 → 0; modules are `agent/ api/ engine/ scrape/` (`ls src/dossier`) |
+| 62 | `DdA-QjwAMh_` | 50-agent pentest suite; defensive recon checklist | bundle secrets, IDOR, mass assignment, JWT/cookie hardening, per-route auth | APPLIED | `src/dossier/api/app.py:128` `response.set_cookie("dossier_token", config.token, httponly=True, samesite="lax")`; route-auth test `tests/test_api.py:213` passes (12 passed run above); `:135` `test_the_printed_console_url_carries_no_token` |
+| 63 | `DdsNvk8AFcy` | Gravity Japanese-immersion app | none — no language-learning surface | N/A | `ls src/dossier` → `agent api engine scrape` only; no subtitle/spaced-repetition module |
+| 64 | `De-14vRN6J7` | personal memorial video | none — non-technical | N/A | DIGESTS.md:936-942 shows no repo and no workflow; nothing in dossier references it (`grep -rl "De-14vRN6J7" docs` → only the reel matrix) |
+| 65 | `De6_EtZy7Bn` | Hallmark / Flint 40B / Beacon roundup | anti-slop lint as a standing gate | HONOURED | `ls ~/.dsh/skills/hallmark/scripts/` → `sloplint.mjs`, `refcheck.mjs`, `lint-hook.mjs` installed; the repo is clean under the checks I ran (0 gradient, 0 backdrop-filter/glass in `ui/src`). Not re-run this pass: I did not execute `sloplint.mjs` |
+| 66 | `DeON0MOB5oi` | api-anything: reverse-engineer a site into a self-healing API | defensive half — auth on every JSON route, bounded output, no unbounded query | HONOURED | `src/dossier/db.py:66` `FTS_MAX_TERMS=32` ("an unbounded AND of 5,000 terms is a denial-of-service on the index"); `db.py:37` `search()` catches `sqlite3.OperationalError` and returns `[]` ("a user searching `alpha OR beta` now gets documents containing both words"); all declared routes behind the token (test at `tests/test_api.py:213`, passing) |
+| 67 | `DeSJlofNaIl` | Nike review-tone sentiment study | none — no sentiment/equity signal lane | N/A | `grep -rniE "sentiment" src ui/src` → 0 |
+| 68 | `DeSOrFgtaSw` | StreetCraft: real coordinates as a Minecraft voxel world | none — no world generation | N/A | `grep -rniE "\bvoxel" src ui/src` → 0 |
+| 69 | `DeSa2yRgs2Y` | Grokbot: bots that auto-apply to internships | never automate submitting an application | HONOURED | `docs/PROJECT.md:41` "Submitting an application. Two approval gates exist; **there is no submit action**."; enforced by gate `no-auto-submit` ("No submit route exists in the HTTP layer") at `manifest.py` GATES, and `tests/test_api.py:62` `test_the_ask_route_is_fail_closed_and_never_auto_submits` passes |
+| 70 | `DeUlQTQxv5O` | Duolingo `churn/` teardown — behavioural fingerprinting | no behavioural telemetry; nothing leaves the machine | HONOURED | `grep -rniE "telemetry\|analytics\|sentry\|posthog\|mixpanel" src ui/src` → **1** hit, `src/dossier/engine/identity.py:554`, a job-title keyword (`"analytics", "scientist"…`), not a beacon. The only absolute URLs in `src/dossier` are OOXML namespaces (`engine/tailor.py:148`) and the three job-board feeds the user triggers (`feeds.py:14-16` greenhouse/lever/ashby). The earlier `telemetry.py` harness is no longer in `%TEMP%\dossier-live-2026-11-05`, so this row is verified statically, not by re-running it |
+| 71 | `DeUmOJ5Rl60` | lightweight C/C++ desktop clients vs 1 GB Electron | keep the footprint small | HONOURED | `du -sb ui/dist` → **905,973 B** (~906 KB) across hashed per-pane chunks; `du -sh ui/dist` → 929K; 12 runtime JS deps (`ui/package.json`), no Electron/Tauri anywhere (`ls` root has no `src-tauri`) |
+| 72 | `DeUuyyuSeUo` | ABot-Recon: 12-frame sliding-window 3D recon | none — no capture/VRAM pipeline | N/A | repo is `fastapi` + docx/pdf text (`pyproject.toml:12`); no cv/torch dependency |
+| 73 | `DeVGCk4AVki` | JLPT kanji card packs | none — no card/repetition UI | N/A | the 15 files in `ui/src/panes` are `AgentPane, AuditPane, BuildPane, BundleRail, CapturePane, Explorer, IdentityPane, JobsPane, NextStep, Palette, PanelPane, StateViews, SyncPane, TrashPane, VerifyPane` — no study surface |
+| 74 | `DeY97QQtjVy` | short cinematic clip | none — non-technical | N/A | DIGESTS.md:1040-1046 records no repo and no workflow |
+| 75 | `Dedh1GLgNMi` | 3D asset MCP server fetching CC0 models | none — no asset pipeline, no MCP server here | N/A | `grep -rli mcp src` → **0**; no `assets/` or 3D dependency in `ui/package.json` |
+| 76 | `DegUW7YG_O1` | RAG-Anything: multimodal graph RAG over LightRAG | graph/vector retrieval with entity grounding | N/A | `grep -rniE "\bbm25\b\|embedding\|vector db\|faiss\|chromadb\|rerank" src ui/src` → only `db.py:36,49`, i.e. FTS5 bm25 — no vector or graph store exists to ground into |
+| 77 | `DehD9WBq0Qb` | Baidu Unlimited-OCR | none — the .docx text layer is read directly | N/A | `grep -rniE "tesseract\|pytesseract\|\bocr\b" src ui/src` → **0**; `src/dossier/extract.py:22-23` reads `.docx` via `from docx import Document` |
+| 78 | `Dejz6Zyye9k` | the 5 Claude agent archetypes (tool/skill/subagent/hook/background) | declare the contract once so no two surfaces can disagree | HONOURED | `src/dossier/agent/manifest.py:65` `GATES` (18), `:210` `MODES_RAW` (27), `:503` `MODES` built once, `:507` `MODE_INDEX`; the HTTP surface is generated from it at `src/dossier/api/app.py:477` `@app.get("/api/agent/manifest")` |
+
+## Tally
+
+- Rows: **33** (§46–§78)
+- APPLIED: **6** — §48, §49, §51, §54, §55, §62
+- HONOURED: **12** — §47, §52, §53, §56, §58, §59, §65, §66, §69, §70, §71, §78
+- N/A: **15** — §46, §50, §57, §60, §61, §63, §64, §67, §68, §72, §73, §74, §75, §76, §77
+
+## Residual risks / what I did not verify
+
+- §65: I confirmed `sloplint.mjs` is installed and that the two tell-checks I grepped for are
+  clean; I did **not** re-run `sloplint.mjs` over `ui/src` this pass.
+- §70: verified statically (no telemetry strings, no external endpoints in `src/dossier`); the
+  runtime `telemetry.py` harness named in `docs/evidence/reel-matrix-2026-11-06.md` is gone from
+  `%TEMP%`, so the "38 requests / 0 external hosts" number is not re-measured here.
+- §55: the six documents exist but are empty templates; a strict reading of the reel ("filled in
+  before code") is only met by the canonical docs they point at. Recorded in the row, not hidden.
+- §48: `Inter` is still the UI stack (`tokens.css:83`), which tell #4 names. Treated as a knowing
+  local-first choice (no webfont download) rather than an oversight, but it is a live instance of
+  one of the 20 tells.
+- I ran one test file (`tests/test_api.py`, 12 passed) and read the rest; no full suite run, no
+  app launch, no `ui` build.

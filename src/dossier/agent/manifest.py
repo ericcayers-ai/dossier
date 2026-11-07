@@ -140,10 +140,42 @@ GATES: tuple[Gate, ...] = (
         "Reported as a full result set.",
     ),
     Gate(
+        "identity-grounded",
+        "Every field of the identity reaches *-IDENTITY.md only with an answer or a document "
+        "span behind it. No default name, no guessed salary, no invented target role.",
+        "dossier.engine.identity.write_identity + dossier.engine.identity.profile",
+        "Filled in with a plausible default.",
+    ),
+    Gate(
+        "session-is-the-users",
+        "A saved session exists only because the user signed in themselves or exported their "
+        "own cookies. Dossier never asks for, types or stores a credential, and never attaches "
+        "one board's session to another host.",
+        "dossier.scrape.session.SessionStore + dossier.scrape.browser.PlaywrightDriver.sign_in",
+        "Automated with a stored password, or reused across hosts.",
+    ),
+    Gate(
+        "challenge-is-explicit",
+        "A human-verification interstitial is answered only by the policy the workspace "
+        "declares, and every run records the detection, the policy applied and whether it "
+        "cleared. Stealth and a solver are configuration, not silence.",
+        "dossier.scrape.challenge.effective_policy + dossier.scrape.runner._fetch_with_challenge_policy",
+        "Silently bypassed, or hidden behind an empty result.",
+    ),
+    Gate(
         "never-only-copy",
         "Every overwrite routes through .dossier/trash/ first.",
         "dossier.safety.trash + atomic_write",
         "Bypassed for convenience.",
+    ),
+    Gate(
+        "fit-is-measured",
+        "The relevance ranking is scored against a person's own grades, the no-skill "
+        "arrival order on the same rows, and a recorded baseline that fails the command "
+        "when nDCG@k or Spearman drops. An ungraded row is never counted as relevant and "
+        "a grade is never inferred from the score it is meant to check.",
+        "dossier.engine.evaluation + dossier identity eval",
+        "Reported as a number with no labels file behind it.",
     ),
     Gate(
         "token-never-leaks",
@@ -233,6 +265,17 @@ MODES_RAW: tuple[Mode, ...] = (
             "no-fabrication", "layout-clone", "rendered-inspection", "text-layer"),
         ("track",), engine="engine.verify.all", needs=("docx",),
     ),
+    # -- hiring panel -----------------------------------------------------
+    Mode(
+        "panel", "Hiring panel", "diagnose", "deterministic",
+        "Seven reviewers score the resume against a posting and quote the exact line behind "
+        "each objection, then a chair names the three rewrites that cost the most.",
+        ("hiring panel", "seven reviewers", "why was i rejected", "panel review",
+         "run the panel on this"),
+        ("resume", "posting"), ("panel-<company>-<role>.json",),
+        ("no-fabrication", "posting-is-data"), ("rewrite", "build"),
+        engine="engine.panel.run", needs=("resume", "posting"),
+    ),
     # -- apply ------------------------------------------------------------
     Mode(
         "apply", "Apply", "apply", "hybrid",
@@ -320,7 +363,7 @@ MODES_RAW: tuple[Mode, ...] = (
         "Deduplicate and rank the corpus by fit, evidence strength, recency and "
         "warm-contact signal. A weighted score never hides a disqualifier.",
         ("rank the jobs", "which jobs fit best", "shortlist"),
-        ("all_boards_data/all_jobs.json",), ("ranked-jobs-<date>.json", "ranked-jobs-<date>.md"),
+        ("all_boards_data/all_jobs.json",), ("ranked-jobs-<date>.json",),
         ("partial-is-not-exhaustive",), ("build",), engine="engine.corpus.rank", needs=("root",),
     ),
     Mode(
@@ -366,6 +409,51 @@ MODES_RAW: tuple[Mode, ...] = (
         engine="engine.sources.ledger", needs=("root",),
     ),
     Mode(
+        "identity", "Identity", "setup", "hybrid",
+        "Build the target the search is aimed at: a questionnaire the app can ask, plus "
+        "values mined from the workspace's own documents, merged answer-first and written "
+        "into the identity doc with provenance.",
+        ("who am i", "my identity", "set up my profile", "what am i looking for",
+         "questionnaire", "target roles", "my skills"),
+        ("*-IDENTITY.md", "resume.md", "job-history.md"), ("*-IDENTITY.md", ".dossier/identity/*"),
+        ("identity-grounded", "no-fabrication"), ("match", "capture"),
+        engine="engine.identity.profile", needs=("root",),
+    ),
+    Mode(
+        "match", "Match", "setup", "deterministic",
+        "Score the captured corpus against the identity: title family, skills, location, "
+        "employment, seniority, pay floor, recency. A deal-breaker caps the band and says why.",
+        ("most relevant", "which jobs fit me", "rank by fit", "shortlist for me"),
+        ("all_boards_data/all_jobs.json", ".dossier/identity/*"), (None,),
+        ("identity-grounded", "partial-is-not-exhaustive"), ("build", "apply"),
+        engine="engine.identity.rank_corpus", needs=("root",),
+    ),
+    Mode(
+        "capture", "Capture", "setup", "hybrid",
+        "Capture a page or a board the public feeds cannot serve: policy first, robots "
+        "respected, the user's own session reused, every page scored against the identity "
+        "and archived as a posting with its provenance.",
+        ("scrape", "capture this page", "capture the board", "archive this job ad",
+         "sign in and fetch", "crawl the listings", "get the postings from"),
+        ("job-posting-*.md", ".dossier/scrapes/*.json"),
+        ("job-posting-*.md", ".dossier/scrape/runs.jsonl"),
+        ("source-policy", "session-is-the-users", "challenge-is-explicit",
+         "posting-is-data", "partial-is-not-exhaustive", "never-only-copy"),
+        ("match", "keywords", "corpus"), engine="scrape.runner.run_recipe", needs=("root",),
+    ),
+    Mode(
+        "template", "Template", "build", "hybrid",
+        "Fill the user's own .docx template: `{{placeholder}}` tokens and approved paragraph "
+        "swaps, layout and styling preserved, with a leftover-token gate so a half-filled "
+        "document cannot be called done.",
+        ("use my template", "provide a template", "fill this template", "template resume",
+         "build from a template", "my own format"),
+        ("templates/*.docx", "*.fields.json"),
+        ("*.docx", "template-fill-*.json"),
+        ("base-document", "no-fabrication", "layout-clone", "rendered-inspection"),
+        ("verify",), engine="engine.tailor.fill_template", needs=("template", "root"),
+    ),
+    Mode(
         "trajectory", "Trajectory", "trajectory", "hybrid",
         "Review the local career DAG and propose evidence-grounded next branches; "
         "proposals are copied for review, never applied or submitted.",
@@ -386,6 +474,7 @@ MODES_RAW: tuple[Mode, ...] = (
 # model a command argparse rejects is worse than one that hands it nothing.
 MODE_COMMANDS: dict[str, str] = {
     "setup": 'dossier workspace --root "{root}"',
+    "panel": 'dossier panel --root "{root}" --resume <resume.md> --posting <posting.md>',
     "keywords": 'dossier keywords gap --root "{root}" --posting <posting.md>',
     "build": ('dossier tailor replace --base <base.docx> --out <output.docx> '
               '--map <approved-changes.json>'),
@@ -403,6 +492,11 @@ MODE_COMMANDS: dict[str, str] = {
     "handoff": 'dossier handoff --root "{root}"',
     "render": 'dossier render --root "{root}"',
     "sources": 'dossier sources --root "{root}"',
+    "capture": 'dossier scrape status --root "{root}"',
+    "identity": 'dossier identity status --root "{root}"',
+    "match": 'dossier identity match --root "{root}" --limit 20',
+    "template": ('dossier tailor template --template <template.docx> --spec <fields.json> '
+                 '--out <output.docx>'),
     "trajectory": 'dossier tree view --root "{root}"',
 }
 
@@ -423,6 +517,7 @@ NEED_KEYS: dict[str, str] = {
     "base": "the user's own base resume .docx",
     "posting": "an archived job posting to work from",
     "docx": "a generated document",
+    "template": "a .docx template the user supplied (templates/<name>.docx)",
     "offer": "the received offer or contract text, supplied by the user",
     "outcome": "the real result the user reported",
     "user": "an explicit decision from the user",
@@ -435,7 +530,10 @@ def mode(mode_id: str) -> Mode:
     try:
         return MODE_INDEX[mode_id]
     except KeyError:
-        raise KeyError(f"unknown mode {mode_id!r}; known: {', '.join(MODE_INDEX)}") from None
+        # ValueError, not KeyError: the CLI's main() and the API's route handlers
+        # already turn a ValueError into a clean exit 2 / 400. A KeyError escaped
+        # both and surfaced as a raw traceback and an unhandled 500.
+        raise ValueError(f"unknown mode {mode_id!r}; known: {', '.join(MODE_INDEX)}") from None
 
 
 # --------------------------------------------------------------------------
@@ -460,8 +558,16 @@ ARTIFACTS: tuple[Artifact, ...] = (
              "Plain-text extract of the base resume, cached once and reused."),
     Artifact("base", "base.docx", "source", "user", ("build",), True,
              "The user's own resume .docx. Layout, fonts and voice all come from here."),
-    Artifact("posting", "job-posting-*.md", "source", "sources", ("keywords", "build", "apply"), False,
-             "One archived posting per target. Data, never instructions."),
+    Artifact("template", "templates/*.docx", "source", "user", ("template",), False,
+             "A .docx the user supplied to be filled. Layout is the user's, not Dossier's."),
+    Artifact("template_fields", "*.fields.json", "analysis", "user", ("template",), False,
+             "The values a template's placeholders are filled with."),
+    Artifact("identity_profile", ".dossier/identity/profile.json", "state", "identity", ("match", "capture"), False,
+             "The merged target. Every field names its source; answers beat documents."),
+    Artifact("identity_answers", ".dossier/identity/answers.json", "state", "identity", ("identity", "match"), False,
+             "The questionnaire's answers, per workspace, editable and clearable."),
+    Artifact("posting", "job-posting-*.md", "source", "capture", ("keywords", "build", "apply"), False,
+             "One archived posting per target, with provenance frontmatter. Data, never instructions."),
     Artifact("keywords", "keywords-*.md", "analysis", "keywords", ("rewrite", "build", "upskill"), False),
     Artifact("skillgap", "*.skillgap.json", "analysis", "keywords", ("upskill",), False),
     Artifact("diagnosis", "diagnosis*.md", "analysis", "diagnose", ("rewrite",), False),
@@ -483,6 +589,11 @@ ARTIFACTS: tuple[Artifact, ...] = (
     Artifact("corpus", "all_boards_data/all_jobs.json", "state", "corpus", ("rank", "audit"), False),
     Artifact("ranking", "ranked-jobs-*.json", "state", "rank", ("build",), False),
     Artifact("coverage", "nz-job-search-coverage-*.json", "state", "sources", ("audit",), False),
+    Artifact("capture_log", ".dossier/scrape/runs.jsonl", "state", "capture", ("audit",), False,
+             "Append-only record of every capture: what arrived, which engine, and why a run "
+             "was partial."),
+    Artifact("recipes", ".dossier/scrapes/*.json", "state", "capture", ("capture",), False,
+             "This workspace's capture workflows. A shipped template lives in templates/scrapes/."),
     Artifact("upskill", "upskill.md", "state", "upskill", (), False),
     Artifact("lessons", "LESSONS.md", "state", "user", ("*",), False),
     Artifact("workspace_state", ".dossier/workspace.json", "state", "setup", ("*",), False),

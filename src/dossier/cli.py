@@ -15,6 +15,7 @@ import sys
 import threading
 import webbrowser
 from pathlib import Path
+from .copy import plural
 
 
 def _free_port() -> int:
@@ -50,7 +51,11 @@ def _serve(root: Path, port: int, open_browser: bool) -> int:
     config = AppConfig.create(root)
     application = create_app(config)
     port = port or _free_port()
-    url = f"http://127.0.0.1:{port}/?token={config.token}"
+    # No token in the printed URL. `GET /` sets the httponly cookie the API accepts
+    # (api/app.py), so the address never needs the value — and a bearer token in a
+    # URL lands in terminal scrollback, shell history and any log that captures
+    # this line, which `token-never-leaks` forbids.
+    url = f"http://127.0.0.1:{port}/"
     print(f"Dossier URL: {url}", flush=True)
     if open_browser:
         threading.Timer(0.6, webbrowser.open, args=(url,)).start()
@@ -68,7 +73,6 @@ def _agent(args) -> int:
     if action == "manifest":
         _emit(agent.contract(), args.json)
         return 0
-
     if action == "route":
         matches = agent.route(args.text, limit=args.limit)
         _emit({"request": args.text, "matches": matches,
@@ -123,6 +127,30 @@ def _agent(args) -> int:
         result = loop.commit(root, payload)
         _emit(result, args.json)
         return 0 if result.get("accepted") else 1
+
+    if action == "ask":
+        # Fail-closed: with no endpoint, model id or key this reports unavailable
+        # and changes nothing. It never falls back to a model, and `apply` is
+        # refused by `model.AUTO_FORBIDDEN_MODES` (gate: no-auto-submit).
+        from . import model
+
+        report = model.availability(root)
+        if not report["available"]:
+            _emit(report, args.json, f"model unavailable: {report['reason']}")
+            return 2
+        try:
+            result = model.ask(root, args.mode, args.text or "")
+        except model.ModelModeRefused as exc:
+            _emit({"available": True, "refused": str(exc)}, args.json, f"refused: {exc}")
+            return 2
+        except model.ModelError as exc:
+            _emit({"available": True, "error": str(exc)}, args.json, f"model error: {exc}")
+            return 1
+        problems = result["commit"].get("problems") or []
+        _emit(result, args.json,
+              f"mode {result['mode']}: accepted={result['accepted']}"
+              + (f" ({'; '.join(problems)})" if problems else ""))
+        return 0 if result["accepted"] else 1
 
     if action == "adapters":
         from .agent import adapters
@@ -237,9 +265,11 @@ def _handoff(args) -> int:
         connection.close()
     out = Path(args.out) if args.out else root / "resync" / "handoff.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result["packet"], indent=2, ensure_ascii=False), encoding="utf-8")
+    from .safety import trash_then_write_text
+
+    trash_then_write_text(root, out, json.dumps(result["packet"], indent=2, ensure_ascii=False))
     prompt_path = out.with_suffix(".md")
-    prompt_path.write_text(result["prompt"], encoding="utf-8")
+    trash_then_write_text(root, prompt_path, result["prompt"])
     if args.json:
         _emit({"packet": str(out), "prompt": str(prompt_path), "counts": result["packet"]["counts"]}, True)
     else:
@@ -266,9 +296,11 @@ def _corpus(args) -> int:
         report = corpus.rank_report(jobs, limit=args.limit)
         if args.write:
             from datetime import date
+            from .safety import trash_then_write_text
+
             target = root / f"ranked-jobs-{date.today().isoformat()}.json"
-            target.write_text(json.dumps(corpus.rank(jobs), indent=2, ensure_ascii=False),
-                              encoding="utf-8")
+            trash_then_write_text(root, target, json.dumps(corpus.rank(jobs), indent=2,
+                                                          ensure_ascii=False))
             report["written"] = str(target)
         _emit(report, args.json)
         return 0
@@ -282,7 +314,7 @@ def _corpus(args) -> int:
         if report["unmatched"]:
             _emit(report, args.json)
             return 1
-        corpus.build_facets(jobs, root / "all_boards_data")
+        corpus.build_facets(jobs, root / "all_boards_data", root=root)
         report["corpus_hash"] = corpus.aggregate_hash(jobs)
         _emit(report, args.json)
         return 0
@@ -408,10 +440,12 @@ def _keywords(args) -> int:
             lines = ["# Recurring gaps", "",
                      "Counted across every keyword report in this workspace.", ""]
             for entry in result["recurring_gaps"]:
-                lines.append(f"- **{entry['skill']}** — {entry['postings']} posting(s)")
+                lines.append(f"- **{entry['skill']}** — {plural(entry['postings'],'posting')}")
             lines += ["", "A recurring gap is a learning target or an honest omission — "
                           "never a licence to word-stuff."]
-            target.write_text("\n".join(lines), encoding="utf-8")
+            from .safety import trash_then_write_text
+
+            trash_then_write_text(root, target, "\n".join(lines))
             result["written"] = str(target)
         _emit(result, args.json)
         return 0
@@ -495,9 +529,22 @@ def _verify(args) -> int:
         if geometry:
             from .engine.tailor import layout_spec
             margins = layout_spec(Path(geometry))["margins_pt"]
-        result = verify.visual(Path(args.pdf), expected_pages=args.expected_pages, margins=margins)
+        result = verify.visual(Path(args.pdf), expected_pages=args.expected_pages, margins=margins,
+                               image=Path(args.image) if getattr(args, "image", None) else None)
         _emit(result, args.json)
+        # ok is false when no page image could be produced, so a pass here means
+        # a page was actually rasterised — not merely that the geometry was clean.
         return 0 if result["ok"] else 1
+    if action == "template":
+        spec = json.loads(Path(args.spec).read_text(encoding="utf-8")) if args.spec else {}
+        result = verify.template_fill(Path(args.template), Path(args.candidate), spec)
+        if args.json:
+            _emit(result, True)
+        else:
+            for check in result["checks"]:
+                print(f"  [{'pass' if check['ok'] else 'FAIL'}] {check['id']} — {check['detail']}")
+            print(f"passed: {result['passed']}")
+        return 0 if result["passed"] else 1
     if action == "all":
         # A resume is expected to carry several dates; a letter legitimately
         # carries one, so the expectation is derived from what was supplied.
@@ -526,8 +573,40 @@ def _verify(args) -> int:
 
 def _sources(args) -> int:
     from .engine import sources
+    from .safety import trash_then_write_text
+    from datetime import date as _date
 
     root = _require_root(getattr(args, "root", None))
+
+    if args.open or args.close:
+        name = (args.open or args.close).strip().casefold()
+        path = root / ".dossier" / "sources.json"
+        try:
+            table = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            table = {}
+        if not isinstance(table, dict):
+            table = {}
+        if args.open:
+            policy = args.policy or "user_supplied"
+            if policy not in sources.POLICY_VALUES:
+                raise ValueError(f"unknown policy {policy!r}; known: {', '.join(sources.POLICY_VALUES)}")
+            table[name] = {"policy": policy, "status": "available",
+                           "detail": f"Opened by the workspace owner on {_date.today().isoformat()}."}
+            if args.robots is not None:
+                table[name]["robots"] = bool(args.robots)
+        else:
+            # Closing removes the override, so the shipped default applies again.
+            table.pop(name, None)
+        trash_then_write_text(root, path, json.dumps(table, indent=2, ensure_ascii=False))
+        if args.json:
+            _emit({"action": "open" if args.open else "close", "source": name,
+                   "file": str(path.relative_to(root)),
+                   "policy": sources.policy(name, root)}, True)
+            return 0
+        print(f"{name}: policy is now {sources.policy(name, root)}")
+        return 0
+
     result = sources.ledger(root)
     if args.json:
         _emit(result, True)
@@ -555,7 +634,463 @@ def _sanitize(args) -> int:
         for finding in result["findings"]:
             print(f"  {finding['kind']}: {finding}")
         print(f"clean characters: {len(result['clean'])}")
-    return 0
+    # posting-is-data is a gate, not a report: a posting that carried hidden
+    # carriers or instruction-shaped text exits non-zero so a caller can branch on
+    # the exit code instead of parsing prose. `flagged` is the same condition the
+    # --json payload reports, so the two channels cannot disagree.
+    return 1 if result["flagged"] else 0
+
+
+def _identity(args) -> int:
+    """The identity surface: ask, mine, merge, write, match.
+
+    `status` is the cheap one (no browser, no network); `match` reads the corpus and
+    scores it. Both are deterministic.
+    """
+    from .engine import identity
+
+    root = _require_root(getattr(args, "root", None))
+    action = args.identity_action
+
+    if action == "status":
+        data = identity.profile(root)
+        payload = {**data, "questions": identity.questions_with_state(root),
+                   "answers": identity.load_answers(root)}
+        if args.json:
+            _emit(payload, True)
+            return 0
+        print(f"identity: {data['answered']}/{plural(data['questions'],'question').split(' ',1)[1]} answered, "
+              f"{plural(data['sources'].get('document', 0),'value')} mined from documents")
+        for name, entry in data["fields"].items():
+            value = entry["value"]
+            shown = ", ".join(str(item) for item in value) if isinstance(value, list) else str(value)
+            print(f"  {name:<14} {entry['source']:<8} {shown[:100]}")
+        if data["missing_required"]:
+            print(f"  missing required: {', '.join(data['missing_required'])}")
+        return 0
+
+    if action == "questions":
+        rows = identity.questions_with_state(root)
+        if args.json:
+            _emit({"questions": rows}, True)
+            return 0
+        for row in rows:
+            mark = "known" if row["answered"] else ("REQUIRED" if row["required"] else "open")
+            print(f"  {row['id']:<14} {mark:<9} {row['prompt']}")
+            if row["choices"]:
+                print(f"  {'':<14} {'':<9} one of: {', '.join(row['choices'])}")
+        return 0
+
+    if action == "answer":
+        if args.from_json:
+            payload = json.loads(Path(args.from_json).read_text(encoding="utf-8"))
+            answers = payload.get("answers", payload) if isinstance(payload, dict) else {}
+        else:
+            if not args.question or args.value is None:
+                raise ValueError("identity answer needs --question <id> --value <value>, "
+                                 "or --from-json <file>")
+            answers = {args.question: args.value}
+        saved = identity.save_answers(root, answers)
+        data = identity.profile(root)
+        if args.json:
+            _emit({**saved, "complete": data["complete"],
+                   "missing_required": data["missing_required"]}, True)
+        else:
+            print(f"saved {plural(len(saved['saved']),'answer')}; "
+                  f"{'profile complete' if data['complete'] else 'still missing: ' + ', '.join(data['missing_required'])}")
+        return 0
+
+    if action == "mine":
+        proposals = identity.mine_documents(root)
+        if args.json:
+            _emit({"proposals": proposals}, True)
+            return 0
+        for item in proposals:
+            value = item["value"]
+            shown = ", ".join(str(part) for part in value) if isinstance(value, list) else str(value)
+            print(f"  {item['field']:<14} {item['confidence']:<7} {shown[:80]}")
+            print(f"  {'':<14} {item['source']}:{item['line']}  {item['evidence'][:90]}")
+        return 0
+
+    if action == "write":
+        report = identity.write_identity(root, name=args.out)
+        if args.json:
+            _emit(report, True)
+        else:
+            print(f"wrote {plural(report['fields'],'field')} to {report['path']}")
+            if report["missing_required"]:
+                print(f"  still unanswered: {', '.join(report['missing_required'])}")
+        return 0
+
+    if action == "match":
+        if args.posting:
+            result = identity.match_posting(Path(args.posting), root)
+        else:
+            result = identity.rank_corpus(root, limit=args.limit, min_band=args.min_band or "")
+        if args.json:
+            _emit(result, True)
+            return 0
+        if not result.get("present"):
+            print(result.get("reason", "no corpus"))
+            return 1
+        print(f"scored {result['scored']} of {plural(result['rows'],'row')}: "
+              + ", ".join(f"{band} {count}" for band, count in result["band_counts"].items()))
+        for row in result.get("matched", []):
+            print(f"  {row['band']:<8} {row['score']:>3}  {row.get('title', '')[:38]:<38} "
+                  f"{row.get('employer', '')[:22]:<22} {row.get('source', '')}")
+        for row in result.get("disqualified", []):
+            print(f"  DISQUAL  {row.get('title', '')[:38]:<38} {row['disqualifiers'][0][:60]}")
+        return 0
+
+    if action == "labels":
+        from .engine import evaluation
+
+        report = evaluation.worksheet(root, limit=args.limit)
+        out = Path(args.out) if args.out else root / ".dossier" / "eval" / f"labels-{report['corpus_hash']}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        if args.json:
+            _emit({**{k: v for k, v in report.items() if k != "rows"},
+                   "rows": len(report["rows"]), "path": str(out)}, True)
+            return 0
+        graded = sum(1 for row in report["rows"] if row["grade"])
+        print(f"labelling worksheet: {plural(len(report['rows']),'row')} -> {out}")
+        print(f"  {plural(graded,'row')} proposed from the tracker's own Fit column (source: tracker);")
+        print(f"  {plural(len(report['rows']) - graded,'row')} need your grade (strong/possible/unlikely/skip).")
+        if report["unmatched_tracker_rows"]:
+            print(f"  {plural(len(report['unmatched_tracker_rows']),'tracker row')} matched no posting; "
+                  "they are listed in the file with their reason.")
+        return 0
+
+    if action == "eval":
+        from .engine import evaluation
+
+        if not args.labels:
+            raise ValueError("identity eval needs --labels <file> (see `dossier identity labels`)")
+        report = evaluation.evaluate_workspace(root, args.labels, k=args.k, source=args.source)
+        verdict = None
+        if args.baseline:
+            baseline_path = Path(args.baseline)
+            if not baseline_path.exists():
+                raise ValueError(f"no baseline at {baseline_path}; record one with --write-baseline")
+            baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+            verdict = evaluation.compare_to_baseline(report, baseline)
+        if args.write_baseline:
+            target = Path(args.write_baseline)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(evaluation.record_baseline(report), indent=2),
+                              encoding="utf-8")
+        if args.json:
+            _emit({**report, "verdict": verdict}, True)
+        else:
+            if not report.get("present"):
+                print(report.get("reason", "no evaluation"))
+                print(f"  graded rows offered: {report.get('grades_offered', 0)}, "
+                      f"matched a scored row: {report.get('n_graded', 0)}")
+            else:
+                product = report["product"]
+                arrival = report["baseline_arrival"]
+                print(f"graded {report['n_graded']} of {plural(report['rows'],'row')} "
+                      f"({plural(report['grades_off_corpus'],'grade')} matched no row)")
+                print(f"  {'':<22}{'nDCG@' + str(report['k']):>10}{'P@' + str(report['k']):>10}"
+                      f"{'slots P@' + str(report['k']):>12}{'recall@25':>11}{'spearman':>10}")
+                print(f"  {'identity score':<22}{product['ndcg']!s:>10}"
+                      f"{product['precision']!s:>10}{product['precision_slots']!s:>12}"
+                      f"{product['recall']!s:>11}{product['spearman']!s:>10}")
+                print(f"  {'arrival order':<22}{arrival['ndcg']!s:>10}"
+                      f"{arrival['precision']!s:>10}{arrival['precision_slots']!s:>12}"
+                      f"{arrival['recall']!s:>11}{arrival['spearman']!s:>10}")
+                print(f"  grades: " + ", ".join(f"{k} {v}" for k, v in report["grade_counts"].items())
+                      + f"; from {report['sources']}")
+                print(f"  judged rows in the first {report['k']}: {product['judged_in_top_k']}"
+                      " (an ungraded row in the top slots counts as a miss)")
+        if verdict is not None:
+            if verdict["ok"]:
+                print("gate fit-is-measured: pass — no metric fell below the recorded baseline")
+                return 0
+            for failure in verdict["failures"]:
+                print(f"gate fit-is-measured: FAIL — {failure}")
+            return 1
+        return 0
+
+    raise SystemExit(f"unknown identity action {action}")
+
+
+def _feeds(args) -> int:
+    """The public-JSON layer: list what may be fetched, or fetch one board.
+
+    This is the caller the six adapters never had. It writes the same
+    `<source>_data/all_jobs.json` shape the corpus builder already reads, so a
+    fetched board flows into `dossier corpus build` and `rank` with no new format.
+    """
+    from . import feeds as feed_module
+    from .engine import sources as source_engine
+    from .safety import trash_then_write_text
+    from .scrape.extract import text as html_text
+    from datetime import date, datetime, timezone
+
+    action = args.feed_action
+    root = _require_root(getattr(args, "root", None))
+
+    if action == "list":
+        table = source_engine.effective_policies(root)
+        rows = []
+        for name in sorted(feed_module.ADAPTERS):
+            entry = table.get(name, {})
+            rows.append({"source": name, "policy": entry.get("policy", "manual_only"),
+                         "permitted": source_engine.permitted(name, root),
+                         "needs_board": name in feed_module.BOARD_PLACEHOLDERS,
+                         "endpoint": feed_module.ENDPOINTS[name]})
+        if args.json:
+            _emit({"feeds": rows}, True)
+            return 0
+        for row in rows:
+            print(f"{row['source']:<10} {row['policy']:<15} "
+                  f"{'fetchable' if row['permitted'] else 'refused':<10} "
+                  f"{'--board required' if row['needs_board'] else ''} {row['endpoint']}")
+        return 0
+
+    if action == "fetch":
+        source = args.source.strip().casefold()
+        # Refused before the client exists, so a prohibited board never opens a socket.
+        source_engine.assert_allowed(source, root)
+        result = feed_module.fetch_board(source, board=args.board, root=root)
+        rows = result["jobs"]
+        limit = max(1, args.limit)
+        truncated = len(rows) > limit
+        rows = rows[:limit]
+        for row in rows:
+            # posting-is-data: a description is third-party text and is sanitised
+            # before it reaches the corpus, exactly like an archived posting file.
+            description = row.get("description") or ""
+            if "<" in description:
+                # Board descriptions are HTML. The tags are not requirements, and a
+                # `<script>` body reads like prose to a naive tokenizer.
+                description = html_text(description)
+            cleaned = source_engine.sanitize(description, source)
+            row["description"] = cleaned["clean"]
+            if cleaned["flagged"]:
+                row["_postings_sanitized"] = cleaned["findings"]
+        out_dir = Path(args.out) if args.out else root
+        target = out_dir / f"{source}_data" / "all_jobs.json"
+        payload = json.dumps(rows, indent=2, ensure_ascii=False)
+        trash_then_write_text(root, target, payload)
+        provenance = root / ".dossier" / "scrape" / "feeds" / (
+            f"{source}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json")
+        provenance.parent.mkdir(parents=True, exist_ok=True)
+        provenance.write_text(json.dumps({"source": source, "url": result["url"],
+                                          "captured_on": date.today().isoformat(),
+                                          "records": len(rows),
+                                          "truncated": truncated}, indent=2), encoding="utf-8")
+        summary = {"source": source, "url": result["url"], "records": len(rows),
+                   "total": result["records"], "truncated": truncated,
+                   "path": str(target), "out": str(out_dir),
+                   "complete": not truncated}
+        if args.json:
+            _emit(summary, True)
+        else:
+            print(f"{'complete' if not truncated else 'PARTIAL'}: {source} - "
+                  f"{len(rows)} of {plural(result['records'],'record')} -> {target}")
+            if truncated:
+                print(f"  reason: stopped at --limit {limit}; the board may hold more")
+        return 0 if not truncated else 1
+
+    raise SystemExit(f"unknown feeds action {action}")
+
+
+def _scrape(args) -> int:
+    """Capture a page, or report what could be captured and why it was not.
+
+    Exit codes are the contract every other gate in this CLI uses: 0 means the
+    capture is complete, 1 means it is partial or refused for a reason the user
+    must act on, 2 means the request itself was wrong (a bad recipe, a policy
+    refusal, a missing engine).
+    """
+    from .scrape import browser, recipes as recipe_module, runner
+    from .scrape.errors import ScrapeError
+    from .scrape.session import SessionStore, import_netscape_cookies
+
+    action = args.scrape_action
+    root = _require_root(getattr(args, "root", None))
+
+    if action == "status":
+        result = runner.status(root)
+        if args.json:
+            _emit(result, True)
+            return 0
+        print(f"captured postings: {result['captured_postings']}")
+        for name, row in result["engines"].items():
+            state = "ready" if row["available"] else "MISSING"
+            print(f"  engine  {name:<11} {state:<8} {row.get('version') or row['detail'][:60]}")
+        for recipe in result["recipes"]:
+            mark = "due" if recipe["due"] else recipe["reason"]
+            print(f"  recipe  {recipe['id']:<22} {recipe['source']:<12} {recipe['kind']:<6} {mark}")
+        for error in result["recipe_errors"]:
+            print(f"  BROKEN  {error['path']}: {error['error']}")
+        for row in result["sessions"]:
+            state = "expired" if row["expired"] else "saved"
+            print(f"  session {row['source']:<22} {state:<8} {row.get('saved_at') or ''} "
+                  f"cookies={row.get('cookie_count')}")
+        if not result["sessions"]:
+            print("  session (none) - an authenticated capture needs `dossier scrape login`")
+        challenge = result.get("challenge") or {}
+        solver = challenge.get("solver") or {}
+        print(f"  challenge policy {challenge.get('configured', '?')} "
+              f"(default {challenge.get('default', '?')}); solver "
+              f"{'configured' if solver.get('configured') else 'not configured'}")
+        return 0
+
+    if action == "recipes":
+        found, errors = recipe_module.discover(root, include_shipped=not args.workspace_only)
+        payload = {"recipes": [recipe.to_dict() for recipe in found], "errors": errors}
+        if args.json:
+            _emit(payload, True)
+            return 1 if errors else 0
+        for recipe in found:
+            print(f"{recipe.id:<24} {recipe.origin:<9} {recipe.source:<12} "
+                  f"{'list' if recipe.is_list else 'single':<6} {recipe.start_url}")
+        for error in errors:
+            print(f"BROKEN {error['path']}: {error['error']}")
+        return 1 if errors else 0
+
+    if action == "login":
+        store = SessionStore(root)
+        reports = browser.available()
+        if not reports["playwright"]["available"]:
+            raise ScrapeError(reports["playwright"]["detail"])
+        print(f"Opening {args.url} in a browser window. Sign in yourself; Dossier types nothing "
+              "and stores only the cookies the browser receives.")
+        confirm = None
+        if not args.selector:
+            def confirm():
+                try:
+                    input("Finish signing in, then press Enter here to save the session... ")
+                except EOFError:
+                    raise ScrapeError(
+                        "no confirmation was read, so no session was saved. Re-run with "
+                        "--selector <element only visible when signed in> in a non-interactive "
+                        "shell.") from None
+        meta = browser.PlaywrightDriver().sign_in(
+            url=args.url, store=store, source=args.source,
+            success_selector=args.selector or "", timeout_s=args.timeout,
+            headless=args.headless, confirm=confirm)
+        if args.json:
+            _emit(meta, True)
+        else:
+            print(f"session saved for {meta['source']}: {plural(meta['cookie_count'],'cookie')} "
+                  f"from {meta['source_url']}")
+        return 0
+
+    if action == "session-import":
+        store = SessionStore(root)
+        text = Path(args.cookies).read_text(encoding="utf-8", errors="replace")
+        meta = import_netscape_cookies(store, args.source, text, source_url=args.url)
+        if args.json:
+            _emit(meta, True)
+        else:
+            print(f"session imported for {meta['source']}: {plural(meta['cookie_count'],'cookie')}")
+        return 0
+
+    if action == "session-clear":
+        removed = SessionStore(root).clear(args.source)
+        _emit({"source": args.source, "removed": removed}, args.json,
+              f"{'removed' if removed else 'no session for'} {args.source}")
+        return 0
+
+    if action == "capture":
+        result = runner.capture_url(
+            root, args.url, source=args.source, driver=args.driver,
+            headless=not args.headed, screenshot=not args.no_screenshot,
+            timeout_s=args.timeout, wait_until=args.wait_until, selector=args.selector,
+            session=args.session, robots=args.robots, delay_ms=args.delay_ms,
+            refresh=args.refresh, challenge=args.challenge,
+            await_clear_s=args.await_seconds, min_match=args.min_match or 0)
+        if args.json:
+            _emit(result, True)
+        else:
+            verdict = "complete" if result.get("complete") else "PARTIAL"
+            print(f"{verdict}: {result['url']}")
+            if result.get("reason"):
+                print(f"  reason: {result['reason']}")
+            if result.get("posting"):
+                print(f"  posting: {result['posting']}")
+            if result.get("driver"):
+                print(f"  driver: {result['driver']}  source: {result.get('source')}  "
+                      f"session: {result.get('session', {}).get('used')}")
+        return 0 if result.get("complete") else 1
+
+    if action == "run":
+        found, errors = recipe_module.discover(root)
+        if errors and args.recipe:
+            broken = [row for row in errors if Path(row["path"]).stem == args.recipe]
+            if broken:
+                raise ScrapeError(broken[0]["error"])
+        chosen = []
+        if args.recipe:
+            match = [recipe for recipe in found if recipe.id == args.recipe]
+            if not match:
+                raise ValueError(f"unknown recipe {args.recipe!r}; known: "
+                                 f"{', '.join(r.id for r in found) or 'none'}")
+            chosen = match
+        elif args.due:
+            chosen = runner.due_recipes(root)[: args.max_recipes]
+            if not chosen:
+                _emit({"ran": [], "reason": "no recipe is due"}, args.json,
+                      "no recipe is due")
+                return 0
+        else:
+            raise ValueError("scrape run needs --recipe <id> or --due")
+
+        results = []
+        for recipe in chosen:
+            result = runner.run_recipe(
+                root, recipe, limit=args.limit, pages=args.pages, driver=args.driver,
+                headless=None if args.headed is False else (not args.headed),
+                refresh=args.refresh, screenshot=not args.no_screenshot,
+                delay_ms=args.delay_ms, challenge=args.challenge,
+                await_clear_s=args.await_seconds, min_match=args.min_match)
+            results.append(result)
+            if not args.json:
+                verdict = "complete" if result["complete"] else "PARTIAL"
+                print(f"{verdict}: {recipe.id} - {result['items_captured']} captured, "
+                      f"{len(result['duplicates'])} duplicate, {len(result['failures'])} failed")
+                if result.get("reason"):
+                    print(f"  reason: {result['reason']}")
+                for failure in result["failures"][:5]:
+                    print(f"  failed {failure['stage']}: {failure['url']} - {failure['error'][:140]}")
+        if args.json:
+            _emit({"runs": results,
+                   "complete": all(row["complete"] for row in results)}, True)
+        return 0 if all(row["complete"] for row in results) else 1
+
+    raise SystemExit(f"unknown scrape action {action}")
+
+
+def _panel(args) -> int:
+    """Seven reviewers, seven scores, and the exact line that cost the most."""
+    from .engine import panel as panel_engine
+    from .extract import extract_text
+    from .safety import resolve_in_root
+
+    root = _require_root(getattr(args, "root", None))
+    resume = resolve_in_root(root, args.resume)
+    if not resume.exists():
+        raise FileNotFoundError(f"no resume at {args.resume!r} in {root}")
+    text, meta = extract_text(resume)
+    if meta.get("error"):
+        raise ValueError(f"could not read {args.resume}: {meta['error']}")
+    posting = ""
+    if args.posting:
+        posting_path = resolve_in_root(root, args.posting)
+        posting, posting_meta = extract_text(posting_path)
+        if posting_meta.get("error"):
+            raise ValueError(f"could not read {args.posting}: {posting_meta['error']}")
+    result = panel_engine.run(text, posting=posting, target_role=args.role or "")
+    if args.json:
+        _emit(result, True)
+    else:
+        print(panel_engine.render(result))
+    return 0 if result["verdict"] != "fail" else 1
 
 
 def _tailor(args) -> int:
@@ -572,16 +1107,60 @@ def _tailor(args) -> int:
     if action == "blocks":
         _emit(tailor.read_blocks(Path(args.docx)), args.json)
         return 0
+    if action == "fields":
+        fields = tailor.template_fields(Path(args.template))
+        _emit({"template": args.template, "fields": fields}, args.json,
+              "\n".join(fields) or "no {{placeholders}} found")
+        return 0
+    if action == "template":
+        spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+        result = tailor.fill_template(Path(args.template), Path(args.out), spec,
+                                     root=getattr(args, "root", None),
+                                     strict=not args.allow_leftovers)
+        if args.json:
+            _emit(result, True)
+        else:
+            filled = sum(result["replaced"].values())
+            print(f"filled {plural(filled,'placeholder')} in {plural(result['paragraphs_touched'],'paragraph')} "
+                  f"-> {result['output']}")
+            if result["unused"]:
+                print(f"  unused {plural(len(result['unused']),'field')}: {', '.join(result['unused'])}")
+            if result["leftovers"]:
+                print(f"  UNFILLED: {', '.join(result['leftovers'])}")
+        return 0
     if action == "replace":
         replacements = json.loads(Path(args.map).read_text(encoding="utf-8"))
-        result = tailor.apply_replacements(Path(args.base), Path(args.out), replacements)
+        result = tailor.apply_replacements(Path(args.base), Path(args.out), replacements,
+                                           root=getattr(args, "root", None))
         payload = {"output": result.output, "applied": result.applied, "missed": result.missed}
         _emit(payload, args.json)
         return 0 if not result.missed else 1
     if action == "cover-letter":
         payload = json.loads(Path(args.spec).read_text(encoding="utf-8"))
-        result = tailor.cover_letter(Path(args.base), Path(args.out), **payload)
+        # A spec is user-authored JSON. Splatting it as **kwargs turned the
+        # documented command into `TypeError: got an unexpected keyword argument
+        # 'role'` the moment a spec carried a natural extra field, so the split is
+        # explicit and lives in the engine: undeclared keys are reported in the
+        # payload itself (a --json caller must see them too, not only stderr) and
+        # a missing declared field is an error through the normal exit path.
+        try:
+            fields, ignored = tailor.cover_letter_spec(payload)
+        except ValueError as exc:
+            if args.json:
+                _emit({"ok": False, "detail": str(exc),
+                       "expected": list(tailor.COVER_LETTER_FIELDS)}, True)
+                return 2
+            raise SystemExit(str(exc)) from None
+        result = tailor.cover_letter(Path(args.base), Path(args.out),
+                                     root=getattr(args, "root", None), **fields)
+        if ignored:
+            result["ignored_keys"] = ignored
+            result["warning"] = (
+                f"ignored {plural(len(ignored),'undeclared spec key')}: " + ", ".join(ignored)
+                + "; the letter was built from the declared fields only")
         _emit(result, args.json)
+        if ignored and not args.json:
+            print(f"warning: {result['warning']}")
         return 0
     if action == "import":
         result = tailor.import_base(Path(args.source), _require_root(getattr(args, "root", None)),
@@ -589,6 +1168,79 @@ def _tailor(args) -> int:
         _emit(result, args.json)
         return 0 if result.get("imported") else 1
     raise SystemExit(f"unknown tailor action {action}")
+
+
+# -- trash -----------------------------------------------------------------
+
+def _describe_prune(report: dict) -> str:
+    """A readable account of one prune: what went, what stayed, and why."""
+    if not report["enabled"]:
+        return report["reason"]
+    head = (f"trash retention: {plural(report['retention_days'],'day')} "
+            f"(from {report['retention_source']}), cutoff {report['cutoff']}")
+    if report["dry_run"]:
+        head += "  [dry run: nothing deleted]"
+    lines = [head]
+    if report["reason"]:
+        lines.append(report["reason"])
+    lines.append(f"removed {report['removed_count']}, freed {report['freed_bytes']} bytes, "
+                 f"kept {report['kept_count']}, skipped {report['skipped_count']}, "
+                 f"{report['entries_remaining']} timestamped entries left")
+    for row in report["removed"]:
+        lines.append(f"  - {row['entry']}  age {row.get('age_days')}d  {row['reason']}")
+    for row in report["kept"]:
+        lines.append(f"  = {row['entry']}  {row['reason']}")
+    for row in report["skipped"]:
+        lines.append(f"  ! {row['entry']}  {row['reason']}")
+    for warning in report["warnings"]:
+        lines.append(f"  warning: {warning}")
+    return "\n".join(lines)
+
+
+def _trash(args) -> int:
+    from .config import AppConfig
+    from .safety import last_prune_report, list_trash, prune_trash, retention_settings
+
+    root = _require_root(getattr(args, "root", None))
+    config = AppConfig.create(root)
+    action = args.trash_action
+
+    if action == "list":
+        listing = list_trash(config)
+        settings = retention_settings(config)
+        payload = {**listing, "root": str(config.dossier_dir / "trash"),
+                   "retention": settings, "last_prune": last_prune_report(config)}
+        if args.json:
+            _emit(payload, True)
+            return 0
+        total = sum(row["size"] for group in ("entries", "external", "unmanaged")
+                    for row in listing[group])
+        lines = [
+            f"trash: {len(listing['entries'])} restorable, "
+            f"{len(listing['external'])} external, "
+            f"{len(listing['unmanaged'])} unmanaged  ({total} bytes)",
+            f"retention: {plural(settings['retention_days'],'day')} from {settings['source']}; "
+            f"set {settings['environment_variable']} or 'retention_days' in "
+            f"{settings['config_file']} (0 keeps every backup forever)",
+        ]
+        for row in listing["entries"]:
+            lines.append(f"  {row['trashed_at']}  {row['rel']}  ({row['size']} bytes)")
+        for row in listing["external"]:
+            lines.append(f"  {row['trashed_at']}  [outside the workspace] "
+                         f"{row['name']}  ({row['size']} bytes)")
+        for row in listing["unmanaged"]:
+            lines.append(f"  [unmanaged] {row['trash_rel']}  ({row['size']} bytes)")
+        for warning in settings["warnings"]:
+            lines.append(f"  warning: {warning}")
+        _emit(payload, False, "\n".join(lines))
+        return 0
+
+    if action == "prune":
+        report = prune_trash(config, retention_days=args.days, apply=not args.dry_run)
+        _emit(report, args.json, _describe_prune(report))
+        return 0
+
+    raise SystemExit(f"unknown trash action {action}")
 
 
 # -- parser ----------------------------------------------------------------
@@ -616,7 +1268,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     agent = add("agent", "the injectable agent surface")
     agent_sub = agent.add_subparsers(dest="agent_action", required=True)
-    agent_sub.add_parser("manifest", help="the whole contract as JSON")
+    # Every sibling leaf takes `--root`, and the contract says every command
+    # does, so the documented leaf position must not be an argparse error. The
+    # manifest itself is workspace-independent, so the value is accepted and
+    # ignored rather than required.
+    manifest_leaf = agent_sub.add_parser("manifest", help="the whole contract as JSON")
+    manifest_leaf.add_argument("--root", default=argparse.SUPPRESS)
     agent_prompt = agent_sub.add_parser("prompt", help="standing system prompt for an injected model")
     agent_prompt.add_argument("--root", default=argparse.SUPPRESS)
     route = agent_sub.add_parser("route", help="which mode is this request")
@@ -637,13 +1294,20 @@ def build_parser() -> argparse.ArgumentParser:
     commit = agent_sub.add_parser("commit", help="absorb a session's JSON handback")
     commit.add_argument("--handback", help="path to a JSON file (default: stdin)")
     commit.add_argument("--root", default=argparse.SUPPRESS)
+    ask = agent_sub.add_parser("ask", help="run one mode through a configured model API")
+    ask.add_argument("--mode", required=True)
+    ask.add_argument("--text", default="")
+    ask.add_argument("--root", default=argparse.SUPPRESS)
     adapters = agent_sub.add_parser("adapters", help="generate or check vendor prompt packs")
     adapters.add_argument("--check", action="store_true")
     adapters.add_argument("--root", default=argparse.SUPPRESS)
     for child in agent_sub.choices.values():
         if "--json" not in child._option_string_actions:
             child.add_argument("--json", action="store_true")
-    agent.set_defaults(handler=_agent, root=None)
+    # No `root=` default here: argparse copies a subparser's namespace over the
+    # parent's, so a group-level default would clobber a global `--root`. The
+    # group's own `--root` is SUPPRESS, and `_agent` reads it defensively.
+    agent.set_defaults(handler=_agent)
 
     for name, handler, help_text in (
         ("doctor", _doctor, "environment capability report"),
@@ -655,6 +1319,18 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         child = add(name, help_text)
         child.set_defaults(handler=handler)
+
+    # The ledger's own two verbs: a workspace can open or close one board without
+    # hand-editing JSON, and the change lands through the trash like any other write.
+    sources_leaf = sub.choices["sources"]
+    sources_leaf.add_argument("--open", metavar="NAME",
+                              help="make one board fetchable in this workspace")
+    sources_leaf.add_argument("--close", metavar="NAME",
+                              help="drop a workspace override for one board")
+    sources_leaf.add_argument("--policy",
+                              help="policy to apply with --open (default user_supplied)")
+    sources_leaf.add_argument("--robots", action=argparse.BooleanOptionalAction, default=None,
+                              help="record a robots.txt decision for that board")
 
     audit = sub.choices["audit"]
     audit.add_argument("--reindex", action="store_true", help="refresh the index before auditing")
@@ -741,6 +1417,20 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--visual", action="store_true", help="also write a page image per rebuild")
     render.set_defaults(handler=_render)
 
+    trash = add("trash", "the backup folder: what is in it, and its age cap")
+    trash_sub = trash.add_subparsers(dest="trash_action", required=True)
+    for action_name in ("list", "prune"):
+        child = trash_sub.add_parser(action_name)
+        child.add_argument("--root", default=argparse.SUPPRESS)
+        child.add_argument("--json", action="store_true")
+    trash_sub.choices["prune"].add_argument(
+        "--days", type=int,
+        help="override the retention window in days (0 keeps every backup forever)")
+    trash_sub.choices["prune"].add_argument(
+        "--dry-run", action="store_true",
+        help="report what would be pruned without deleting anything")
+    trash.set_defaults(handler=_trash)
+
     verify = add("verify", "verification gates")
     verify_sub = verify.add_subparsers(dest="verify_action", required=True)
     diff = verify_sub.add_parser("source-diff")
@@ -756,7 +1446,13 @@ def build_parser() -> argparse.ArgumentParser:
     visual.add_argument("--base")
     visual.add_argument("--margins-from", help="a .docx whose section margins define the printable area")
     visual.add_argument("--expected-pages", type=int)
+    visual.add_argument("--image", help="where to write the rendered page image "
+                                        "(default: <pdf stem>-page-1.png beside the PDF)")
     every = verify_sub.add_parser("all")
+    template_check = verify_sub.add_parser("template", help="check a document built from a template")
+    template_check.add_argument("--template", required=True)
+    template_check.add_argument("--candidate", required=True)
+    template_check.add_argument("--spec", help="the fields JSON the document was built from")
     every.add_argument("--base")
     every.add_argument("--candidate")
     every.add_argument("--pdf")
@@ -776,12 +1472,149 @@ def build_parser() -> argparse.ArgumentParser:
     sanitize.add_argument("--source", default="unknown")
     sanitize.set_defaults(handler=_sanitize)
 
+    feeds = add("feeds", "the public JSON board feeds")
+    feeds_sub = feeds.add_subparsers(dest="feed_action", required=True)
+
+    identity = add("identity", "what you are looking for, and how well a job fits")
+    identity_sub = identity.add_subparsers(dest="identity_action", required=True)
+
+    def identity_leaf(name: str, help_text: str) -> argparse.ArgumentParser:
+        child = identity_sub.add_parser(name, help=help_text)
+        child.add_argument("--root", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+        child.add_argument("--json", action="store_true")
+        return child
+
+    identity_leaf("status", "the merged profile and its sources")
+    identity_leaf("questions", "the questionnaire, with what is already known")
+    answer_leaf = identity_leaf("answer", "record one answer, or a batch from JSON")
+    answer_leaf.add_argument("--question", help="question id (dossier identity questions)")
+    answer_leaf.add_argument("--value", help="the value; a list question takes commas")
+    answer_leaf.add_argument("--from-json", help="a file of {question_id: value}")
+    identity_leaf("mine", "what the workspace's own documents propose, with provenance")
+    write_leaf = identity_leaf("write", "write the grounded profile into *-IDENTITY.md")
+    write_leaf.add_argument("--out", help="which identity document to update")
+    match_leaf = identity_leaf("match", "score the corpus (or one posting) against the profile")
+    match_leaf.add_argument("--limit", type=int, default=20)
+    match_leaf.add_argument("--min-band", choices=["strong", "possible", "unlikely"])
+    match_leaf.add_argument("--posting", help="score one job-posting-*.md instead of the corpus")
+    labels_leaf = identity_leaf("labels", "write a labelling worksheet; grades stay null until you write them")
+    labels_leaf.add_argument("--out", help="where to write (default: .dossier/eval/labels-<hash>.json)")
+    labels_leaf.add_argument("--limit", type=int, default=200)
+    eval_leaf = identity_leaf("eval", "score the ranking against a labels file; fails below the baseline")
+    eval_leaf.add_argument("--labels", help="the labels file a person filled")
+    eval_leaf.add_argument("--k", type=int, default=10, help="cutoff for nDCG/precision (default 10)")
+    eval_leaf.add_argument("--source", choices=["auto", "postings", "corpus"], default="auto",
+                           help="score archived postings (default) or the captured corpus")
+    eval_leaf.add_argument("--baseline", help="fail when a metric drops below this recorded file")
+    eval_leaf.add_argument("--write-baseline", help="record the current metrics as the baseline")
+    identity.set_defaults(handler=_identity)
+
+    def feed_leaf(name: str, help_text: str) -> argparse.ArgumentParser:
+        child = feeds_sub.add_parser(name, help=help_text)
+        child.add_argument("--root", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+        child.add_argument("--json", action="store_true")
+        return child
+
+    feed_leaf("list", "which boards have a public endpoint, and which are refused")
+    feed_fetch = feed_leaf("fetch", "fetch one public board into <source>_data/all_jobs.json")
+    feed_fetch.add_argument("source")
+    feed_fetch.add_argument("--board", default="", help="the board or site slug")
+    feed_fetch.add_argument("--out", help="where to write (default: the workspace root)")
+    feed_fetch.add_argument("--limit", type=int, default=500,
+                            help="cap the records written; a truncated fetch is partial")
+    feeds.set_defaults(handler=_feeds)
+
+    scrape = add("scrape", "capture pages a public feed cannot serve")
+    scrape_sub = scrape.add_subparsers(dest="scrape_action", required=True)
+
+    def scrape_leaf(name: str, help_text: str) -> argparse.ArgumentParser:
+        child = scrape_sub.add_parser(name, help=help_text)
+        child.add_argument("--root", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+        child.add_argument("--json", action="store_true")
+        return child
+
+    scrape_leaf("status", "recipes, sessions, engines, and what is due")
+    recipes_leaf = scrape_leaf("recipes", "every runnable recipe, and every broken one")
+    recipes_leaf.add_argument("--workspace-only", action="store_true",
+                              help="hide the recipes shipped with Dossier")
+    login = scrape_leaf("login", "open a window so the user can sign in; store the cookies")
+    login.add_argument("--source", required=True)
+    login.add_argument("--url", required=True, help="the page the user signs in on")
+    login.add_argument("--selector", default="",
+                       help="an element only visible once signed in; ends the wait")
+    login.add_argument("--timeout", type=float, default=180,
+                       help="seconds to wait for the sign-in (default 180)")
+    login.add_argument("--headless", action="store_true",
+                       help="no visible window; only useful with --selector")
+    session_import = scrape_leaf("session-import", "store a Netscape cookie export")
+    session_import.add_argument("--source", required=True)
+    session_import.add_argument("--cookies", required=True, help="cookies.txt from the user's browser")
+    session_import.add_argument("--url", required=True, help="the page those cookies belong to")
+    session_clear = scrape_leaf("session-clear", "delete a stored session")
+    session_clear.add_argument("--source", required=True)
+    capture = scrape_leaf("capture", "capture one page and archive it as a posting")
+    capture.add_argument("url")
+    capture.add_argument("--source", default="", help="board name; resolved from the host first")
+    capture.add_argument("--driver", default="auto", choices=["auto", "obscura", "playwright"])
+    capture.add_argument("--headed", action="store_true", help="show the browser window")
+    capture.add_argument("--session", action="store_true", help="use the saved session for this board")
+    capture.add_argument("--selector", default="", help="wait for this CSS selector")
+    capture.add_argument("--wait-until", default="load",
+                         choices=["load", "domcontentloaded", "networkidle", "commit"])
+    capture.add_argument("--timeout", type=float, default=30)
+    capture.add_argument("--delay-ms", type=int, default=1500,
+                         help="minimum gap between requests to one host")
+    capture.add_argument("--robots", action=argparse.BooleanOptionalAction, default=None,
+                         help="obey robots.txt (default) or record that you asked it not to")
+    capture.add_argument("--challenge", default=None,
+                         choices=["auto", "block", "await", "stealth", "stealth-await", "solve"],
+                         help="how to answer a human-verification interstitial (default: the workspace's policy)")
+    capture.add_argument("--await", dest="await_seconds", type=float, default=None,
+                         help="seconds a challenge page may be given to clear itself")
+    capture.add_argument("--min-match", type=int, default=None,
+                         help="archive only if relevance to your identity is at least this "
+                              "(0-100); a filtered page is reported, not archived")
+    capture.add_argument("--no-screenshot", action="store_true")
+    capture.add_argument("--refresh", action="store_true",
+                         help="re-capture a URL that already has a posting")
+    run = scrape_leaf("run", "walk a recipe: list pages, then each item")
+    run.add_argument("--recipe", help="recipe id (dossier scrape recipes lists them)")
+    run.add_argument("--due", action="store_true", help="run every recipe whose cadence elapsed")
+    run.add_argument("--max-recipes", type=int, default=5)
+    run.add_argument("--limit", type=int, help="cap the items captured")
+    run.add_argument("--pages", type=int, help="cap the listing pages walked")
+    run.add_argument("--driver", default="auto", choices=["auto", "obscura", "playwright"])
+    run.add_argument("--headed", action="store_true")
+    run.add_argument("--delay-ms", type=int)
+    run.add_argument("--no-screenshot", action="store_true")
+    run.add_argument("--refresh", action="store_true")
+    run.add_argument("--challenge", default=None,
+                     choices=["auto", "block", "await", "stealth", "stealth-await", "solve"],
+                     help="override the recipe's challenge policy for this run")
+    run.add_argument("--await", dest="await_seconds", type=float, default=None)
+    run.add_argument("--min-match", type=int, default=None,
+                     help="archive only items scoring at least this (0-100)")
+    scrape.set_defaults(handler=_scrape)
+
+    panel = add("panel", "seven reviewers score a resume and quote the line that cost you")
+    panel.add_argument("--resume", required=True, help="the resume, relative to the workspace")
+    panel.add_argument("--posting", help="the job posting, relative to the workspace")
+    panel.add_argument("--role", help="the target role, when the posting does not name it")
+    panel.set_defaults(handler=_panel)
     tailor = add("tailor", "document mechanics")
     tailor_sub = tailor.add_subparsers(dest="tailor_action", required=True)
     inspect = tailor_sub.add_parser("inspect")
     inspect.add_argument("docx")
     blocks = tailor_sub.add_parser("blocks")
     blocks.add_argument("docx")
+    fields_leaf = tailor_sub.add_parser("fields", help="list a template's {{placeholders}}")
+    fields_leaf.add_argument("--template", required=True)
+    template_leaf = tailor_sub.add_parser("template", help="fill the user's own .docx template")
+    template_leaf.add_argument("--template", required=True)
+    template_leaf.add_argument("--spec", required=True, help="JSON: {fields: {...}, replace: {...}}")
+    template_leaf.add_argument("--out", required=True)
+    template_leaf.add_argument("--allow-leftovers", action="store_true",
+                               help="write the document even if placeholders remain")
     replace = tailor_sub.add_parser("replace")
     replace.add_argument("--base", required=True)
     replace.add_argument("--out", required=True)
@@ -802,7 +1635,27 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _use_utf8_stdio() -> None:
+    """Print UTF-8 regardless of the console's legacy codepage.
+
+    On Windows the default stdout encoding is cp1252, which both mangles the
+    em dashes the reports use and raises UnicodeEncodeError on any character it
+    cannot map, so a captured posting containing an arrow, a CJK employer name
+    or an emoji would crash a reporting command. `errors="replace"` guarantees
+    a degraded glyph rather than a traceback.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _use_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = getattr(args, "handler", None)

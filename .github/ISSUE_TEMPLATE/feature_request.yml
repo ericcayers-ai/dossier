@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a capability or improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dossier deliberately splits mechanical work (the engine) from judgement
+        (the language model). Requests that move a gate or a validation into a
+        prompt are unlikely to be accepted — say which side of that line your
+        request falls on.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the job-search task that is currently awkward or manual.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: What should happen, from the user's point of view.
+    validations:
+      required: true
+  - type: dropdown
+    id: side
+    attributes:
+      label: Which side owns it?
+      options:
+        - Engine (state, gates, determinism)
+        - Model (brief, judgement, drafting)
+        - Both — needs a new contract
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Existing commands, workarounds, or prior art.
+    validations:
+      required: false

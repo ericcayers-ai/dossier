@@ -228,15 +228,36 @@ def analyze(posting_text: str, resume_text: str) -> dict:
     return result
 
 
-def write(posting_path: Path, resume_path: Path, out_path: Path) -> dict:
-    result = analyze(
-        Path(posting_path).read_text(encoding="utf-8", errors="replace"),
-        Path(resume_path).read_text(encoding="utf-8", errors="replace"),
-    )
+def write(posting_path: Path, resume_path: Path, out_path: Path,
+          root: Path | str | None = None) -> dict:
+    """Classify one posting against a resume extract and write the report.
+
+    A posting is third-party text, so it is read through
+    `sources.read_posting` — the gate holds here (`posting-is-data`), not only in
+    the CLI command a human remembers to run. The report replaces any previous
+    one, so the superseded file is filed in the trash first.
+    """
+    from ..safety import trash_then_write_text
+    from .sources import is_posting, read_posting
+
+    posting = Path(posting_path)
+    findings: list[dict] = []
+    if is_posting(posting):
+        seen = read_posting(posting)
+        text = seen["clean"]
+        findings = seen["findings"]
+    else:
+        text = posting.read_text(encoding="utf-8", errors="replace")
+
+    result = analyze(text, Path(resume_path).read_text(encoding="utf-8", errors="replace"))
     result["posting"] = str(posting_path)
     result["resume"] = str(resume_path)
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(out_path).write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    if findings:
+        result["posting_findings"] = findings
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    trash_then_write_text(Path(root) if root is not None else out.parent, out,
+                          json.dumps(result, indent=2, ensure_ascii=False))
     return result
 
 

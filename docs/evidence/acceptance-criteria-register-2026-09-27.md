@@ -22,7 +22,7 @@ Evidence rule used throughout: every requirement and session id below is quoted 
 | session id | date | title | profile | genuine USER turns | topic / in-scope basis |
 |---|---|---|---|---|---|
 | `20260825_220817_c174c0` | 2026-08-25 | Programs folder audit / memory base | default | 3 | **Cited only as origin of the no-MCP requirement** (`no more signing into these mcps i dont need mcps`). Not a job-search session; deliberately not counted in the 30. |
-| `20260826_192045_036ec9` | 2026-08-26 | Humanize resume wording | default | 1 | Attaches `OneDrive/Documents/Documents/Resume Normal Copy.docx` and invokes `/humanizer` — the first resume-text work. |
+| `20260826_192045_036ec9` | 2026-08-26 | Humanize resume wording | default | 1 | Attaches `<resume-corpus-root>/Resume Normal Copy.docx` and invokes `/humanizer` — the first resume-text work. |
 | `20260827_023310_e8919f` | 2026-08-27 | Auto-tailor resume for Waikato jobs | default | 61 | The originating resume-tailoring session: SJS scrape, base-docx rule, developer-identity doc, skill authoring, 20-industry cap, cover-letter/identity/skill requirements. |
 | `20260827_132059_1a632f` | 2026-08-27 | Gather Hermes agent session context and continue all tasks | default | 6 | **Borderline inclusion.** No own user turn names a job term; the resume run is carried in via session replay (78 job-term matches, all in tool output replaying `20260827_023310_e8919f`'s prompt). |
 | `20260828_044208_7f5b7b` | 2026-08-28 | expand this from a developer identity to a… | default | 1 | Identity-doc expansion explicitly sourced from `[redacted: personal LinkedIn URL]`. |
@@ -93,7 +93,7 @@ Status vocabulary: `stated` (stands as last stated), `later corrected` (a later 
 | 28 | "the base to tailor from is called normal copy, and my developer identity (make sure that is included in the skill but generalized too)" | `20260828_160029_b22eca` | 2026-08-28 | stated |
 | 29 | "make sure when these resumes are generated as well that all it does is replace the text in the docx but the styles format and layout arent changed and it is verified there is no text overflow etc" | `20260828_160029_b22eca` | 2026-08-28 | stated |
 | 30 | "find all my generated resumes and redo them so they match everything the skill offers" | `20260828_160029_b22eca` | 2026-08-28 | stated |
-| 31 | "continue using the latest updated resume tailoring skill with all my <workspace> and <home>\OneDrive\Documents\Documents files please. generate more resumes perhaps" | `20260828_164736_7672b9` | 2026-08-28 | stated |
+| 31 | "continue using the latest updated resume tailoring skill with all my <resume-corpus-root> and <resume-corpus-root> files please. generate more resumes perhaps" | `20260828_164736_7672b9` | 2026-08-28 | stated |
 | 32 | "i want to look through seek nz, indeed, trademe jobs, literally all available main job searches" | `20260828_164736_7672b9` | 2026-08-28 | stated |
 | 33 | "go through all job search sites including sjs indeed and trademe and seek etc for remote jobs please" | `20260828_164736_7672b9` | 2026-08-28 | stated |
 | 34 | "ensure that i use the `https://github.com/giussepe198/trademe-mcp` as well as any other available mcp as first priority like indeed mcp protocol etc" (verbatim, minus the `@url:` markup around the link) | `20260828_164736_7672b9` | 2026-08-28 | **later corrected** |
@@ -194,12 +194,12 @@ The user's actual words are `20260828_160029_b22eca` "make sure this skill doesn
 
 | store | path | readable | size at read time |
 |---|---|---|---|
-| default | `<home>\AppData\Local\hermes\state.db` | yes | ≈1,239 sessions / ≈210,800 messages (live store; the count moved by 1–2 during the audit) |
+| default | `<hermes-home>\state.db` | yes | ≈1,239 sessions / ≈210,800 messages (live store; the count moved by 1–2 during the audit) |
 | coder | `…\profiles\coder\state.db` | yes | 204 sessions / 19,427 messages |
 | designer | `…\profiles\designer\state.db` | yes | 66 sessions / 1,542 messages |
 | orchestrator | `…\profiles\orchestrator\state.db` | yes | 221 sessions / 14,413 messages |
 
-**No session store was missing or unreadable.** `<home>\AppData\Local\hermes\profiles\.deleted\` exists and was **not** read (out of scope). `projects.db` and `verification_evidence.db` exist in each profile directory and were **not** read — they are not message stores. Read-only means uncommitted `-wal` frames are included but nothing was checkpointed, vacuumed or altered.
+**No session store was missing or unreadable.** `<hermes-home>\profiles\.deleted\` exists and was **not** read (out of scope). `projects.db` and `verification_evidence.db` exist in each profile directory and were **not** read — they are not message stores. Read-only means uncommitted `-wal` frames are included but nothing was checkpointed, vacuumed or altered.
 
 ### Explicitly NOT classified as in scope (with the reason)
 
@@ -211,7 +211,7 @@ The user's actual words are `20260828_160029_b22eca` "make sure this skill doesn
 - **12 `cron_d68f8f98e5cd_*` "Morning briefing" sessions** (Sep 01–27) load the `office-productivity` hub whose description names resume/CV/ATS/LinkedIn, so they show up in any keyword sweep. They are automated cron runs: **zero genuine user turns**. Left out of the 30.
 - **coder:** 0 in scope. Its 12 candidates are task-titled engineering sessions where `resume`/`tailor` appear incidentally.
 - **designer:** 0 in scope. Title-sweep false positives only: `D2.2 Apply the D1.3 failure-state copy spec…` (`20260920_211911_8aac69`, `20260920_212014_623b05`, `20260921_002821_d83378`).
-- **orchestrator:** 0 in scope. False positive: `Fix quota guard repair breaker (C1/C3) — hard-cap 3, resume-after-restore only` (`20260921_215256_b90d71`) — "resume" is a verb, though that session's tool output does quote imported ai-job-search material (`/Users/ericc/ai-job-search-final-small-segments/098.txt`).
+- **orchestrator:** 0 in scope. False positive: `Fix quota guard repair breaker (C1/C3) — hard-cap 3, resume-after-restore only` (`20260921_215256_b90d71`) — "resume" is a verb, though that session's tool output does quote imported ai-job-search material (`<imported-corpus>/098.txt`).
 
 ### Sessions included but flagged borderline (so they are visible, not silently added)
 

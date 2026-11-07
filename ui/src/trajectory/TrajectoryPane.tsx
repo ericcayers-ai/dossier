@@ -125,18 +125,19 @@ export default function TrajectoryPane(){
   if(!graph)return <section className="trajectory-pane"><h1>Trajectory</h1><div className="trajectory-message" role="alert">{error||'The trajectory graph is unavailable.'}<button type="button" onClick={()=>void reload()}>Retry</button></div></section>;
 
   const actionable=graph.nodes.filter(node=>node.actionable).length;
+  const emptyTypes=groups.filter(group=>!group.nodes.length).map(group=>TYPE_LABEL[group.type].toLowerCase());
   const blocked=graph.nodes.filter(node=>node.blocked_by?.length).length;
   return <section className="trajectory-pane" aria-labelledby="trajectory-title">
     <header className="trajectory-head">
-      <div><h1 id="trajectory-title">Trajectory</h1><p>Build evidence-backed pathways from experience through relationships and opportunities. Sources are read-only; status changes are explicit.</p></div>
-      <div className="trajectory-counts" aria-label="Graph summary"><span><b>{graph.nodes.length}</b> nodes</span><span><b>{graph.links.length}</b> links</span><span><b>{actionable}</b> actionable</span><span><b>{blocked}</b> blocked</span></div>
+      <div><h1 id="trajectory-title">Opportunity</h1></div>
+      <div className="trajectory-counts" aria-label="Graph summary"><span><b>{graph.nodes.length}</b> nodes</span><span><b>{graph.links.length}</b> links</span><span><b>{actionable}</b> actionable</span><span><b>{blocked}</b> blocked</span>{graph.nodes.length>0&&graph.links.length===0&&<span className="trajectory-hint">no links yet: every step stands alone</span>}</div>
     </header>
 
     <div className="trajectory-toolbar" aria-label="Trajectory actions">
       <button type="button" onClick={()=>void runSync()} disabled={saving}>{saving?'Working…':'Sync workspace sources'}</button>
-      <button type="button" onClick={()=>void exportTree('ascii')}>Export ASCII</button>
-      <button type="button" onClick={()=>void exportTree('mermaid')}>Export Mermaid</button>
-      <button type="button" onClick={()=>void generatePacket()} disabled={!graph.nodes.length}>Generate Next Branch</button>
+      <button type="button" onClick={()=>void exportTree('ascii')}>Export as ASCII</button>
+      <button type="button" onClick={()=>void exportTree('mermaid')}>Export as Mermaid</button>
+      <button type="button" onClick={()=>void generatePacket()} disabled={!graph.nodes.length}>Generate next branch</button>
       <label className="trajectory-search">Find nodes<input type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Title, employer, location or ID" /></label>
     </div>
 
@@ -147,6 +148,9 @@ export default function TrajectoryPane(){
     <div className="trajectory-workspace">
       <div className="trajectory-groups" aria-label="Career pathway groups">
         {groups.map(group=>{
+          /* A group with nothing in it is three lines about an absence. The types
+             that are still empty are named once, underneath the list. */
+          if(!group.nodes.length)return null;
           const visible=group.type==='opportunity'&&!query?group.nodes.slice(0,opportunityLimit):group.nodes;
           const isCollapsed=group.type==='opportunity'&&!query&&group.nodes.length>opportunityLimit;
           return <details className="trajectory-group" key={group.type} open={!isCollapsed}>
@@ -159,7 +163,7 @@ export default function TrajectoryPane(){
                 const summaryMeta=[asText(node.data.employer),asText(node.data.location),node.data.fit?`Fit ${asText(node.data.fit)}`:'',asText(node.data.source)].filter((value):value is string=>Boolean(value));
                 return <article className={`trajectory-node state-${node.state}`} key={node.id}>
                   <div className="trajectory-node-top"><span className="trajectory-node-type">{node.type}</span><label className="trajectory-state-control">State<select aria-label={`State for ${node.title}`} value={node.state} disabled={saving} onChange={event=>void changeState(node,event.target.value as TrajectoryState)}>{STATES.map(value=><option value={value} key={value}>{value}</option>)}</select></label></div>
-                  <h3>{node.title}</h3>
+                  <h2>{node.title}</h2>
                   <code className="trajectory-id">{node.id}</code>
                   {node.date&&<p className="trajectory-meta">Date: {node.date}</p>}
                   {summaryMeta.length>0&&<p className="trajectory-meta trajectory-meta-list">{summaryMeta.map(value=><span key={value}>{value}</span>)}</p>}
@@ -171,7 +175,7 @@ export default function TrajectoryPane(){
                   {node.artifacts.length>0&&<details className="trajectory-artifacts"><summary>Attached artifacts ({node.artifacts.length})</summary><ul>{node.artifacts.map(path=><li key={path}><a href={api.raw(path)} target="_blank" rel="noreferrer">{path}</a></li>)}</ul></details>}
                   <div className="trajectory-node-actions"><button type="button" onClick={()=>setParentId(node.id)} aria-label={`Use ${node.title} as prerequisite`}>Use as prerequisite</button><button type="button" onClick={()=>setChildId(node.id)} aria-label={`Use ${node.title} as next step`}>Use as next step</button></div>
                 </article>;
-              }):<p className="trajectory-empty">No {TYPE_LABEL[group.type].toLowerCase()} yet.</p>}
+              }):null}
               {group.type==='opportunity'&&group.nodes.length>visible.length&&<button type="button" className="trajectory-more" onClick={()=>setOpportunityLimit(limit=>limit+100)}>Show {Math.min(100,group.nodes.length-visible.length)} more opportunities ({group.nodes.length-visible.length} remaining)</button>}
             </div>
           </details>;
@@ -179,6 +183,7 @@ export default function TrajectoryPane(){
       </div>
 
       <aside className="trajectory-forms" aria-label="Create nodes and links">
+        {emptyTypes.length>0&&<p className="trajectory-empty">{`Nothing yet under ${emptyTypes.join(', ')}.`}</p>}
         <form className="trajectory-form" onSubmit={event=>void addNode(event)}>
           <h2>Add a node</h2>
           <label>Type<select value={nodeType} onChange={event=>setNodeType(event.target.value as TrajectoryNodeType)}>{NODE_TYPES.map(type=><option value={type} key={type}>{type}</option>)}</select></label>

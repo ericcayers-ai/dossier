@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import copy
 import re
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from ..safety import trash_if_present, trash_then_copy
 
 EMU_PER_POINT = 12700
 DEFAULT_FONT = "Calibri"
@@ -25,6 +26,43 @@ DEFAULT_FONT = "Calibri"
 
 class BaseDocumentMissing(RuntimeError):
     """Raised instead of falling back to a generic template."""
+
+
+def _trash_root(root: Path | str | None, base: Path) -> Path:
+    """The workspace an overwrite in this module belongs to.
+
+    A caller that knows its workspace passes it. Otherwise the base document's
+    folder is used, because `find_base_documents` looks for the base at the
+    workspace root, so that folder is the workspace the output belongs to.
+    """
+    if root is not None:
+        return Path(root).expanduser()
+    return Path(base).expanduser().resolve().parent
+
+
+#: Every field a cover-letter spec declares.
+COVER_LETTER_FIELDS = ("name", "contact", "date_line", "recipient", "greeting", "body", "signoff")
+
+
+def cover_letter_spec(payload) -> tuple[dict, list[str]]:
+    """Split a user-supplied cover-letter spec into declared fields and the rest.
+
+    A spec is a JSON file a person writes, so it can carry anything — `role` and
+    `employer` are the two most natural things to put in one, and passing them
+    straight through as `**kwargs` turned the documented command into a
+    traceback. Undeclared keys are returned so the caller can name them (never
+    silently dropped), and a missing declared field is reported as the error it
+    is rather than surfacing as a `TypeError` for a missing argument.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("a cover-letter spec must be a JSON object")
+    missing = [field for field in COVER_LETTER_FIELDS if field not in payload]
+    if missing:
+        raise ValueError(
+            "the cover-letter spec is missing required field(s): " + ", ".join(missing))
+    declared = {field: payload[field] for field in COVER_LETTER_FIELDS}
+    ignored = sorted(str(key) for key in payload if key not in COVER_LETTER_FIELDS)
+    return declared, ignored
 
 
 def _require(path: Path) -> Path:
@@ -237,19 +275,21 @@ class CloneResult:
 
 
 def apply_replacements(base: Path, output: Path, replacements: dict[str, str],
-                       allow_substring: bool = False) -> CloneResult:
+                       allow_substring: bool = False,
+                       root: Path | str | None = None) -> CloneResult:
     """Copy the base and swap named paragraphs. Every other byte is preserved.
 
     A replacement that matches nothing is reported as missed rather than
     silently skipped — a tailoring pass that quietly did nothing is worse than
-    one that fails.
+    one that fails. An output that already exists is copied over only after it
+    has been filed in `.dossier/trash/` (gate: `never-only-copy`).
     """
     base = _require(base)
     output = Path(output)
     if output.resolve() == base.resolve():
         raise ValueError("refusing to overwrite the base document in place")
     output.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(base, output)
+    trash_then_copy(_trash_root(root, base), base, output)
 
     document = _document(output)
     remaining = dict(replacements)
@@ -275,7 +315,7 @@ def apply_replacements(base: Path, output: Path, replacements: dict[str, str],
 
 def reorder_cell_blocks(base: Path, output: Path, table_index: int, row: int, column: int,
                         blocks: dict[str, list[int]], order: list[str],
-                        separator_index: int) -> dict:
+                        separator_index: int, root: Path | str | None = None) -> dict:
     """Move whole blocks within a table cell, preserving per-paragraph formatting.
 
     The separator gotcha, verified live: if each block keeps its own trailing
@@ -288,7 +328,7 @@ def reorder_cell_blocks(base: Path, output: Path, table_index: int, row: int, co
     if output.resolve() == base.resolve():
         raise ValueError("refusing to overwrite the base document in place")
     output.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(base, output)
+    trash_then_copy(_trash_root(root, base), base, output)
 
     document = _document(output)
     cell = document.tables[table_index].cell(row, column)
@@ -326,7 +366,8 @@ def reorder_cell_blocks(base: Path, output: Path, table_index: int, row: int, co
 
 
 def cover_letter(base: Path, output: Path, *, name: str, contact: str, date_line: str,
-                 recipient: str, greeting: str, body: list[str], signoff: str) -> dict:
+                 recipient: str, greeting: str, body: list[str], signoff: str,
+                 root: Path | str | None = None) -> dict:
     """Build a one-page letter that reads as the resume's sibling.
 
     Shared with the resume so the pair looks like one person's paperwork: the
@@ -408,6 +449,9 @@ def cover_letter(base: Path, output: Path, *, name: str, contact: str, date_line
     document.add_paragraph()
     style_run(document.add_paragraph().add_run(signoff), size=base_size)
 
+    # A re-run replaces the previous letter, so the old bytes are filed first,
+    # in the workspace the caller named (or the base document's folder).
+    trash_if_present(_trash_root(root, base), output)
     document.save(str(output))
     return {
         "output": str(output),
@@ -498,7 +542,10 @@ def import_base(source: Path, root: Path | str, name: str = "base-resume.docx",
     spec = layout_spec(source)
     if not spec["paragraphs"]:
         raise BaseDocumentMissing(f"{source} has no readable paragraphs; it is not a usable base.")
-    shutil.copy2(source, target)
+    # `overwrite=True` is consent to replace, not consent to lose: the file being
+    # replaced is kept in the trash. The refusal path above writes nothing at all,
+    # which is why it does not trash anything.
+    trash_then_copy(root, source, target)
     return {
         "imported": True,
         "source": str(source),
@@ -508,3 +555,154 @@ def import_base(source: Path, root: Path | str, name: str = "base-resume.docx",
         "tables": spec["tables"],
         "original_untouched": True,
     }
+
+
+# -- templates -------------------------------------------------------------
+#
+# A user's own document is not only a "base" to clone: it can be a form to fill.
+# The difference matters. `apply_replacements` swaps named paragraphs in a copy of
+# the user's resume; `fill_template` fills `{{placeholders}}` in a copy of the
+# user's *template*, leaving every other byte alone. Both preserve the layout,
+# because both start from the user's file — neither invents one.
+
+import re as _re
+from ..copy import plural
+
+#: `{{Name}}`, `{{ Name }}`, `{{objective}}`. Deliberately narrow: a token is a
+#: short label, not a sentence, so a document that merely contains braces is not
+#: mistaken for a template.
+FIELD_TOKEN = _re.compile(r"\{\{\s*([A-Za-z0-9_.\- ]{1,80}?)\s*\}\}")
+
+
+class TemplateFillError(ValueError):
+    """A template that would be written with unfilled placeholders."""
+
+    def __init__(self, message: str, leftovers: list[str], report: dict):
+        super().__init__(message)
+        self.leftovers = leftovers
+        self.report = report
+
+
+def template_fields(template: Path) -> list[str]:
+    """Every placeholder in a document, in first-appearance order, deduplicated."""
+    seen: list[str] = []
+    for _location, paragraph in iter_paragraphs(_document(template)):
+        for match in FIELD_TOKEN.finditer(paragraph.text):
+            key = match.group(1).strip()
+            if key not in seen:
+                seen.append(key)
+    return seen
+
+
+def _token(key: str):
+    return _re.compile(r"\{\{\s*" + _re.escape(key) + r"\s*\}\}")
+
+
+def _substitute_paragraph(paragraph, fields: dict[str, str]) -> tuple[int, str]:
+    """Fill one paragraph, preferring a run-level swap so its formatting survives.
+
+    A token inside a single run is replaced *in that run*, so a bold name stays
+    bold. A token split across runs (Word does this constantly) cannot be replaced
+    run-wise, so the paragraph's text is rebuilt with the first run's formatting —
+    visible, and better than leaving `{{Name}}` in a document someone will send to
+    an employer.
+
+    Returns `(tokens_replaced, mode)` with mode `run`, `paragraph` or `none`.
+    """
+    text = paragraph.text
+    if "{{" not in text:
+        return 0, "none"
+    total = sum(len(_token(key).findall(text)) for key in fields if _token(key).search(text))
+    if total:
+        run_hits = 0
+        for key in fields:
+            token = _token(key)
+            for run in paragraph.runs:
+                current = run.text or ""
+                if token.search(current):
+                    run_hits += len(token.findall(current))
+                    run.text = token.sub(lambda _m, value=fields[key]: value, current)
+        if run_hits == total:
+            return total, "run"
+    if not FIELD_TOKEN.search(text):
+        return 0, "none"
+    rebuilt = FIELD_TOKEN.sub(
+        lambda match: fields.get(match.group(1).strip(), match.group(0)), text)
+    _set_paragraph_text(paragraph, rebuilt)
+    return total, "paragraph"
+
+
+def fill_template(template: Path | str, output: Path | str, spec: dict,
+                  root: Path | str | None = None, *,
+                  strict: bool = True) -> dict:
+    """Fill a user-supplied `.docx` template from a spec, preserving its layout.
+
+    `spec` is `{"fields": {name: value}}` and optionally `{"replace": {old: new}}`
+    for a paragraph the template writer wants swapped whole rather than tokenised.
+    The output is the user's template with values written in; nothing is rebuilt,
+    restyled or regenerated.
+
+    With `strict` (the default) a template that would still contain `{{…}}` is
+    **not written at all**: a half-filled resume that renders beautifully is still
+    a half-filled resume, and the leftover list is far more useful than the file.
+    """
+    template = _require(Path(template))
+    output = Path(output)
+    if output.resolve() == template.resolve():
+        raise ValueError("refusing to overwrite the template in place")
+    if not isinstance(spec, dict):
+        raise ValueError("spec must be a JSON object with a 'fields' map")
+    fields = {str(key).strip(): str(value) for key, value in (spec.get("fields") or {}).items()}
+    swaps = {str(key): str(value) for key, value in (spec.get("replace") or {}).items()}
+    if not fields and not swaps:
+        raise ValueError("the spec has no 'fields' and no 'replace' entries; nothing to fill")
+
+    document = _document(template)
+    declared = template_fields(template)
+    unused = sorted(set(fields) - set(declared))
+    replaced: dict[str, int] = {}
+    modes: dict[str, int] = {}
+    touched = 0
+    for _location, paragraph in iter_paragraphs(document):
+        before = paragraph.text
+        if not before:
+            continue
+        count, mode = _substitute_paragraph(paragraph, fields)
+        if count:
+            touched += 1
+            for key in fields:
+                hits = len(_token(key).findall(before))
+                if hits:
+                    replaced[key] = replaced.get(key, 0) + hits
+            modes[mode] = modes.get(mode, 0) + 1
+        swap = swaps.get(before.strip())
+        if swap is not None:
+            _set_paragraph_text(paragraph, swap)
+            touched += 1
+
+    leftovers = sorted({match.group(0) for _location, paragraph in iter_paragraphs(document)
+                        for match in FIELD_TOKEN.finditer(paragraph.text)})
+    report = {
+        "template": str(template),
+        "output": str(output),
+        "fields": len(fields),
+        "declared": sorted(declared),
+        "replaced": replaced,
+        "mode": modes,
+        "unused": unused,
+        "leftovers": leftovers,
+        "paragraphs_touched": touched,
+        "strict": strict,
+    }
+    if leftovers and strict:
+        raise TemplateFillError(
+            f"{template.name} still contains {plural(len(leftovers),'unfilled placeholder')}: "
+            f"{', '.join(leftovers[:8])}. Supply them in the spec, or pass "
+            "--allow-leftovers to write the partial document.", leftovers, report)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    trash_then_copy(_trash_root(root, template), template, output)
+    document.save(str(output))
+    report["written"] = True
+    report["bytes"] = output.stat().st_size
+    return report

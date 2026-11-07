@@ -234,6 +234,53 @@ def test_cursor_pack_keeps_frontmatter_at_the_top(tmp_path):
     assert text.startswith("---\n")
 
 
+def test_every_pack_is_listed_in_the_injection_doc_with_its_own_header(tmp_path):
+    """The generated packs must agree with the generator that produced them.
+
+    Three defects this locks down: INJECT.md listed a hand-kept four-name vendor
+    list while `packs()` emitted eight (it omitted the Claude skill pack, the
+    Cursor rule and both docs); the prescribed header was written only when a pack
+    *created* a file, so AGENTS.md and GEMINI.md came out byte-identical with no
+    H1; and `verify_block` could not see a wrong header because it only read the
+    managed body.
+    """
+    root = _make_workspace(tmp_path / "Tailored")
+    results = adapters.write_all(root)
+    packs = adapters.packs(root)
+    assert len(packs) > 4
+
+    inject = (root / "docs" / "agent" / "INJECT.md").read_text(encoding="utf-8")
+    for rel in packs:
+        if rel == "docs/agent/INJECT.md":
+            continue
+        assert f"`{rel}`" in inject, f"{rel} is generated but not listed in INJECT.md"
+
+    for rel, content in packs.items():
+        text = (root / rel).read_text(encoding="utf-8")
+        header = content.get("header", "")
+        if header:
+            assert text.startswith(header), (
+                f"{rel} does not open with the header the generator prescribes"
+            )
+        else:
+            # A header-less pack still has to carry a title inside its block.
+            assert "\n# " in text, f"{rel} carries no H1 at all"
+
+    agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+    gemini = (root / "GEMINI.md").read_text(encoding="utf-8")
+    assert agents != gemini, "two packs with different prescribed titles are identical"
+    assert agents.startswith("# Agent instructions")
+    assert gemini.startswith("# Gemini instructions")
+
+    # A pack whose header is later damaged must fail --check.
+    (root / "AGENTS.md").write_text(agents.replace("# Agent instructions", "# Wrong title", 1),
+                                    encoding="utf-8")
+    assert adapters.verify_block(root, "AGENTS.md") is False
+    (root / "AGENTS.md").write_text(agents, encoding="utf-8")
+    assert adapters.verify_block(root, "AGENTS.md") is True
+    assert all(adapters.verify_block(root, rel) for rel in results)
+
+
 # -- loop ------------------------------------------------------------------
 
 def test_next_unit_prefers_the_missing_base_document(tmp_path):
@@ -264,7 +311,7 @@ def test_next_unit_reports_no_outstanding_defect_on_a_clean_workspace(tmp_path):
         {"id": 1, "title": "A", "employer": "X", "fit": "High"},
     ]), encoding="utf-8")
     (root / "keywords-Acme-Engineer.md").write_text("# keywords\n", encoding="utf-8")
-    (root / "Ayers_Resume_Acme_Engineer.docx").write_bytes(b"")
+    (root / "sample_resume_Acme_Engineer.docx").write_bytes(b"")
     unit = loop.next_unit(root)
     assert unit["mode"] in {"audit", "keywords", "render", "followup", "build", "sources"}
 
@@ -287,7 +334,7 @@ def test_commit_rejects_a_handback_missing_fields(tmp_path):
     root = _make_workspace(tmp_path / "Tailored")
     result = loop.commit(root, {"mode": "build"})
     assert result["accepted"] is False
-    assert "missing required field" in result["problems"][0]
+    assert "missing" in result["problems"][0] and "required field" in result["problems"][0]
 
 
 def test_commit_rejects_a_completion_claim_without_evidence(tmp_path):
@@ -345,7 +392,38 @@ def test_reset_clears_history_and_says_how_much(tmp_path):
     assert loop.status(root)["sessions"] == 0
 
 
-def test_no_brief_leaks_a_token(tmp_path):
+def test_the_runs_bearer_token_never_reaches_a_brief_pack_handoff_or_status(tmp_path):
+    """`token-never-leaks` names four surfaces, and this checks the real value.
+
+    The previous assertion was `"token" not in rendered.lower() or "bearer" not in
+    rendered.lower()`, which is true whenever either word is absent — it passed on
+    a brief that said "token" — and it never used the run's actual token, so it
+    could not have failed.
+    """
+    from dossier import audit
+    from dossier.config import AppConfig
+    from dossier.db import open_db
+
     root = _make_workspace(tmp_path / "Tailored")
-    rendered = brief.render(brief.build(root, "audit"))
-    assert "token" not in rendered.lower() or "bearer" not in rendered.lower()
+    config = AppConfig.create(root)          # a real per-run sentinel
+    token = config.token
+    config.ensure()
+    assert len(token) > 20, "the sentinel is only useful if it is unguessable"
+
+    connection = open_db(config.db_path)
+    try:
+        handoff = audit.build_handoff(root, connection)
+    finally:
+        connection.close()
+
+    results = adapters.write_all(root)
+    surfaces = {
+        "brief": brief.render(brief.build(root, "audit")),
+        "agent prompt": brief.system_prompt(root),
+        "packs": "\n".join((root / rel).read_text(encoding="utf-8") for rel in results),
+        "handoff": json.dumps(handoff),
+        "status": json.dumps(loop.status(root)),
+    }
+    for name, text in surfaces.items():
+        assert token not in text, f"the run's bearer token leaked into the {name}"
+        assert token[:12] not in text, f"a prefix of the bearer token leaked into the {name}"

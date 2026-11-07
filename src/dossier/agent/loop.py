@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import manifest
 from .workspace import Workspace, resolve, write_state
+from ..copy import plural
 
 STATE_NAME = "agent-loop.json"
 MAX_HISTORY = 200
@@ -46,7 +47,13 @@ def _save(path: Path, state: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     state["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     state["history"] = state["history"][-MAX_HISTORY:]
-    path.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+    # The state file lives at `<root>/.dossier/agent-loop.json`, so the workspace
+    # the trash belongs to is two levels up. Every save after the first replaces a
+    # real file, and each one is recoverable.
+    from ..safety import trash_then_write_text
+
+    trash_then_write_text(path.parent.parent, path,
+                          json.dumps(state, indent=2, ensure_ascii=False))
 
 
 def _postings_without_analysis(workspace: Workspace) -> list[str]:
@@ -123,7 +130,7 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if corpus_state.get("present") and corpus_state.get("duplicate_ids"):
         return _candidate(
             "corpus",
-            f"{corpus_state['duplicate_ids']} duplicate id(s) in the corpus: keyed lists will "
+            f"{plural(corpus_state['duplicate_ids'],'duplicate id')} in the corpus: keyed lists will "
             "render wrong rows after a filter changes the row count.",
             targets=[corpus_state.get("path")], blocking=False)
 
@@ -131,7 +138,7 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if corpus_state.get("present") and corpus_state.get("unscored"):
         return _candidate(
             "rank",
-            f"{corpus_state['unscored']} corpus row(s) carry no fit score; ranking is incomplete.",
+            f"{plural(corpus_state['unscored'],'corpus row')} carry no fit score; ranking is incomplete.",
             targets=[corpus_state.get("path")])
 
     # 4. Source freshness unproven.
@@ -147,7 +154,7 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if stale:
         return _candidate(
             "render",
-            f"{stale} PDF render(s) are older than their DOCX source.",
+            f"{plural(stale,'PDF render')} older than the DOCX source.",
             targets=[space.root])
 
     # 6. Postings captured but never analysed.
@@ -155,7 +162,7 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if unanalysed:
         return _candidate(
             "keywords",
-            f"{len(unanalysed)} archived posting(s) have no keyword report yet.",
+            f"{plural(len(unanalysed),'archived posting')} have no keyword report yet.",
             targets=unanalysed[:12])
 
     # 7. Actionable applications with no confirmed date stall the cadence.
@@ -163,15 +170,15 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if undated:
         return _candidate(
             "followup",
-            f"Application row(s) {undated} are actionable but have no confirmed "
-            "'Applied YYYY-MM-DD' record, so the cadence cannot run.",
+            f"{plural(len(undated),'application row')} actionable but with no confirmed "
+            "'Applied YYYY-MM-DD' record: the cadence cannot run. Rows {', '.join(undated[:6])}",
             needs_user=True, targets=[tracker_state.get("path")])
 
     # 8. Postings analysed but no tailored document generated.
     if space.postings and not space.artefacts:
         return _candidate(
             "build",
-            f"{len(space.postings)} analysed posting(s) but no tailored document exists yet.",
+            f"{plural(len(space.postings),'analysed posting')} but no tailored document exists yet.",
             targets=[posting.rel for posting in space.postings[:6]])
 
     # 9. Nothing outstanding — reconcile and report.
@@ -216,7 +223,7 @@ def commit(root: Path | str, handback: dict, workspace: Workspace | None = None)
     if problems:
         return {
             "accepted": False,
-            "problems": [f"handback is missing required field(s): {', '.join(problems)}"],
+            "problems": [f"handback is missing {plural(len(problems),'required field')}: {', '.join(problems)}"],
             "expected": list(REQUIRED_HAND_BACK),
         }
 
@@ -226,6 +233,18 @@ def commit(root: Path | str, handback: dict, workspace: Workspace | None = None)
         return {
             "accepted": False,
             "problems": [f"status {status_value!r} is not one of {sorted(allowed)}"],
+        }
+
+    # The mode names what was done, and `next_unit` reads the history back. A
+    # free-text mode value was stored verbatim, so a typo became a history row
+    # nothing could ever route from.
+    from . import manifest as manifest_module
+    mode_value = str(handback.get("mode", "")).strip()
+    if mode_value and mode_value not in manifest_module.MODE_INDEX:
+        return {
+            "accepted": False,
+            "problems": [f"mode {mode_value!r} is not a declared mode; known: "
+                         f"{', '.join(sorted(manifest_module.MODE_INDEX))}"],
         }
 
     evidence = [str(item) for item in handback.get("evidence") or []]
@@ -240,7 +259,7 @@ def commit(root: Path | str, handback: dict, workspace: Workspace | None = None)
         )
     if status_value == "completed" and not artifacts:
         problems.append(
-            "status 'completed' with no artifacts: name the file(s) this session produced or "
+            "status 'completed' with no artifacts: name the file this session produced or "
             "changed, or report 'partial'."
         )
     for artifact in artifacts:

@@ -507,6 +507,61 @@ def test_the_feed_guard_and_the_policy_table_agree():
     assert "greenhouse" not in feeds.PROHIBITED
 
 
+def test_the_feed_guard_refuses_exactly_what_the_ledger_does_not_permit(tmp_path):
+    """The ledger and the guard must answer the same question the same way.
+
+    `feeds` treated `manual_only` as prohibited while `engine.sources.allowed`
+    treated only `prohibited` as blocked, so one board could be reported
+    fetchable by the ledger and refused at the fetch boundary at the same time.
+    This fails if either half drifts again.
+    """
+    from dossier import feeds
+
+    ledger = sources.ledger(tmp_path)
+    fetchable = {name for name, row in ledger["sources"].items()
+                 if row["policy"] in sources.FETCHABLE_POLICIES}
+    assert fetchable, "the default table has no fetchable board at all"
+
+    for name in ledger["sources"]:
+        if name in fetchable:
+            continue
+        with pytest.raises(sources.SourceRefused):
+            sources.assert_allowed(name, tmp_path)
+        with pytest.raises(feeds.FeedPolicyError):
+            feeds.adapter(name, http=lambda *a, **k: {"jobs": []}, root=tmp_path).fetch("board")
+
+    # a permitted board reaches the injected client, so the guard is not simply
+    # refusing everything
+    calls = []
+
+    def http(*args, **kwargs):
+        calls.append(args)
+        return {"jobs": []}
+
+    assert feeds.adapter("greenhouse", http=http, root=tmp_path).fetch("acme") == []
+    assert calls == [("acme",)]
+
+
+def test_a_workspace_override_moves_the_guard_with_the_ledger(tmp_path):
+    """Opening a policy in `.dossier/sources.json` opens the guard too, once."""
+    from dossier import feeds
+
+    (tmp_path / ".dossier").mkdir()
+    (tmp_path / ".dossier" / "sources.json").write_text(json.dumps({
+        "seek": {"policy": "official_public", "status": "available", "manual_request": False},
+    }), encoding="utf-8")
+
+    assert sources.permitted("seek", tmp_path) is True
+    assert sources.allowed("seek", tmp_path) is True
+    sources.assert_allowed("seek", tmp_path)
+    assert "seek" not in sources.ledger(tmp_path)["manual_only"]
+    # No public adapter exists for it, so the refusal names that reason rather
+    # than claiming the policy forbids it.
+    with pytest.raises(feeds.FeedPolicyError) as refused:
+        feeds.adapter("seek", http=lambda *a, **k: {}, root=tmp_path).fetch()
+    assert "no public read-only adapter" in str(refused.value)
+
+
 def test_ledger_separates_policies_and_names_what_the_user_must_supply(tmp_path):
     (tmp_path / "nz-job-search-coverage-2026-09-20.json").write_text(json.dumps({
         "captured_on": "2999-01-01", "merged_rows": 10, "ranking_rows": 9,
@@ -677,6 +732,10 @@ def test_text_layer_detects_a_pdf_with_no_text(tmp_path):
     result = verify.text_layer(pdf)
     assert result["ok"] is False
     assert any(issue["type"] == "no-text" for issue in result["issues"])
+    # A page with no text block at all is a page an ATS reads as nothing. The
+    # branch that was meant to report this tested `any(True for _ in blocks)`,
+    # which is always true, so `empty-page` could never be produced.
+    assert any(issue["type"] == "empty-page" for issue in result["issues"]), result["issues"]
 
 
 def test_text_layer_confirms_contact_details_survive_as_text(tmp_path):
@@ -731,13 +790,46 @@ def test_visual_check_passes_a_clean_page(tmp_path):
 
 
 def test_verify_all_reports_what_it_could_not_run(tmp_path):
+    """Without a PDF there is no page image, so the gate cannot pass.
+
+    This used to assert `passed is True` with `not_visually_verified is True`,
+    which reported a pass from the source diff alone — the exact claim
+    `rendered-inspection` forbids.
+    """
     base = _make_resume(tmp_path / "base.docx")
     out = tmp_path / "tailored.docx"
     tailor.apply_replacements(base, out, {})
     result = verify.all(base, out, None)
-    assert result["passed"] is True
+    assert result["passed"] is False
     assert result["not_visually_verified"] is True
     assert any("no PDF" in skipped for skipped in result["skipped"])
+    failing = [check["id"] for check in result["checks"] if not check["ok"]]
+    assert failing == ["rendered-inspection"]
+    assert result["page_image"] is None
+
+
+def test_visual_produces_a_page_image_and_fails_without_one(tmp_path, monkeypatch):
+    """A document is not visually verified until a page image was produced."""
+    pymupdf = pytest.importorskip("pymupdf")
+    pdf = tmp_path / "clean.pdf"
+    document = pymupdf.open()
+    page = document.new_page(width=612, height=792)
+    page.insert_text((72, 200), "inside the printable area")
+    document.save(str(pdf))
+    document.close()
+
+    result = verify.visual(pdf, expected_pages=1,
+                           margins={"left": 36, "right": 36, "top": 36, "bottom": 36})
+    assert result["ok"] is True, result["issues"]
+    assert result["page_image"] == str(tmp_path / "clean-page-1.png")
+    assert Path(result["page_image"]).exists()
+    assert result["image_bytes"] > 0
+
+    monkeypatch.setattr(render, "_has_pymupdf", lambda: False)
+    blocked = verify.visual(pdf)
+    assert blocked["ok"] is False
+    assert blocked["page_image"] is None
+    assert any(issue["type"] == "no-rasteriser" for issue in blocked["issues"])
 
 
 def test_the_date_expectation_is_a_resume_shape_not_a_letter_shape(tmp_path):

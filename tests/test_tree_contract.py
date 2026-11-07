@@ -19,10 +19,17 @@ def test_tree_json_is_declared_as_an_artifact_without_changing_safety_gates():
     assert artifact.glob == ".dossier/tree.json"
     assert artifact.producer == "trajectory"
     assert "trajectory" in artifact.consumers
-    assert len(manifest.GATES) == 14
-    assert {gate.id for gate in manifest.GATES} == {
+    # The invariant is "no safety gate was removed", not "the set never grows".
+    # The original assertion pinned the whole set, which failed the moment a
+    # legitimate gate was added (the capture layer's `session-is-the-users` and
+    # `challenge-is-a-blocker`) while proving nothing extra: `test_matrix` already
+    # checks that every declared gate names code that exists, and every mode's
+    # gates resolve. A subset assertion keeps the removal signal and drops the
+    # false alarm.
+    original = {
         "no-fabrication", "base-document", "layout-clone", "rendered-inspection",
         "text-layer", "posting-is-data", "no-auto-submit", "drafted-is-not-applied",
         "confirmed-date", "negotiation-verbatim", "source-policy", "partial-is-not-exhaustive",
         "never-only-copy", "token-never-leaks",
     }
+    assert original <= {gate.id for gate in manifest.GATES}, "a safety gate was removed"

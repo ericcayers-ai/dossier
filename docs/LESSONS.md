@@ -70,8 +70,9 @@ watcher as reliable.
 **Actual:** it read a hard-coded `nz-job-search-coverage-2026-09-12.json`, so the
 ledger, the freshness check and the fit-coverage check all reported stale data
 while newer snapshots sat beside it.
-**Rule:** `sources.coverage` and `audit._newest_coverage_file` resolve the newest
-dated file and accept both published schemas.
+**Rule:** `sources.coverage` (`src/dossier/engine/sources.py:200`) resolves the newest
+dated file and accepts both published schemas; the audit reads that resolved snapshot rather
+than naming a file (`src/dossier/audit.py:42`).
 **Test:** `test_ledger_separates_policies_and_names_what_the_user_must_supply`.
 
 ## 6. Bound a crawl by the responses you actually get
@@ -235,8 +236,9 @@ once the workspace had one.
 in a workspace that already had `base-resume.docx`.
 **Why:** the value was written as a filename where the field wanted a key, and
 nothing compared the two lists.
-**Rule:** `manifest.NEED_KEYS` is the closed set, `MANIFEST.USER_SUPPLIED` marks
-the ones only the user holds, and a test rejects any other value.
+**Rule:** `manifest.NEED_KEYS` (`src/dossier/agent/manifest.py:419`) is the closed set,
+`manifest.USER_SUPPLIED` (`manifest.py:432`) marks the ones only the user holds, and a test
+rejects any other value.
 **Test:** `test_every_declared_need_is_a_known_key`.
 
 ## 19. The section a model is told to run first should not be below the fold
@@ -250,3 +252,82 @@ heading hides a section silently; nobody re-reads a rendered packet to notice.
 assert both section uniqueness and that order.
 **Test:** `test_the_rendered_brief_has_no_duplicate_section`,
 `test_the_commands_come_before_the_file_list`.
+
+## 20. A normalized-job graph needs source-version identity, not a bare row number
+
+**Expected:** repeated syncs would retain job links only when the source posting identity was still the same.
+**Actual:** the 1,789-row aggregate has no globally verified stable posting ID; the sample exposes positional `id`s, 1,403 unique URLs, 88 shared URLs, and 190 repeated title/employer pairs. A persisted link keyed only by `id` or by title/employer can move to a different posting after corpus rebuild/reordering.
+**Why:** dedupe IDs are assigned during corpus aggregation, shared URLs are not identities, and duplicate posting names are common.
+
+> **Re-measured 2026-10-11** against `<workspace>/all_boards_data/all_jobs.json` (1,789 rows).
+> **1,403 and 88 hold**: normalizing each URL by stripping `?`/`#` suffixes, folding case and
+> trimming a trailing slash gives 88 collision groups covering 386 rows, and 1,789 − 386 = 1,403.
+> (Raw, un-normalized URLs give 1,772 unique / 18 shared — the 1,403/88 pair is the normalized
+> convention.) **The pair count was wrong**: grouping by exact `(title, employer)` gives **190**
+> repeated groups, and case-folding first also gives **190**; neither convention reaches 195.
+> 190 is used above.
+**Rule:** before syncing opportunities, define a stable source-identity strategy and version it against the exact corpus snapshot. Candidate keys need collision counts and deterministic ambiguity handling; shared URLs and repeated title/employer pairs must never silently become guessed links. Do not persist array positions as cross-sync identities.
+**Test:** add shuffled/reordered-corpus and deliberate-collision tests proving a user's existing tree link cannot silently retarget.
+
+## 21. Store canonical corpus records once; attach foreign keys, not duplicate payloads
+
+**Expected:** importing each unique job once and linking tracker rows would keep the tree compact.
+**Actual:** an initial read-only probe contained 1,789 unique corpus opportunities but repeated each matched tracker record's full details into its opportunity node; attachment auditing showed all 119 exact-path references resolved, though a later 17-row source scan found long raw titles must be retained separately from their display label.
+**Why:** source objects are large, and tracker relationships are many-to-one; display labels are bounded independently from source evidence.
+**Rule:** keep canonical job records in `all_boards_data/all_jobs.json`, store their stable ids and tracker row references on nodes, retain source title verbatim in evidence metadata, and never duplicate full source descriptions into `.dossier/tree.json`. Keep separate tracker opportunity nodes only when a unique exact match is absent.
+**Test:** `test_sync_imports_all_jobs_and_unique_tracker_rows_without_marking_applied`, `test_sync_uses_exact_tracker_artifact_names_and_leaves_sources_read_only`, `test_sync_preserves_long_source_titles_verbatim_without_losing_the_job_row`.
+
+## 22. Prospective planning branches must not block retrospective sequential DAG validation (2026-10-02)
+
+**Expected:** syncing matched tracker rows generates prospective follow-up steps (contact identification, outreach drafting, interview prep, milestone tracking) without breaking graph validation.
+**Actual:** strict chronological order and prerequisite state checks (`active`/`complete` child requiring all parents `complete`) rejected prospective branches because proposal nodes lack historical timestamps and represent prospective intentions rather than completed prerequisites.
+**Why:** a career execution tree combines two distinct semantic domains: immutable historical facts (past jobs, degrees, confirmed dates) and prospective planning proposals. Enforcing historical DAG prerequisites on future proposals creates false validation errors.
+**Rule:** mark generated proposal links with an explicit origin (e.g. `tracker-sync`, `tracker-proposal`). Historical validation rules (chronological ordering, prerequisite completion) apply exclusively to unflagged or retrospective edges. Prospective branches remain non-blocking until explicitly confirmed and transitioned into active steps by the user.
+**Tests:** `test_sync_builds_prospective_sequence_for_uniquely_matched_tracker_jobs_only`, `test_child_is_blocked_until_every_parent_is_complete`.
+
+## 23. A user's search string is not an FTS5 query (2026-11-04)
+
+**Expected:** `/api/search?q=…` answers with matches or nothing, for any input a person types.
+**Actual:** `db.search` passed the raw string into `MATCH`, so `"hello` raised `OperationalError:
+unterminated string`, `a:b` raised `no such column: a`, `*` raised an fts5 syntax error, and
+`/api/search` had no handler — a quote typist received **HTTP 500**.
+**Why:** FTS5's MATCH argument is a query language (phrases, operators, column filters, prefix
+markers); a search box is plain text. No test ever sent a malformed query, and the matrix sweeps
+routes with a benign one.
+**Rule:** build the FTS5 query from extracted word tokens, each quoted, capped at 32; treat an
+`OperationalError` as an empty result, never a server error. A user searching `alpha OR beta` gets
+documents containing both words — the honest reading for a search box.
+**Test:** `test_fragments_a_person_types_never_raise`, `test_the_search_route_answers_instead_of_failing`.
+
+## 24. `x and y` returns `y`, and that became a contract field (2026-11-04)
+
+**Expected:** a capture run reports `complete: true` or `complete: false`.
+**Actual:** `complete = (not failures and not truncated and … and (written or duplicates))` stored
+the **written list**, because `and` returns its last truthy operand. Every consumer that tested
+`is True` failed while the boolean-looking field held a list of dicts.
+**Why:** Python's `and` is not a boolean cast, and the final operand was a list.
+**Rule:** wrap a boolean expression in `bool(...)` before storing it as a contract field, and assert
+the field's type in the test that checks it.
+**Test:** `test_a_full_list_run_is_complete_and_writes_provenance`.
+
+## 25. A subprocess engine is not on PATH just because a shell finds it (2026-11-04)
+
+**Expected:** `subprocess.run(["obscura", …])` launches the installed engine.
+**Actual:** `obscura` resolves through `~/.pi/agent/bin/obscura.cmd`, which `shutil.which` may find
+but Windows cannot exec directly (`WinError 193`); inside Pi's own shell the binary was not on PATH
+at all. A `.cmd` shim needs `cmd /c`.
+**Why:** a per-harness PATH shim is not an executable, and a Python child does not inherit the
+harness's shim resolution.
+**Rule:** resolve an engine through an explicit chain (`env override → which → known install
+path`), run a `.cmd`/`.bat` through `cmd /c`, and report the failure as `DriverUnavailable` with the
+install command rather than a bare `OSError`.
+**Test:** `tests/test_scrape.py` (engine availability) and `dossier doctor`'s `capture` block.
+
+## 26. A selector that matches immediately proves nothing about JavaScript (2026-11-04)
+
+**Expected:** waiting for `#slot` proves the page's script ran before extraction.
+**Actual:** `#slot` is in the served HTML; the assertion passed with the body still reading
+"Loading…". Waiting for the *text the script writes* (`#slot:has-text("…")`) is what proves it.
+**Rule:** a render claim waits for content that can only exist after execution, and a receipt
+records which engine produced the bytes.
+**Test:** `test_playwright_renders_javascript_before_extraction`.

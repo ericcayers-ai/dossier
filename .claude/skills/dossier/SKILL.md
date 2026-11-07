@@ -30,6 +30,7 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
 
 - `setup` — Resolve and report the workspace: identity doc, base resume, corpus, tracker, coverage.
 - `verify` — Source diff the generated document against the base, render it, inspect the page, and check the PDF text layer. Exits non-zero on any failure.
+- `panel` — Seven reviewers score the resume against a posting and quote the exact line behind each objection, then a chair names the three rewrites that cost the most.
 - `track` — Read the append-only application log, normalize statuses, report counts and the rows that are actionable.
 - `outcome` — Record a real result against the tracker row and archive the artifacts that were actually sent.
 - `corpus` — Normalize captured board data into one comparable corpus: stable unique ids, work types, facets, sources, dedupe keys, fit carry-forward.
@@ -39,6 +40,7 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
 - `handoff` — Emit a reconciliation packet for another session. Data, not authority; the bearer token is never included.
 - `render` — Re-render stale PDFs from their newer DOCX sources through a private Word instance, asserting each output is newer than its source.
 - `sources` — Report the board ledger: which sources are public, which are manual-only, which are prohibited, and exactly what the user must supply.
+- `match` — Score the captured corpus against the identity: title family, skills, location, employment, seniority, pay floor, recency. A deal-breaker caps the band and says why.
 
 ### Modes that need your judgement
 
@@ -52,6 +54,10 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
 - `followup` (hybrid) — Deterministic cadence: 7/7 days chaining, cold after two, pins and retire directives honoured. Drafts only, never sends.
 - `negotiate` (hybrid) — Verbatim-match safety gate, then arithmetic with the formula shown and a transferability disclaimer. Wage and frequency are never guessed.
 - `offer` (agent) — Clause-by-clause walk of an offer or contract plus the questions to ask. Explicitly not legal advice.
+- `identity` (hybrid) — Build the target the search is aimed at: a questionnaire the app can ask, plus values mined from the workspace's own documents, merged answer-first and written into the identity doc with provenance.
+- `capture` (hybrid) — Capture a page or a board the public feeds cannot serve: policy first, robots respected, the user's own session reused, every page scored against the identity and archived as a posting with its provenance.
+- `template` (hybrid) — Fill the user's own .docx template: `{{placeholder}}` tokens and approved paragraph swaps, layout and styling preserved, with a leftover-token gate so a half-filled document cannot be called done.
+- `trajectory` (hybrid) — Review the local career DAG and propose evidence-grounded next branches; proposals are copied for review, never applied or submitted.
 
 ### Gates — enforced in code, never softened
 
@@ -91,20 +97,32 @@ Every command takes `--root <folder>`; pass `--json` for machine-readable output
 - **`partial-is-not-exhaustive`** — A blocked or partial capture is never reported as complete coverage.
   - enforced by: `dossier.engine.sources.coverage`
   - never: Reported as a full result set.
+- **`identity-grounded`** — Every field of the identity reaches *-IDENTITY.md only with an answer or a document span behind it. No default name, no guessed salary, no invented target role.
+  - enforced by: `dossier.engine.identity.write_identity + dossier.engine.identity.profile`
+  - never: Filled in with a plausible default.
+- **`session-is-the-users`** — A saved session exists only because the user signed in themselves or exported their own cookies. Dossier never asks for, types or stores a credential, and never attaches one board's session to another host.
+  - enforced by: `dossier.scrape.session.SessionStore + dossier.scrape.browser.PlaywrightDriver.sign_in`
+  - never: Automated with a stored password, or reused across hosts.
+- **`challenge-is-explicit`** — A human-verification interstitial is answered only by the policy the workspace declares, and every run records the detection, the policy applied and whether it cleared. Stealth and a solver are configuration, not silence.
+  - enforced by: `dossier.scrape.challenge.effective_policy + dossier.scrape.runner._fetch_with_challenge_policy`
+  - never: Silently bypassed, or hidden behind an empty result.
 - **`never-only-copy`** — Every overwrite routes through .dossier/trash/ first.
   - enforced by: `dossier.safety.trash + atomic_write`
   - never: Bypassed for convenience.
+- **`fit-is-measured`** — The relevance ranking is scored against a person's own grades, the no-skill arrival order on the same rows, and a recorded baseline that fails the command when nDCG@k or Spearman drops. An ungraded row is never counted as relevant and a grade is never inferred from the score it is meant to check.
+  - enforced by: `dossier.engine.evaluation + dossier identity eval`
+  - never: Reported as a number with no labels file behind it.
 - **`token-never-leaks`** — The per-run bearer token never appears in a handoff, log, report or artifact.
   - enforced by: `dossier.agent.brief + dossier.audit.build_handoff`
   - never: Printed in a debug dump.
 
 ### Pipeline
 
-setup → diagnose → keywords → rewrite → build → verify → apply → prep → interview → track → followup → negotiate → offer → outcome → upskill
+setup → diagnose → keywords → rewrite → build → verify → apply → prep → interview → track → followup → negotiate → offer → outcome → upskill → trajectory
 
 Run `dossier agent brief --mode <mode> --markdown` for the mode you were asked to perform and follow the packet. It carries the objective, the resolved inputs with real paths, the exact commands, the decisions you own, the gates, the output paths, the verification commands and the JSON handback shape.
 
 ### Where the workspace lives
 
-This folder is `<home>\OneDrive\Desktop\Programs\dossier`. Nothing here writes to a source file without a keystroke; every overwrite routes through `.dossier/trash/` first.
+This folder is the `dossier` workspace root. Nothing here writes to a source file without a keystroke; every overwrite routes through `.dossier/trash/` first.
 <!-- dossier:contract:end -->

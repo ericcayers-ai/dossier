@@ -23,6 +23,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from ..safety import trash_then_write_text
+
 CAP = 20
 FIT_ORDER = {"High": 0, "Medium": 1, "Low": 2, "Skip": 3, "unset": 4, "": 4}
 
@@ -161,14 +163,22 @@ def dedupe(jobs: list[dict]) -> tuple[list[dict], dict]:
 
 # -- building --------------------------------------------------------------
 
-def build_facets(jobs: list[dict], out_dir: Path, write_corpus: bool = True) -> dict:
+def build_facets(jobs: list[dict], out_dir: Path, write_corpus: bool = True,
+                 root: Path | str | None = None) -> dict:
     """Normalise a job list and (re)write the standard facet files.
 
     Returns a report rather than printing, so a caller can assert on the counts
     instead of trusting a log line.
+
+    Every file here replaces a previous version of itself, so each one is
+    written through `safety.trash_then_write_text`: an aggregate rebuilt in place
+    with no trash copy is data loss on the user's canonical corpus, not a
+    refresh. `root` is the workspace the trash belongs to; it defaults to the
+    folder holding `out_dir`, which is how `combine` lays the aggregate out.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    trash_root = Path(root) if root is not None else out_dir.parent
 
     for index, job in enumerate(jobs, 1):
         job["id"] = index
@@ -176,11 +186,14 @@ def build_facets(jobs: list[dict], out_dir: Path, write_corpus: bool = True) -> 
         job["work_type"] = work_type(job)
 
     if write_corpus:
-        (out_dir / "all_jobs.json").write_text(
-            json.dumps(jobs, indent=2, ensure_ascii=False), encoding="utf-8")
+        trash_then_write_text(
+            trash_root, out_dir / "all_jobs.json",
+            json.dumps(jobs, indent=2, ensure_ascii=False))
 
     def dump(name: str, data) -> None:
-        (out_dir / name).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        trash_then_write_text(
+            trash_root, out_dir / name,
+            json.dumps(data, indent=2, ensure_ascii=False))
 
     dump("industries.json", _facet(jobs, "industry", "industry"))
     dump("employers.json", _facet(jobs, "employer", "employer"))
@@ -238,7 +251,7 @@ def combine(root: Path | str, out_name: str = "all_boards_data") -> dict:
         parts.append({"board": board, "rows": len(records)})
 
     kept, dedupe_report = dedupe(merged)
-    report = build_facets(kept, root / out_name)
+    report = build_facets(kept, root / out_name, root=root)
     report["boards"] = parts
     report["dedupe"] = dedupe_report
     return report

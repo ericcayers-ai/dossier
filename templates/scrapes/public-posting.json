@@ -1,0 +1,18 @@
+{
+  "id": "public-posting",
+  "source": "web",
+  "start_url": "https://example.com/job-posting",
+  "auth": "public",
+  "detail": {
+    "content": "",
+    "remove": []
+  },
+  "limits": {
+    "max_items": 1,
+    "delay_ms": 1500,
+    "timeout_s": 30,
+    "retries": 2
+  },
+  "cadence_hours": 0,
+  "notes": "One page the user named. Copy this to .dossier/scrapes/ and replace start_url. Leave detail.content empty to let the extractor pick main/article; set it when the posting sits in a site-specific container. source 'web' means 'the user named this URL'; a known board host (linkedin.com, seek.co.nz, ...) is resolved from the host and still obeys its policy row."
+}

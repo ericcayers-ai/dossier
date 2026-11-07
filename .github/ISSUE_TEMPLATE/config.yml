@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/ericcayers-ai/dossier/blob/master/CONTRIBUTING.md
+    about: Setup, test commands, and the rules for what may be committed
+  - name: Code of Conduct
+    url: https://github.com/ericcayers-ai/dossier/blob/master/CODE_OF_CONDUCT.md
+    about: How we expect everyone to participate in this project

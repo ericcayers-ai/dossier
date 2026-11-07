@@ -71,5 +71,19 @@ docs/history/graphify-legacy-2026-09-12/worktree.json
 *.pem
 *.key
 
+# Agent-tool state — per-machine tooling, NOT a deliverable (untracked 2026-10-11).
+# The Dossier contract packs are a different thing: they are generated *product*
+# output of `dossier agent adapters` (src/dossier/agent/adapters.py) and stay
+# tracked — AGENTS.md, CLAUDE.md, GEMINI.md, .cursor/rules/dossier.mdc,
+# .claude/skills/dossier/SKILL.md, docs/PIPELINE.md, docs/CONTRACT.md.
+.claude/settings.json
+.claude/helpers/
+.claude/skills/graft/
+.cursor/rules/graft.mdc
+
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# A labels sheet is generated from the owner's own folder and carries real employer and
+# role names. The metric is reproducible from the folder; the names must never enter git.
+docs/evidence/*-labels-*.json

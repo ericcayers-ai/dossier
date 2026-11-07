@@ -94,10 +94,10 @@ def build_workspace(root: Path) -> Path:
 
     tailored = Document()
     tailored.add_paragraph("Objective: Seeking a technical support engineering internship.")
-    tailored.save(str(root / "Ayers_Resume_Acme_Engineer_Sep2026.docx"))
+    tailored.save(str(root / "sample_resume_Acme_Engineer_Sep2026.docx"))
     letter = Document()
     letter.add_paragraph("Dear Hiring Manager,")
-    letter.save(str(root / "Ayers_Resume_Acme_Engineer_Sep2026_CoverLetter.docx"))
+    letter.save(str(root / "sample_resume_Acme_Engineer_Sep2026_CoverLetter.docx"))
 
     jobs = [
         {"id": 1, "title": "Engineer", "employer": "Acme", "location": "Hamilton",
@@ -317,7 +317,7 @@ def test_the_fully_specified_routes_all_answer(workspace):
     headers = {"Authorization": "Bearer matrix-token"}
 
     specified = [
-        "/api/health", "/api/tree", "/api/search?q=Engineer", "/api/actions",
+        "/api/health", "/api/tree", "/api/tree?view=trajectory", "/api/search?q=Engineer", "/api/actions",
         "/api/jobs", "/api/jobs/history", "/api/jobs/due", "/api/jobs/feeds",
         "/api/audit", "/api/ai/handoff",
         "/api/agent/manifest", "/api/agent/status", "/api/agent/next",
@@ -365,7 +365,7 @@ def test_the_cli_help_lists_every_top_level_command(capsys):
     cli.main([])
     output = capsys.readouterr().out
     for name in ("serve", "agent", "doctor", "workspace", "audit", "handoff",
-                 "sources", "negotiate", "corpus", "track", "keywords",
+                 "sources", "negotiate", "corpus", "tree", "track", "keywords",
                  "render", "verify", "sanitize", "tailor"):
         assert name in output, f"{name} missing from the CLI help"
 

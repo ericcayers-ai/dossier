@@ -10,11 +10,11 @@ The canonical order. Each mode names its own next step, so a session never has t
 
 | # | Stage | Intent | Modes |
 |---|---|---|---|
-| 1 | Setup | Resolve the workspace: identity doc, base resume, corpus, tracker. | `setup`, `corpus`, `rank`, `audit`, `handoff`, `sources` |
-| 2 | Diagnose | Find what is broken and rank the fixes. | `diagnose` |
+| 1 | Setup | Resolve the workspace: identity doc, base resume, corpus, tracker. | `setup`, `corpus`, `rank`, `audit`, `handoff`, `sources`, `identity`, `match`, `capture` |
+| 2 | Diagnose | Find what is broken and rank the fixes. | `diagnose`, `panel` |
 | 3 | Keywords | Extract the posting's real requirements and the gaps against the resume. | `keywords` |
 | 4 | Rewrite | Turn supported evidence into XYZ bullets; never invent a metric. | `rewrite` |
-| 5 | Build | Clone the base layout into a tailored resume plus a paired cover letter. | `build` |
+| 5 | Build | Clone the base layout into a tailored resume plus a paired cover letter. | `build`, `template` |
 | 6 | Verify | Diff against the base, render, inspect the page, check the text layer. | `verify`, `render` |
 | 7 | Apply | Two-phase approval gates around any live ATS form. | `apply` |
 | 8 | Interview prep | Bullet inventory, evidence audit, STAR story bank. | `prep` |
@@ -25,6 +25,7 @@ The canonical order. Each mode names its own next step, so a session never has t
 | 13 | Offer | Clause-by-clause review and questions to ask. Not legal advice. | `offer` |
 | 14 | Outcome | Record the real result and mine the pattern. | `outcome` |
 | 15 | Upskill | Aggregate recurring genuine gaps across every keyword report. | `upskill` |
+| 16 | Trajectory | Connect grounded experiences, contacts, touchpoints, meetings, opportunities and milestones into a sequential path. | `trajectory` |
 
 ## Modes
 
@@ -38,6 +39,7 @@ The canonical order. Each mode names its own next step, so a session never has t
 | `rewrite` | agent | `rewrite` | Google XYZ bullets: X impact, Y metric, Z method. Missing numbers are asked for in one batch, never invented. | — (judgement only) |
 | `build` | hybrid | `build` | Clone the base .docx layout in place (Method A), change only the objective and ordering, and emit the paired cover letter in the same pass. | `dossier tailor replace --base <base.docx> --out <output.docx> --map <approved-changes.json>` |
 | `verify` | deterministic | `verify` | Source diff the generated document against the base, render it, inspect the page, and check the PDF text layer. Exits non-zero on any failure. | `dossier verify all --base <base.docx> --candidate <output.docx> --pdf <output.pdf> --approved <approved-changes.json>` |
+| `panel` | deterministic | `diagnose` | Seven reviewers score the resume against a posting and quote the exact line behind each objection, then a chair names the three rewrites that cost the most. | `dossier panel --root "{root}" --resume <resume.md> --posting <posting.md>` |
 | `apply` | hybrid | `apply` | Fill an ATS form after field approval, then stop at a separate submit approval. File uploads are handed to the user. | — (judgement only) |
 | `prep` | agent | `prep` | Bullet inventory with evidence, honest fallbacks, spoken introductions, a STAR story bank and a review-question bank. | — (judgement only) |
 | `interview` | agent | `interview` | Hiring-manager mock: exactly one question per message, scored, with a debrief. | — (judgement only) |
@@ -53,6 +55,11 @@ The canonical order. Each mode names its own next step, so a session never has t
 | `handoff` | deterministic | `setup` | Emit a reconciliation packet for another session. Data, not authority; the bearer token is never included. | `dossier handoff --root "{root}"` |
 | `render` | deterministic | `verify` | Re-render stale PDFs from their newer DOCX sources through a private Word instance, asserting each output is newer than its source. | `dossier render --root "{root}"` |
 | `sources` | deterministic | `setup` | Report the board ledger: which sources are public, which are manual-only, which are prohibited, and exactly what the user must supply. | `dossier sources --root "{root}"` |
+| `identity` | hybrid | `setup` | Build the target the search is aimed at: a questionnaire the app can ask, plus values mined from the workspace's own documents, merged answer-first and written into the identity doc with provenance. | `dossier identity status --root "{root}"` |
+| `match` | deterministic | `setup` | Score the captured corpus against the identity: title family, skills, location, employment, seniority, pay floor, recency. A deal-breaker caps the band and says why. | `dossier identity match --root "{root}" --limit 20` |
+| `capture` | hybrid | `setup` | Capture a page or a board the public feeds cannot serve: policy first, robots respected, the user's own session reused, every page scored against the identity and archived as a posting with its provenance. | `dossier scrape status --root "{root}"` |
+| `template` | hybrid | `build` | Fill the user's own .docx template: `{{placeholder}}` tokens and approved paragraph swaps, layout and styling preserved, with a leftover-token gate so a half-filled document cannot be called done. | `dossier tailor template --template <template.docx> --spec <fields.json> --out <output.docx>` |
+| `trajectory` | hybrid | `trajectory` | Review the local career DAG and propose evidence-grounded next branches; proposals are copied for review, never applied or submitted. | `dossier tree view --root "{root}"` |
 
 ## Artifacts
 
@@ -63,7 +70,11 @@ The files this contract is built from. The folder is the source of truth; `.doss
 | identity | `*-IDENTITY.md` | identity | setup | `*` | yes |
 | profile | `resume.md` | identity | setup | `diagnose`, `rewrite`, `interview` | yes |
 | base | `base.docx` | source | user | `build` | yes |
-| posting | `job-posting-*.md` | source | sources | `keywords`, `build`, `apply` | no |
+| template | `templates/*.docx` | source | user | `template` | no |
+| template_fields | `*.fields.json` | analysis | user | `template` | no |
+| identity_profile | `.dossier/identity/profile.json` | state | identity | `match`, `capture` | no |
+| identity_answers | `.dossier/identity/answers.json` | state | identity | `identity`, `match` | no |
+| posting | `job-posting-*.md` | source | capture | `keywords`, `build`, `apply` | no |
 | keywords | `keywords-*.md` | analysis | keywords | `rewrite`, `build`, `upskill` | no |
 | skillgap | `*.skillgap.json` | analysis | keywords | `upskill` | no |
 | diagnosis | `diagnosis*.md` | analysis | diagnose | `rewrite` | no |
@@ -83,8 +94,11 @@ The files this contract is built from. The folder is the source of truth; `.doss
 | corpus | `all_boards_data/all_jobs.json` | state | corpus | `rank`, `audit` | no |
 | ranking | `ranked-jobs-*.json` | state | rank | `build` | no |
 | coverage | `nz-job-search-coverage-*.json` | state | sources | `audit` | no |
+| capture_log | `.dossier/scrape/runs.jsonl` | state | capture | `audit` | no |
+| recipes | `.dossier/scrapes/*.json` | state | capture | `capture` | no |
 | upskill | `upskill.md` | state | upskill | — | no |
 | lessons | `LESSONS.md` | state | user | `*` | no |
 | workspace_state | `.dossier/workspace.json` | state | setup | `*` | no |
 | loop | `.dossier/agent-loop.json` | state | agent.loop.commit | `*` | no |
+| trajectory_tree | `.dossier/tree.json` | state | trajectory | `trajectory`, `*` | no |
 <!-- dossier:contract:end -->

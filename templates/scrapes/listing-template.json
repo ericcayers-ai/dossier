@@ -1,0 +1,32 @@
+{
+  "id": "listing-template",
+  "source": "web",
+  "start_url": "https://example.com/jobs",
+  "auth": "public",
+  "list": {
+    "item": "article",
+    "link": "h2 a",
+    "title": "h2",
+    "company": "[class*=company]",
+    "location": "[class*=location]",
+    "pay": "[class*=salary]"
+  },
+  "detail": {
+    "content": "main",
+    "remove": ["[class*=cookie]", "[class*=newsletter]"]
+  },
+  "pagination": {
+    "mode": "next-link",
+    "selector": "a[rel=next]",
+    "max_pages": 3
+  },
+  "limits": {
+    "max_items": 10,
+    "delay_ms": 1500,
+    "timeout_s": 30,
+    "retries": 2
+  },
+  "cadence_hours": 0,
+  "wait_until": "networkidle",
+  "notes": "A list workflow: selectors are examples, not a claim about any live site. Check them with `dossier scrape capture <listing-url> --selector 'article'` before trusting a run. Set cadence_hours to a number of hours to make the recipe 'due' after that long, which is what `dossier scrape run --due` reads; it is 0 here so a shipped template never nags a new workspace."
+}

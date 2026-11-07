@@ -1,112 +1,625 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {EditorView,keymap,ViewUpdate} from '@codemirror/view';
-import {EditorState,Extension} from '@codemirror/state';
-import {indentWithTab} from '@codemirror/commands';
-import {markdown} from '@codemirror/lang-markdown';
-import {json as jsonLanguage} from '@codemirror/lang-json';
-import {python} from '@codemirror/lang-python';
-import {api,agentApi,AgentContract,AgentStatus,Audit,Bundle,FileNode,FileStamp,Member,WorkspaceState} from './lib/api';
+import {Suspense,lazy,useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import type {ReactNode} from 'react';
+import {ApiError,api,fault,isConflict} from './lib/api';
+import type {Bundle,FileNode} from './lib/api';
+import {baseName,extOf,flatten,formatAge,formatBytes,isBinary} from './lib/files';
+import {clearDraft,clockTime,preferredTheme,readDraft,storeTheme,writeDraft} from './lib/session';
+import type {Tab} from './lib/session';
+import {useLoad} from './lib/useLoad';
+import type {Loadable} from './lib/useLoad';
+/* The shell is eager; the surfaces are not. `Viewer` alone pulls the whole CodeMirror
+   editor, which used to ride in the first bundle and made the first paint wait for an
+   editor the visitor had not opened yet. Each pane is its own chunk now, fetched when
+   its tab is chosen, and one Suspense boundary holds the space while it arrives. */
+import Explorer from './panes/Explorer';
+import BundleRail from './panes/BundleRail';
+import NextStep from './panes/NextStep';
+const Viewer=lazy(()=>import('./panes/Viewer'));
+const Palette=lazy(()=>import('./panes/Palette'));
+const JobsPane=lazy(()=>import('./panes/JobsPane'));
+const IdentityPane=lazy(()=>import('./panes/IdentityPane'));
+const AuditPane=lazy(()=>import('./panes/AuditPane'));
+const TrashPane=lazy(()=>import('./panes/TrashPane'));
+const SyncPane=lazy(()=>import('./panes/SyncPane'));
+const VerifyPane=lazy(()=>import('./panes/VerifyPane'));
+const CapturePane=lazy(()=>import('./panes/CapturePane'));
+const BuildPane=lazy(()=>import('./panes/BuildPane'));
+const AgentPane=lazy(()=>import('./panes/AgentPane'));
+const PanelPane=lazy(()=>import('./panes/PanelPane'));
+const TrajectoryPane=lazy(()=>import('./trajectory/TrajectoryPane'));
 
-type Tab={rel:string;content?:string;stamp?:FileStamp;dirty?:boolean};
-type Action={id:string;label:string;applies_to:string[];confirm:boolean;writes:boolean};
-const extOf=(rel:string)=>rel.split('.').pop()?.toLowerCase()||'';
-const nameOf=(node:FileNode)=>node.name||node.rel.split('/').pop()||node.rel;
-const isBinary=(rel:string)=>['pdf','docx','png','jpg','jpeg','gif','webp'].includes(extOf(rel));
-const icon=(rel:string)=>({md:'M',json:'{}',py:'Py',csv:'▦',pdf:'▤',docx:'W',png:'◈',jpg:'◈',jpeg:'◈',txt:'T'}[extOf(rel)]||'·');
-function flatten(nodes:FileNode[]):FileNode[]{return nodes.flatMap(node=>node.children?.length?flatten(node.children):[node]).filter(node=>!node.directory&&!node.children);}
-function MarkdownContent({text}:{text:string}){return <>{text.split('\n').map((line,index)=>{if(line.startsWith('# '))return <h1 key={index}>{line.slice(2)}</h1>;if(line.startsWith('## '))return <h2 key={index}>{line.slice(3)}</h2>;if(line.startsWith('- '))return <li key={index}>{line.slice(2)}</li>;return <p key={index}>{line||' '}</p>})}</>}
-function Explorer({nodes,selected,onSelect}:{nodes:FileNode[];selected:string;onSelect:(node:FileNode)=>void}){const [filter,setFilter]=useState('');const [kind,setKind]=useState('all');const files=useMemo(()=>flatten(nodes).filter(node=>nameOf(node).toLowerCase().includes(filter.toLowerCase())&&(kind==='all'||extOf(node.rel)===kind)),[nodes,filter,kind]);const kinds=['all','md','json','pdf','docx','csv'];const onKey=(event:React.KeyboardEvent)=>{const index=files.findIndex(file=>file.rel===selected);if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();const next=event.key==='ArrowDown'?Math.min(index+1,files.length-1):Math.max(index-1,0);if(files[next])onSelect(files[next])}if(event.key==='Enter'&&files[index])onSelect(files[index])};return <aside className="panel explorer"><div className="pane-head"><span className="pane-title">Explorer</span><span className="kbd">{files.length}</span></div><div className="explorer-tools"><input className="filter" aria-label="Filter files" placeholder="Filter files" value={filter} onChange={event=>setFilter(event.target.value)}/><div className="chips">{kinds.map(item=><button type="button" key={item} className={`chip ${kind===item?'active':''}`} onClick={()=>setKind(item)}>{item==='all'?'All':`.${item}`}</button>)}</div></div><div className="tree" role="tree" tabIndex={0} onKeyDown={onKey}>{files.length?files.map(node=><button type="button" role="treeitem" aria-selected={selected===node.rel} className={`tree-row ${selected===node.rel?'selected':''}`} key={node.rel} onClick={()=>onSelect(node)}><span aria-hidden="true">{icon(node.rel)}</span><span className="file-name">{nameOf(node)}</span><span className="ext">{extOf(node.rel)}</span></button>):<div className="empty">{filter?<>No files match <b>“{filter}”</b>.<br/>Clear the filter or search all text (⌘K).</>:<>No indexed files yet.<br/>Connect the Dossier API to open a folder.</>}</div>}</div></aside>}
-function CodeEditor({tab,onChange}:{tab:Tab;onChange:(value:string)=>void}){const host=useRef<HTMLDivElement>(null);const callback=useRef(onChange);callback.current=onChange;useEffect(()=>{if(!host.current)return;const ext=extOf(tab.rel);const language:Extension=ext==='md'?markdown():ext==='json'?jsonLanguage():ext==='py'?python():[];const state=EditorState.create({doc:tab.content||'',extensions:[keymap.of([indentWithTab]),language,EditorView.updateListener.of((update:ViewUpdate)=>{if(update.docChanged)callback.current(update.state.doc.toString())})]});const view=new EditorView({state,parent:host.current});return()=>view.destroy()},[tab.rel]);return <div className="editor" ref={host}/>}
-function CsvTable({text}:{text:string}){const rows=text.split(/\r?\n/).filter(Boolean).map(row=>row.split(','));return <div className="table-wrap"><table className="data-table"><thead><tr>{(rows[0]||[]).map((cell,index)=><th key={index}>{cell}</th>)}</tr></thead><tbody>{rows.slice(1).map((row,index)=><tr key={index}>{row.map((cell,column)=><td key={column}>{cell}</td>)}</tr>)}</tbody></table></div>}
-function Viewer({tab,onChange}:{tab:Tab;onChange:(value:string)=>void}){const [mode,setMode]=useState<'preview'|'edit'>('preview');const ext=extOf(tab.rel);if(['png','jpg','jpeg','gif','webp'].includes(ext))return <div className="image-view"><img src={api.raw(tab.rel)} alt={tab.rel}/></div>;if(ext==='pdf')return <iframe className="pdf-frame" title={tab.rel} src={api.raw(tab.rel)}/>;if(ext==='docx')return <iframe className="pdf-frame" title={`${tab.rel} rendered`} src={api.render(tab.rel)}/>;if(ext==='csv'&&mode==='preview')return <><div className="markdown-toolbar"><button type="button" className="chip active" onClick={()=>setMode('preview')}>Preview</button><button type="button" className="chip" onClick={()=>setMode('edit')}>Edit</button></div><CsvTable text={tab.content||''}/></>;if(ext==='md'&&mode==='preview')return <><div className="markdown-toolbar"><button type="button" className="chip active" onClick={()=>setMode('preview')}>Preview</button><button type="button" className="chip" onClick={()=>setMode('edit')}>Edit</button></div><article className="doc-prose"><MarkdownContent text={tab.content||''}/></article></>;return <CodeEditor tab={tab} onChange={onChange}/>}
-function ActionList({actions,rel,enabled}:{actions:Action[];rel:string;enabled:boolean}){const [confirm,setConfirm]=useState<Action|null>(null);const [log,setLog]=useState('');const run=async(action:Action,confirmed=false)=>{try{const result=await api.runAction(action.id,rel,confirmed);setLog([result.stdout,result.stderr].filter(Boolean).join('\n')||`Finished with exit code ${result.returncode}`)}catch(error){setLog(String(error))}setConfirm(null)};return <section className="rail-section actions"><h3>Actions</h3>{actions.length?actions.map(action=><div key={action.id}><button type="button" className="action" disabled={!enabled} onClick={()=>action.confirm||action.writes?setConfirm(action):run(action)}>{action.label}</button>{confirm?.id===action.id&&<div className="confirm">Run {action.label.toLowerCase()}? <button type="button" onClick={()=>setConfirm(null)}>Cancel</button><button type="button" onClick={()=>run(action,true)}>Run</button></div>}</div>):<div className="empty">No actions configured.</div>}{log&&<pre className="action-log">{log}</pre>}</section>}
-function BundleRail({bundle,selected,onOpen}:{bundle:Bundle|null;selected:string;onOpen:(rel:string)=>void}){const [actions,setActions]=useState<Action[]>([]);useEffect(()=>{api.actions().then(setActions).catch(()=>setActions([]))},[]);const roles=['source','analysis','artifact','render','proof'];const members=bundle?.members||[];return <aside className="panel rail"><div className="pane-head"><span className="pane-title">Bundle rail</span><span className={bundle?.stale?.length?'stale':''}>{bundle?.stale?.length?'stale':'—'}</span></div><div className="rail-body">{bundle?roles.map(role=>{const list=members.filter((member:Member)=>member.role===role);return <section className="rail-section" key={role}><h3>{role}</h3>{list.length?list.map(member=><button type="button" className="rail-row" key={member.rel} onClick={()=>onOpen(member.rel)}><span className="name">{member.rel.split('/').pop()}</span><small>{member.size?`${Math.max(1,Math.round(member.size/1024))} KB`:''}</small>{member.stale&&<span className="stale" aria-label="stale">stale</span>}</button>):<div className="rail-empty">None</div>}</section>}):<div className="empty">Select a file to resolve its siblings.<br/><br/>This file has no siblings yet.</div>}<ActionList actions={actions} rel={selected} enabled={Boolean(bundle)}/></div></aside>}
-function Palette({onClose,onOpen}:{onClose:()=>void;onOpen:(rel:string)=>void}){const [query,setQuery]=useState('');const [results,setResults]=useState<Array<{rel:string;snippet?:string;kind?:string}>>([]);useEffect(()=>{if(!query){setResults([]);return}api.search(query).then(value=>setResults(Array.isArray(value)?value:[])).catch(()=>setResults([]))},[query]);return <div className="palette-backdrop" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><div className="palette" role="dialog" aria-label="Search files"><input autoFocus aria-label="Search names and full text" placeholder="Search names and full text" value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={event=>{if(event.key==='Escape')onClose();if(event.key==='Enter'&&results[0]){onOpen(results[0].rel);onClose()}}}/>{results.length?results.map(result=><button type="button" className="result" key={result.rel} onClick={()=>{onOpen(result.rel);onClose()}}><div className="result-path">{result.rel}</div><div className="result-snippet">{result.snippet||result.kind||'file'}</div></button>):<div className="empty">{query?'No matching files.':'Search indexed names and text.'}</div>}</div></div>}
-function JobsPane(){const [jobs,setJobs]=useState<any[]>([]);const [history,setHistory]=useState<any[]>([]);const [tab,setTab]=useState<'jobs'|'pipeline'>('jobs');const [query,setQuery]=useState('');const [fit,setFit]=useState('all');useEffect(()=>{api.jobs().then(setJobs).catch(()=>setJobs([]));api.history().then(setHistory).catch(()=>setHistory([]))},[]);const filtered=useMemo(()=>{const needle=query.trim().toLowerCase();return jobs.filter(job=>{if(fit!=='all'&&(job.fit||'')!==fit)return false;if(!needle)return true;return [job.title,job.employer,job.company,job.location,job.source].filter(Boolean).join(' ').toLowerCase().includes(needle)})},[jobs,query,fit]);const fitChips=useMemo(()=>['all','High','Medium','Low','Skip'].filter(value=>value==='all'||jobs.some(job=>(job.fit||'')===value)),[jobs]);return <div className="jobs-pane"><div className="jobs-tabs"><button type="button" className={tab==='jobs'?'active':''} onClick={()=>setTab('jobs')}>Jobs {jobs.length}</button><button type="button" className={tab==='pipeline'?'active':''} onClick={()=>setTab('pipeline')}>Pipeline {history.length}</button></div>{tab==='jobs'?<><div className="jobs-tools"><input className="filter" aria-label="Filter jobs" placeholder="Filter by role, employer, location or source" value={query} onChange={event=>setQuery(event.target.value)}/><div className="chips">{fitChips.map(value=><button type="button" key={value} className={`chip ${fit===value?'active':''}`} onClick={()=>setFit(value)}>{value==='all'?'All fits':value}</button>)}</div><span className="kbd">{jobs.length?`Showing ${filtered.length} of ${jobs.length} jobs`:'Reading job records…'}</span></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Fit</th><th>Role</th><th>Employer</th><th>Location</th><th>Source</th></tr></thead><tbody>{filtered.map((job,index)=><tr key={`${job.id??'row'}-${index}`}><td>{job.fit||'—'}</td><td>{job.title||'—'}</td><td>{job.employer||job.company||'—'}</td><td>{job.location||'—'}</td><td>{job.source||'—'}</td></tr>)}{filtered.length===0&&<tr><td colSpan={5}><div className="empty">No job matches that filter.</div></td></tr>}</tbody></table></div></>:<div className="pipeline">{history.length?history.map((item,index)=><div className="pipeline-row" key={index}><span>{item.status}</span><b>{item.company}</b><span>{item.role}</span></div>):<div className="empty">No tracked applications.</div>}</div>}</div>}
-function AuditPane(){const [audit,setAudit]=useState<Audit|null>(null);useEffect(()=>{api.audit().then(setAudit).catch(()=>setAudit(null))},[]);if(!audit)return <div className="empty-panel"><h2>Audit unavailable</h2><p>Connect the Dossier API to inspect records and source limits.</p></div>;return <div className="audit-pane"><div className="audit-head"><div><h1>Workspace audit</h1><p>Read-only checks for provenance, freshness, approvals, dates, and event evidence.</p></div><span className="audit-date">Generated {audit.generated_on}</span></div><div className="audit-counts">{Object.entries(audit.counts).map(([key,value])=><div className="audit-count" key={key}><b>{value}</b><span>{key.replaceAll('_',' ')}</span></div>)}</div><div className="audit-checks">{audit.checks.map(check=><div className={`audit-check ${check.status}`} key={check.id}><span className="audit-status">{check.status}</span><div><b>{check.label}</b><p>{check.detail}</p></div></div>)}</div><h2>Source limits</h2><div className="source-ledger">{Object.entries(audit.source_status).map(([name,item])=><div className="source-row" key={name}><b>{name}</b><span className={`source-status ${item.status}`}>{item.status}</span><span>{item.detail}</span>{item.manual_request&&<small>Manual item required</small>}</div>)}</div></div>}
-function SyncPane(){const [payload,setPayload]=useState<{packet:Record<string,unknown>;prompt:string}|null>(null);const [copied,setCopied]=useState(false);useEffect(()=>{api.handoff().then(setPayload).catch(()=>setPayload(null))},[]);const copy=async()=>{if(!payload)return;await navigator.clipboard.writeText(payload.prompt);setCopied(true);setTimeout(()=>setCopied(false),1500)};if(!payload)return <div className="empty-panel"><h2>Sync packet unavailable</h2><p>Connect the Dossier API to generate a reconciliation prompt.</p></div>;return <div className="sync-pane"><div className="audit-head"><div><h1>AI sync prompt</h1><p>Copy this read-only reconciliation packet back to the AI when records need updating or resyncing.</p></div><button type="button" className="primary" onClick={()=>void copy()}>{copied?'Copied':'Copy prompt'}</button></div><textarea className="sync-text" readOnly value={payload.prompt} aria-label="AI sync prompt"/><p className="sync-note">The prompt preserves the approval gates: review before submission, confirmed application dates before follow-ups, real events before interview/offer/negotiation/outcome work, and manual handling for blocked or unavailable sources.</p></div>}
-function AgentPane(){
-  const [contract,setContract]=useState<AgentContract|null>(null);
-  const [status,setStatus]=useState<AgentStatus|null>(null);
-  const [workspace,setWorkspace]=useState<WorkspaceState|null>(null);
-  const [doctor,setDoctor]=useState<{verdict:string;capabilities:Record<string,boolean>;blockers:string[];platform:Record<string,string>}|null>(null);
-  const [mode,setMode]=useState('build');
-  const [brief,setBrief]=useState('');
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState('');
-  const [copied,setCopied]=useState(false);
+/** One skeleton for every pane boundary: same rhythm as `Loading`, no h1 (the arriving
+ *  pane owns the heading) and `aria-busy` so a screen reader is told to wait. */
+function PaneSkeleton():ReactNode{
+  return <div className="loading" role="status" aria-busy="true" aria-label="Opening this pane">
+    <span className="sr-only">Opening this pane…</span>
+    <span className="skeleton"/><span className="skeleton"/><span className="skeleton"/>
+  </div>;
+}
 
+type Pane='files'|'jobs'|'identity'|'capture'|'build'|'audit'|'trash'|'sync'|'agent'|'verify'|'trajectory'|'panel';
+type Area='files'|'search'|'papers'|'housekeeping'|'agent';
+type Pending={kind:'open'|'close';rel:string};
+/** A slide-over is only a slide-over below its breakpoint; above it the panel is
+ *  always on screen. The panel is `inert` while off-canvas, so a closed drawer is
+ *  removed from the tab order and the accessibility tree rather than merely moved. */
+function useMediaQuery(query:string):boolean{
+  const [matches,setMatches]=useState(()=>typeof window!=='undefined'&&window.matchMedia(query).matches);
   useEffect(()=>{
-    agentApi.contract().then(setContract).catch(()=>setContract(null));
-    agentApi.status().then(setStatus).catch(()=>setStatus(null));
-    agentApi.workspace().then(setWorkspace).catch(()=>setWorkspace(null));
-    agentApi.doctor().then(setDoctor).catch(()=>setDoctor(null));
+    const list=window.matchMedia(query);
+    const update=()=>setMatches(list.matches);
+    update();
+    list.addEventListener('change',update);
+    return ()=>list.removeEventListener('change',update);
+  },[query]);
+  return matches;
+}
+
+type Conflict={rel:string};
+type SaveState={status:'idle'|'saving'|'saved'|'failed';at?:number;message?:string};
+
+/* Five areas, at most three panes each. Eleven flat buttons in one strip clipped
+   at 1100 px and gave the topbar no hierarchy; an area is a place in the app, a
+   pane is a tab inside it. Only the active area's panes are mounted. */
+const AREAS:Array<{id:Area;label:string;panes:Array<{id:Pane;label:string}>}>=[
+  {id:'files',label:'Files',panes:[{id:'files',label:'Folder'}]},
+  {id:'search',label:'Search',panes:[{id:'capture',label:'Capture'},{id:'jobs',label:'Jobs'},{id:'identity',label:'Identity'}]},
+  {id:'papers',label:'Papers',panes:[{id:'build',label:'Build'},{id:'verify',label:'Verify'}]},
+  {id:'housekeeping',label:'Housekeeping',panes:[{id:'audit',label:'Audit'},{id:'trash',label:'Trash'},{id:'sync',label:'Sync'}]},
+  {id:'agent',label:'Agent',panes:[{id:'agent',label:'Loop'},{id:'trajectory',label:'Opportunity'},{id:'panel',label:'Panel'}]},
+];
+/** The palette's places: eleven panes, each named with the area it lives under. */
+const PLACES=AREAS.flatMap(area=>area.panes.map(pane=>({id:pane.id,label:pane.label,area:area.label})));
+const PANE_AREA:Record<Pane,Area>=(()=>{
+  const map={} as Record<Pane,Area>;
+  AREAS.forEach(area=>area.panes.forEach(item=>{map[item.id]=area.id}));
+  return map;
+})();
+
+/* A pane is a place, so it gets an address. `#/search/jobs` survives a reload, a
+   bookmark and the back button; before this the app always opened on Folder and a
+   reload silently discarded where the person was. */
+const PANE_IDS=new Set<Pane>(Object.keys(PANE_AREA) as Pane[]);
+function paneFromHash(hash:string):Pane|null{
+  const parts=hash.replace(/^#\/?/,'').split('/').filter(Boolean);
+  if(!parts.length)return null;
+  const candidate=(parts.length>1?parts[1]:parts[0]) as Pane;
+  if(PANE_IDS.has(candidate))return candidate;
+  const byArea=AREAS.find(area=>area.id===parts[0]);
+  return byArea?byArea.panes[0].id:null;
+}
+function hashFor(pane:Pane):string{return `#/${PANE_AREA[pane]}/${pane}`}
+
+/* Which pane actually fixes the unit of work the engine returned. The engine knows
+   the mode; only the UI knows where that mode lives, so the map belongs here. */
+const MODE_PANE:Record<string,Pane>={
+  setup:'files',identity:'identity',match:'jobs',capture:'capture',build:'build',
+  verify:'verify',audit:'audit',sources:'audit',track:'jobs',apply:'jobs',
+  interview:'agent',upskill:'agent',negotiate:'agent',handback:'agent',
+};
+
+const SHORTCUTS:[string,string][]=[
+  ['⌘K','Search names and full text'],
+  ['⌘S','Save the open document'],
+  ['⌘W','Close the open tab'],
+  ['⌘\\','Collapse or show the Explorer'],
+  ['⌘/','Collapse or show the Bundle Rail'],
+  ['Esc','Close the palette, dialog or conflict banner'],
+  ['?','Show this list'],
+];
+
+export default function App():ReactNode{
+  const [theme,setTheme]=useState<'light'|'dark'>(()=>preferredTheme());
+  const [tabs,setTabs]=useState<Tab[]>([]);
+  const [selected,setSelected]=useState('');
+  const [palette,setPalette]=useState(false);
+  const [pane,setPane]=useState<Pane>(()=>paneFromHash(window.location.hash)??'files');
+  const area=PANE_AREA[pane];
+
+  /* The address follows the pane, and the browser's own back/forward moves between
+     panes. `pushState` (not `replaceState`) is what makes back mean "the previous
+     pane" instead of "leave the app". */
+  const goToPane=useCallback((next:Pane,mode:'push'|'replace'='push')=>{
+    setPane(next);
+    const want=hashFor(next);
+    if(window.location.hash===want)return;
+    if(mode==='replace')window.history.replaceState(null,'',want);
+    else window.history.pushState(null,'',want);
+  },[]);
+  /* The address changes with the pane, so the tab label does too. One route is not
+     one document here: `#/search/jobs` and `#/papers/verify` are different places. */
+  useEffect(()=>{
+    const label=AREAS.flatMap(area=>area.panes).find(item=>item.id===pane)?.label??'Dossier';
+    document.title=`${label} | Dossier`;
+  },[pane]);
+  useEffect(()=>{
+    const sync=()=>{const next=paneFromHash(window.location.hash);if(next)setPane(next)};
+    if(!window.location.hash)window.history.replaceState(null,'',hashFor(paneFromHash('')??'files'));
+    window.addEventListener('popstate',sync);
+    window.addEventListener('hashchange',sync);
+    return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)};
+  },[]);
+  const narrowExplorer=useMediaQuery('(max-width: 700px)');
+  const narrowRail=useMediaQuery('(max-width: 1000px)');
+  // The theme must live on <html>, not only on `.app`: `body` sets `color:
+  // var(--ink)`, and an inherited value is not re-resolved inside a subtree, so a
+  // dark `.app` kept the light ink it inherited from `body`. Setting the attribute
+  // on the root is what makes every inherited token dark.
+  useEffect(()=>{
+    /* One frame with transitions off: otherwise the swap animates every colour on
+       screen at once and the page appears to slide from light to dark. */
+    document.documentElement.classList.add('theme-swapping');
+    document.documentElement.dataset.theme=theme;
+    requestAnimationFrame(()=>document.documentElement.classList.remove('theme-swapping'));
+    storeTheme(theme);
+    // The browser paints the address bar / window chrome from this meta, so it has to
+    // follow the same switch the app just took. Values are the resolved --ground.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#15191e':'#f2f5f9');
+  },[theme]);
+  /* An edit that exists only in React state is lost by Ctrl+W, Ctrl+R or a closed
+     tab, and the app's own promise is that nothing a person typed disappears
+     silently. The in-app confirm covers switching documents; this covers leaving
+     the page. */
+  useEffect(()=>{
+    if(!tabs.some(tab=>tab.dirty))return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};
+    window.addEventListener('beforeunload',warn);
+    return()=>window.removeEventListener('beforeunload',warn);
+  },[tabs]);
+  const areaPanes=AREAS.find(item=>item.id===area)?.panes??[];
+  const selectArea=(next:Area)=>{const first=AREAS.find(item=>item.id===next)?.panes[0];if(first)goToPane(first.id)};
+  const [hideExplorer,setHideExplorer]=useState(false);
+  const [hideRail,setHideRail]=useState(false);
+  const [railOpen,setRailOpen]=useState(false);
+  const [explorerOpen,setExplorerOpen]=useState(false);
+  const [conflict,setConflict]=useState<Conflict|null>(null);
+  const [pending,setPending]=useState<Pending|null>(null);
+  const [draftOffer,setDraftOffer]=useState<{rel:string;content:string}|null>(null);
+  const [saveState,setSaveState]=useState<SaveState>({status:'idle'});
+  const [announcement,setAnnouncement]=useState('');
+  const [help,setHelp]=useState(false);
+  /** Which mode the open document is in, so the status line describes the truth. */
+  const [viewerMode,setViewerMode]=useState<'preview'|'edit'>('preview');
+  const helpRef=useRef<HTMLDivElement|null>(null);
+  const helpReturn=useRef<HTMLElement|null>(null);
+  /* A dialog that leaves focus on the page behind it is a dialog in name only. The
+     open takes focus, the close hands it back to the control that asked. */
+  useEffect(()=>{
+    if(help){
+      helpReturn.current=document.activeElement as HTMLElement|null;
+      requestAnimationFrame(()=>helpRef.current?.querySelector<HTMLElement>('button')?.focus());
+    }
+  },[help]);
+  const helpClose=()=>{requestAnimationFrame(()=>helpReturn.current?.focus())};
+  const [pulse,setPulse]=useState(false);
+
+  const tabsRef=useRef<Tab[]>([]);
+  tabsRef.current=tabs;
+  const selectedRef=useRef('');
+  selectedRef.current=selected;
+  const openTicket=useRef(0);
+  const draftTimers=useRef(new Map<string,number>());
+  const searchRef=useRef<HTMLButtonElement>(null);
+  const staleCount=useRef(0);
+
+  const tree=useLoad<FileNode[]>(()=>api.fileTree(),[]);
+  const health=useLoad(()=>api.health(),[]);
+  const online=health.state.status==='ready';
+
+  const bundle=useLoad<Bundle|null>(()=>selected?api.bundle(selected):Promise.resolve(null),[selected]);
+  const bundleState:Loadable<Bundle>=useMemo(()=>{
+    if(!selected)return {status:'ready',data:{members:[],stale:[]}};
+    if(bundle.state.status==='ready')return {status:'ready',data:bundle.state.data??{members:[],stale:[]}};
+    return bundle.state;
+  },[bundle.state,selected]);
+
+  const announce=useCallback((message:string)=>setAnnouncement(message),[]);
+  const activeTab=tabs.find(tab=>tab.rel===selected)??null;
+
+  /* -- open / load ------------------------------------------------------- */
+
+  const load=useCallback(async(rel:string,options:{restoreDraft?:boolean}={})=>{
+    const ticket=openTicket.current+=1;
+    setSelected(rel);
+    setConflict(null);
+    /* Opening a file must bring the document forward. Before this, clicking a
+       file in the Explorer or the Bundle Rail while another pane was active
+       fetched it, added the tab, and rendered nothing. */
+    setPane('files');
+    setTabs(current=>current.some(tab=>tab.rel===rel)?current:[...current,{rel,loaded:false}]);
+    if(isBinary(rel)){
+      setTabs(current=>current.map(tab=>tab.rel===rel?{...tab,loaded:true}:tab));
+      return;
+    }
+    try{
+      const data=await api.file(rel);
+      if(ticket!==openTicket.current)return;
+      setTabs(current=>current.map(tab=>tab.rel===rel?{...tab,content:data.content,stamp:data.stamp,loaded:true,dirty:false,error:undefined}:tab));
+      const draft=readDraft(rel);
+      if(!options.restoreDraft&&draft!==null&&draft!==data.content)setDraftOffer({rel,content:draft});
+      else if(options.restoreDraft&&draft!==null)setTabs(current=>current.map(tab=>tab.rel===rel?{...tab,content:draft,dirty:true}:tab));
+    }catch(error){
+      if(ticket!==openTicket.current)return;
+      const {title,next}=fault(error,`Reading ${rel}`);
+      /* Only a server-supplied detail is worth showing; a raw JS exception
+         string ("TypeError: Failed to fetch") is not. */
+      const raw=error instanceof ApiError&&error.detail?error.detail:undefined;
+      /* B2: the failure is its own state. No buffer, no editor, nothing to save. */
+      setTabs(current=>current.map(tab=>tab.rel===rel?{...tab,content:undefined,stamp:undefined,loaded:true,dirty:false,error:{title,next,raw}}:tab));
+    }
+  },[],);
+
+  const requestOpen=useCallback((rel:string)=>{
+    if(rel===selectedRef.current)return;
+    const current=tabsRef.current.find(tab=>tab.rel===selectedRef.current);
+    if(current?.dirty){setPending({kind:'open',rel});return}
+    void load(rel);
+  },[load]);
+
+  const closeTab=useCallback((rel:string)=>{
+    const next=tabsRef.current.filter(tab=>tab.rel!==rel);
+    setTabs(next);
+    clearDraft(rel);
+    if(selectedRef.current===rel)setSelected(next.length?next[next.length-1].rel:'');
+  },[],);
+
+  const requestClose=useCallback((rel:string)=>{
+    const current=tabsRef.current.find(tab=>tab.rel===rel);
+    if(current?.dirty){setPending({kind:'close',rel});return}
+    closeTab(rel);
+  },[closeTab]);
+
+  /* -- save (B1: keep the returned stamp; 409 becomes a real choice) ------ */
+
+  const save=useCallback(async(rel:string,options:{withoutPrecondition?:boolean}={}):Promise<boolean>=>{
+    const tab=tabsRef.current.find(item=>item.rel===rel);
+    if(!tab)return false;
+    if(tab.error||tab.content===undefined){
+      announce('Nothing to save: this tab has no editable buffer.');
+      return false;
+    }
+    setSaveState({status:'saving'});
+    try{
+      const result=await api.save(rel,tab.content,options.withoutPrecondition?undefined:tab.stamp);
+      const stamp=result?.stamp??tab.stamp;
+      setTabs(current=>current.map(item=>item.rel===rel?{...item,dirty:false,stamp,savedAt:Date.now(),error:undefined}:item));
+      clearDraft(rel);
+      setSaveState({status:'saved',at:Date.now()});
+      setConflict(null);
+      announce(`Saved ${baseName(rel)}`);
+      return true;
+    }catch(error){
+      if(isConflict(error)){
+        setConflict({rel});
+        setSaveState({status:'idle'});
+        announce(`Conflict on ${baseName(rel)}: the file changed on disk.`);
+        return false;
+      }
+      const {title,next}=fault(error,'Saving this file');
+      setSaveState({status:'failed',message:`${title} ${next}`});
+      announce(`Save failed. ${title}`);
+      return false;
+    }
   },[]);
 
-  const unit=status?.next;
-  useEffect(()=>{if(unit?.mode)setMode(unit.mode)},[unit?.mode]);
+  const keepMine=useCallback(async(rel:string)=>{
+    const tab=tabsRef.current.find(item=>item.rel===rel);
+    if(!tab||tab.content===undefined)return;
+    try{
+      /* A fresh stamp satisfies either backend rule (stamped compare, or no
+         precondition at all) and still refuses to clobber a change we have not
+         seen. If the file vanished, the save simply becomes a create. */
+      const fresh=await api.file(rel);
+      await api.save(rel,tab.content,fresh.stamp);
+      setTabs(current=>current.map(item=>item.rel===rel?{...item,dirty:false,stamp:fresh.stamp,savedAt:Date.now()}:item));
+      clearDraft(rel);
+      setConflict(null);
+      setSaveState({status:'saved',at:Date.now()});
+      announce(`Saved ${baseName(rel)} over the version on disk. The previous copy is in .dossier/trash.`);
+      bundle.reload();
+    }catch(error){
+      if(error instanceof ApiError&&error.status===404){
+        await save(rel,{withoutPrecondition:true});
+        return;
+      }
+      const {title,next}=fault(error,'Overwriting with your version');
+      setSaveState({status:'failed',message:`${title} ${next}`});
+    }
+  },[bundle,save]);
+
+  const reloadTheirs=useCallback(async(rel:string)=>{
+    openTicket.current+=1;
+    const ticket=openTicket.current;
+    try{
+      const data=await api.file(rel);
+      if(ticket!==openTicket.current)return;
+      setTabs(current=>current.map(item=>item.rel===rel?{...item,content:data.content,stamp:data.stamp,loaded:true,dirty:false,error:undefined}:item));
+      clearDraft(rel);
+      setConflict(null);
+      announce(`Reloaded ${baseName(rel)} from disk. Your buffer was discarded.`);
+    }catch(error){
+      const {title,next}=fault(error,'Reloading from disk');
+      setSaveState({status:'failed',message:`${title} ${next}`});
+    }
+  },[]);
+
+  /* -- drafts, theme, unload guard --------------------------------------- */
+
+  const onEdit=useCallback((rel:string,content:string)=>{
+    setTabs(current=>current.map(tab=>tab.rel===rel?{...tab,content,dirty:true}:tab));
+    const existing=draftTimers.current.get(rel);
+    if(existing)window.clearTimeout(existing);
+    draftTimers.current.set(rel,window.setTimeout(()=>writeDraft(rel,content),700));
+  },[]);
+
+  const dirty=tabs.some(tab=>tab.dirty);
   useEffect(()=>{
-    let live=true;setBusy(true);
-    agentApi.brief(mode).then(text=>{if(live){setBrief(text);setError('')}}).catch(err=>{if(live){setBrief('');setError(String(err))}}).finally(()=>{if(live)setBusy(false)});
-    return()=>{live=false};
-  },[mode]);
+    storeTheme(theme);
+  },[theme]);
 
-  const copy=async()=>{if(!brief)return;await navigator.clipboard.writeText(brief);setCopied(true);setTimeout(()=>setCopied(false),1500)};
+  useEffect(()=>{
+    if(!dirty)return;
+    const guard=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};
+    window.addEventListener('beforeunload',guard);
+    return()=>window.removeEventListener('beforeunload',guard);
+  },[dirty]);
 
-  if(!contract)return <div className="empty-panel"><h2>Agent surface unavailable</h2><p>Connect the Dossier API to read the injected-model contract.</p></div>;
+  /* -- file events (B7: /api/events) ------------------------------------ */
 
-  return <div className="agent-pane">
-    <div className="agent-head">
-      <div>
-        <h1>Agent surface</h1>
-        <p>{contract.summary}</p>
+  useEffect(()=>{
+    if(!online)return;
+    let timer=0;
+    const source=new EventSource(api.eventsUrl());
+    source.onmessage=event=>{
+      let payload:{type?:string;path?:string};
+      try{payload=JSON.parse(event.data) as {type?:string;path?:string}}
+      catch{return}
+      if(!payload.type||payload.type==='connected'||payload.type==='closed')return;
+      window.clearTimeout(timer);
+      timer=window.setTimeout(()=>{
+        tree.reload();
+        const current=selectedRef.current;
+        if(current&&payload.path&&String(payload.path).split(/[\\/]/).pop()===baseName(current))bundle.reload();
+      },600);
+    };
+    return()=>{window.clearTimeout(timer);source.close()};
+    // selectedRef keeps the stream alive across selection changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[online]);
+
+  /* One 400ms amber pulse when a set gains a stale member (DESIGN.md:101). */
+  useEffect(()=>{
+    const count=bundleState.status==='ready'?(bundleState.data.stale?.length??0):0;
+    if(count>staleCount.current){
+      setPulse(true);
+      const timer=window.setTimeout(()=>setPulse(false),500);
+      staleCount.current=count;
+      return()=>window.clearTimeout(timer);
+    }
+    staleCount.current=count;
+  },[bundleState]);
+
+  /* -- shortcuts --------------------------------------------------------- */
+
+  const requestCloseSelected=useCallback(()=>{if(selectedRef.current)requestClose(selectedRef.current)},[requestClose]);
+
+  useEffect(()=>{
+    const handler=(event:KeyboardEvent)=>{
+      const meta=event.metaKey||event.ctrlKey;
+      const key=event.key.toLowerCase();
+      if(meta&&key==='k'){event.preventDefault();setPalette(true);return}
+      if(meta&&event.key==='\\'){event.preventDefault();setHideExplorer(value=>!value);setExplorerOpen(value=>!value);return}
+      if(meta&&event.key==='/'){event.preventDefault();setHideRail(value=>!value);setRailOpen(value=>!value);return}
+      if(meta&&key==='s'){event.preventDefault();if(selectedRef.current)void save(selectedRef.current);return}
+      if(meta&&key==='w'){event.preventDefault();requestCloseSelected();return}
+      if(event.key==='Escape'){
+        setPalette(false);setHelp(false);setConflict(null);setPending(null);setDraftOffer(null);
+        return;
+      }
+      if(!meta&&event.key==='?'&&!/^(input|textarea|select)$/i.test((event.target as HTMLElement)?.tagName??'')){event.preventDefault();setHelp(value=>!value)}
+    };
+    window.addEventListener('keydown',handler);
+    return()=>window.removeEventListener('keydown',handler);
+  },[save,requestCloseSelected]);
+
+  /* -- tab keyboard navigation ------------------------------------------ */
+
+  const onTabKeyDown=(event:React.KeyboardEvent<HTMLDivElement>,index:number)=>{
+    if(event.key!=='ArrowRight'&&event.key!=='ArrowLeft')return;
+    event.preventDefault();
+    if(tabs.length===0)return;
+    const next=event.key==='ArrowRight'?(index+1)%tabs.length:(index-1+tabs.length)%tabs.length;
+    const rel=tabs[next].rel;
+    if(rel===selected)return;
+    const current=tabs[index];
+    if(current?.dirty)setPending({kind:'open',rel});
+    else void load(rel);
+  };
+
+  /* -- derived ----------------------------------------------------------- */
+
+  const node=useMemo(()=>tree.state.status==='ready'?flattenOnce(tree.state.data,selected):null,[tree.state,selected]);
+  /* Which .docx files exist, so Build can offer them instead of a guessed path. */
+  const docxFiles=useMemo(()=>tree.state.status==='ready'
+    ?flatten(tree.state.data).map(item=>item.rel).filter(rel=>extOf(rel)==='docx').sort()
+    :[],[tree.state]);
+  /* Documents a reviewer can actually read, for the panel's two pickers. */
+  const readableFiles=useMemo(()=>tree.state.status==='ready'
+    ?flatten(tree.state.data).map(item=>item.rel)
+      .filter(rel=>['md','txt','docx','pdf'].includes(extOf(rel))).sort().slice(0,400)
+    :[],[tree.state]);
+  const saveLine=saveState.status==='saving'?'Saving…'
+    :saveState.status==='saved'?`Saved ${clockTime(saveState.at)}`
+    :saveState.status==='failed'?saveState.message??'Save failed'
+    :dirty?'Unsaved changes':'';
+  /* What can be typed into, said out loud: `.md` opens as a reading pane and
+     `.csv` as a grid, and neither is editable until Edit is pressed. */
+  const editHint=!activeTab?''
+    :activeTab.error?'Read failed, read-only'
+    :isBinary(activeTab.rel)?`${extOf(activeTab.rel)}: read-only view`
+    :extOf(activeTab.rel)==='md'?(viewerMode==='edit'?'Editing. Press ⌘S to save.':'Markdown preview. Press Edit to type.')
+    :extOf(activeTab.rel)==='csv'?(viewerMode==='edit'?'Editing. Press ⌘S to save.':'CSV grid. Press Edit to type.')
+    :'Editable text, ⌘S saves';
+
+  return <div className={`app ${hideExplorer?'hide-explorer':''} ${hideRail?'hide-rail':''} ${railOpen?'rail-open':''} ${explorerOpen?'explorer-open':''}`} data-theme={theme}>
+    <a className="skip-link" href="#main-content">Skip to the open document</a>
+    <header className="topbar">
+      <div className="topbar-main">
+      <span className="brand">Dossier</span>
+      <span className="crumb">
+        <span className="crumb-path" translate="no" title={selected||undefined}>{selected?selected.split('/').pop():'Open a file to begin'}</span>
+        {node?.size!==undefined&&<span className="crumb-meta">{formatBytes(node.size)}</span>}
+        {node?.mtime_ns!==undefined&&<span className="crumb-meta">{`modified ${formatAge(node.mtime_ns)}`}</span>}
+      </span>
+      <button type="button" className="search-trigger" ref={searchRef} onClick={()=>setPalette(true)}><span>Search files</span><span className="kbd">⌘K</span></button>
+      <nav className="area-nav" aria-label="Workspace areas">
+        {AREAS.map(item=><button
+          type="button"
+          key={item.id}
+          className={`area-btn ${area===item.id?'active':''}`}
+          aria-current={area===item.id?'page':undefined}
+          onClick={()=>{selectArea(item.id);setRailOpen(false);setExplorerOpen(false)}}
+        >{item.label}</button>)}
+      </nav>
+      <button type="button" className="icon-btn" aria-label={`Use ${theme==='light'?'dark':'light'} theme`} onClick={()=>setTheme(theme==='light'?'dark':'light')}>{theme==='light'?'◐':'○'}</button>
       </div>
-      <span className="grow"/>
-      <span className="agent-version">contract {contract.schema_version} · {contract.modes.length} modes · {contract.gates.length} gates</span>
-    </div>
+      <nav className="pane-nav" aria-label={`${AREAS.find(item=>item.id===area)?.label??area} panes`}>
+        {areaPanes.map(item=><button
+          type="button"
+          key={item.id}
+          className={`pane-btn ${pane===item.id?'active':''}`}
+          aria-current={pane===item.id?'page':undefined}
+          onClick={()=>{goToPane(item.id);setRailOpen(false);setExplorerOpen(false)}}
+        >{item.label}</button>)}
+        <span className="grow"/>
+        <button type="button" className="icon-btn explorer-toggle" aria-expanded={explorerOpen} aria-label="Files: show or hide the file explorer" onClick={()=>setExplorerOpen(value=>!value)}>Files</button>
+        <button type="button" className="icon-btn rail-toggle" aria-expanded={railOpen} aria-label="Rail: show or hide the bundle rail" onClick={()=>setRailOpen(value=>!value)}>Rail</button>
+      </nav>
+    </header>
 
-    {unit&&<div className={`agent-next ${unit.needs_user?'needs-user':''}`}>
-      <div className="row"><span className="mode">{unit.label}</span><span className={`agent-kind ${unit.kind}`}>{unit.kind}</span><span className="agent-version">{unit.stage}</span>{unit.needs_user&&<span className="agent-version">needs the user</span>}</div>
-      <p className="reason">{unit.reason}</p>
-      {unit.targets&&unit.targets.length>0&&<ul>{unit.targets.slice(0,6).map(target=><li key={target}>{target}</li>)}</ul>}
+    <Explorer tree={tree.state} selected={selected} onSelect={requestOpen} onRetry={tree.reload} inert={narrowExplorer&&!explorerOpen}/>
+
+    <main className="panel center" id="main-content" tabIndex={-1}>
+      {/* A tablist with no tab inside it fails aria-required-children, and an empty
+          document strip is not a tab set. The role appears with the first tab. */}
+      <div className="tabs" role={tabs.length?'tablist':undefined} aria-label={tabs.length?'Open documents':undefined}>
+        {tabs.map((tab,index)=><div
+          key={tab.rel}
+          role="tab"
+          aria-selected={tab.rel===selected}
+          aria-label={`${baseName(tab.rel)}${tab.dirty?' — unsaved changes':''}`}
+          aria-controls="document-view"
+          tabIndex={tab.rel===selected?0:-1}
+          className={`tab ${tab.rel===selected?'active':''}`}
+          onKeyDown={event=>onTabKeyDown(event,index)}
+          onClick={()=>{if(tab.rel!==selected)requestOpen(tab.rel)}}
+        >
+          <span className="tab-label">{baseName(tab.rel)}</span>
+          {tab.dirty&&<span className="tab-dirty" aria-hidden="true">•</span>}
+          <button type="button" className="tab-close" aria-label={`Close ${baseName(tab.rel)}`} onClick={event=>{event.stopPropagation();requestClose(tab.rel)}}>×</button>
+        </div>)}
+        {tabs.length===0&&<span className="tab-placeholder">No document open</span>}
+      </div>
+
+      <div className="viewer" id="document-view" role={tabs.length?'tabpanel':undefined} aria-label={tabs.length?'Open document':undefined}>
+        {conflict&&<div className="confirm" role="alertdialog" aria-label="File changed on disk">
+          <b>{`${baseName(conflict.rel)} changed on disk since you opened it.`}</b>
+          <span>Keep your version (the current file is copied to .dossier/trash first), or reload theirs and lose your edits.</span>
+          <button type="button" className="primary" onClick={()=>void keepMine(conflict.rel)}>Keep mine</button>
+          <button type="button" onClick={()=>void reloadTheirs(conflict.rel)}>Reload theirs</button>
+          <button type="button" onClick={()=>setConflict(null)}>Decide later</button>
+        </div>}
+        {saveState.status==='failed'&&<div className="confirm" role="alert">{saveState.message}<button type="button" onClick={()=>setSaveState({status:'idle'})}>Dismiss</button></div>}
+
+        <Suspense fallback={<PaneSkeleton/>}>
+        {pane==='files'
+          ?activeTab
+            ?<>
+              {draftOffer?.rel===activeTab.rel&&<div className="confirm" role="alert">
+                <b>Unsaved edits from earlier in this session are stored for {baseName(draftOffer.rel)}.</b>
+                <button type="button" className="primary" onClick={()=>{const offer=draftOffer;setDraftOffer(null);if(offer)void load(offer.rel,{restoreDraft:true})}}>Restore unsaved edits</button>
+                <button type="button" onClick={()=>{clearDraft(draftOffer.rel);setDraftOffer(null)}}>Discard the draft</button>
+              </div>}
+              {activeTab.error
+                ?<Viewer tab={activeTab} onChange={()=>undefined} onRetry={()=>void load(activeTab.rel,{restoreDraft:false})}/>
+                :<Viewer tab={activeTab} onChange={content=>onEdit(activeTab.rel,content)} onRetry={()=>void load(activeTab.rel)} onMode={setViewerMode}/>}
+            </>
+            :<div className="welcome">
+              <h1>Put the folder on the light table.</h1>
+              <NextStep onGo={next=>goToPane(next as Pane)}/>
+            </div>
+          :pane==='jobs'?<JobsPane/>
+          :pane==='identity'?<IdentityPane/>
+          :pane==='capture'?<CapturePane/>
+          :pane==='build'?<BuildPane docx={docxFiles}/>
+          :pane==='audit'?<AuditPane/>
+          :pane==='trash'?<TrashPane onRestored={rel=>{tree.reload();announce(`Restored ${baseName(rel)}.`)}}/>
+          :pane==='sync'?<SyncPane/>
+          :pane==='panel'?<PanelPane candidate={selected} files={readableFiles}/>
+          :pane==='agent'?<AgentPane/>
+          :pane==='verify'?<VerifyPane candidate={selected}/>
+          :<TrajectoryPane/>}
+        </Suspense>
+      </div>
+    </main>
+
+    <BundleRail bundle={bundleState} selected={selected} onOpen={requestOpen} onRetry={bundle.reload} onChanged={()=>{tree.reload();bundle.reload()}} pulse={pulse} inert={narrowRail&&!railOpen}/>
+
+    {(railOpen||explorerOpen)&&<button type="button" className="scrim" aria-label="Close the side panel" onClick={()=>{setRailOpen(false);setExplorerOpen(false)}}/>}
+
+    <footer className="status">
+      <span className={online?'':'offline'}>{online?'API ready':health.state.status==='loading'?'Checking the API…':'API unavailable — showing the local shell'}</span>
+      {!online&&health.state.status==='failed'&&<button type="button" onClick={()=>{health.reload();tree.reload()}}>Retry</button>}
+      <span className="grow"/>
+      <span className={saveState.status==='failed'?'stale':''} role="status" aria-live="polite">{saveLine}</span>
+      {editHint&&<span>{editHint}</span>}
+      {selected&&<span>{`${selected}${activeTab?.dirty?' — unsaved':''}`}</span>}
+      <button type="button" className="status-btn" aria-pressed={hideExplorer} onClick={()=>{setHideExplorer(value=>!value);setExplorerOpen(value=>!value)}}>{'⌘\\ explorer'}</button>
+      <button type="button" className="status-btn" aria-pressed={hideRail} onClick={()=>{setHideRail(value=>!value);setRailOpen(value=>!value)}}>{'⌘/ rail'}</button>
+      <button type="button" onClick={()=>setHelp(true)} aria-label="Keyboard shortcuts">?</button>
+    </footer>
+
+    <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
+
+    {palette&&<Suspense fallback={null}><Palette
+      onClose={()=>{setPalette(false);searchRef.current?.focus()}}
+      onOpen={rel=>void load(rel)}
+      onGo={next=>{setPalette(false);goToPane(next as Pane)}}
+      places={PLACES}/></Suspense>}
+
+    {help&&<div className="palette-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setHelp(false)}}>
+      <div className="palette" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" ref={helpRef} onKeyDown={event=>{if(event.key==='Escape'){setHelp(false);helpClose()}else if(event.key==='Tab'){const focusable=event.currentTarget.querySelectorAll<HTMLElement>('button');const first=focusable[0];const last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}}}}>
+        <table className="data-table"><thead><tr><th>Keys</th><th>Action</th></tr></thead>
+          <tbody>{SHORTCUTS.map(([keys,what])=><tr key={keys}><td><b>{keys}</b></td><td>{what}</td></tr>)}</tbody></table>
+        <div className="button-row"><button type="button" className="primary" onClick={()=>{setHelp(false);helpClose()}}>Close the shortcuts</button></div>
+      </div>
     </div>}
 
-    <div className="agent-columns">
-      <div className="agent-modes">
-        <h2>Modes</h2>
-        <ul>{contract.modes.map(item=><li key={item.id}><button type="button" aria-current={item.id===mode} onClick={()=>setMode(item.id)}><span>{item.label}</span><span className={`agent-kind ${item.kind}`}>{item.kind.slice(0,4)}</span></button></li>)}</ul>
-      </div>
-
-      <div>
-        <div className="agent-brief">
-          <div className="bar"><b>Task packet — {mode}</b><span className="grow"/>{busy&&<span className="agent-version">rendering…</span>}<button type="button" className="chip" onClick={()=>void agentApi.brief(mode).then(setBrief).catch(()=>setError('brief unavailable'))}>Refresh</button><button type="button" className="primary" onClick={()=>void copy()} disabled={!brief}>{copied?'Copied':'Copy packet'}</button></div>
-          <pre aria-label="Agent task packet">{error||brief||'No packet rendered.'}</pre>
-        </div>
-
-        <div className="agent-gates">
-          <h2>Gates — enforced in code, never softened</h2>
-          <table><thead><tr><th>Gate</th><th>Rule</th><th>Never</th></tr></thead><tbody>
-            {contract.gates.map(gate=><tr key={gate.id}><td><b>{gate.id}</b><br/><code>{gate.enforced_by}</code></td><td>{gate.rule}</td><td>{gate.never}</td></tr>)}
-          </tbody></table>
-        </div>
-
-        <div className="agent-facts">
-          <h2>Workspace</h2>
-          <dl>
-            <dt>Root</dt><dd>{workspace?.root||status?.root||'—'}</dd>
-            <dt>Files</dt><dd>{workspace?.counts?.files??'—'}</dd>
-            <dt>Postings</dt><dd>{workspace?.counts?.postings??'—'}</dd>
-            <dt>Generated resumes</dt><dd>{workspace?.counts?.artefacts??'—'}</dd>
-            <dt>Corpus</dt><dd>{workspace?.corpus?.present?`${workspace.corpus.rows} rows across ${workspace.corpus.sources_count} boards · fits ${JSON.stringify(workspace.corpus.fits)}`:'—'}</dd>
-            <dt>Tracker</dt><dd>{workspace?.tracker?.present?`${workspace.tracker.rows} rows · ${JSON.stringify(workspace.tracker.status_counts)}`:'—'}</dd>
-            <dt>Coverage</dt><dd>{workspace?.coverage?.present?`${workspace.coverage.file} (${workspace.coverage.age_days} day(s) old)`:'—'}</dd>
-            <dt>Capabilities</dt><dd>{doctor?`${doctor.verdict} — ${Object.entries(doctor.capabilities).filter(([,ok])=>ok).length}/${Object.keys(doctor.capabilities).length} available`:'—'}</dd>
-          </dl>
-          {workspace?.blockers&&workspace.blockers.length>0&&<ul className="agent-blockers">{workspace.blockers.map(blocker=><li key={blocker}>{blocker}</li>)}</ul>}
-          {status?.recent&&status.recent.length>0&&<ul className="agent-sessions">{status.recent.map((entry,index)=><li key={index}><b>{entry.mode}</b><span>{entry.status}</span><span>{entry.at}</span></li>)}</ul>}
+    {pending&&<div className="palette-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setPending(null)}}>
+      <div className="palette" role="alertdialog" aria-modal="true" aria-label="Unsaved changes">
+        <div className="confirm">
+          <b>{`${baseName(pending.rel)} has unsaved edits.`}</b>
+          <span>Save them before {pending.kind==='open'?'opening the other file':'closing this tab'}, or discard them.</span>
+          <button type="button" className="primary" onClick={()=>{const target=pending;setPending(null);void save(target.rel).then(ok=>{if(!ok)return;if(target.kind==='open'){void load(target.rel)}else{closeTab(target.rel)}})}}>Save</button>
+          <button type="button" onClick={()=>{const target=pending;setPending(null);clearDraft(target.rel);if(target.kind==='open'){void load(target.rel)}else{closeTab(target.rel)}}}>Discard</button>
+          <button type="button" onClick={()=>setPending(null)}>Keep editing</button>
         </div>
       </div>
-    </div>
-  </div>
+    </div>}
+  </div>;
 }
-export default function App(){const [theme,setTheme]=useState<'light'|'dark'>('light');const [nodes,setNodes]=useState<FileNode[]>([]);const [selected,setSelected]=useState('');const [tab,setTab]=useState<Tab|null>(null);const [bundle,setBundle]=useState<Bundle|null>(null);const [palette,setPalette]=useState(false);const [offline,setOffline]=useState(false);const [saveError,setSaveError]=useState('');const [hideExplorer,setHideExplorer]=useState(false);const [hideRail,setHideRail]=useState(false);const [showJobs,setShowJobs]=useState(false);const [showAudit,setShowAudit]=useState(false);const [showSync,setShowSync]=useState(false);const [showAgent,setShowAgent]=useState(false);const showPane=(pane:'jobs'|'audit'|'sync'|'agent')=>{setShowJobs(pane==='jobs');setShowAudit(pane==='audit');setShowSync(pane==='sync');setShowAgent(pane==='agent')};const save=useCallback(async()=>{if(!tab?.dirty)return;try{await api.save(tab.rel,tab.content||'',tab.stamp);setTab(current=>current?{...current,dirty:false}:current);setSaveError('')}catch(error){const message=String(error);setSaveError(message.includes('409')?'Changed on disk. Reload the file or overwrite after copying the old version to trash.':'Could not save: the Dossier API is unavailable.')}},[tab]);const open=useCallback(async(rel:string)=>{setSelected(rel);setTab({rel});if(!isBinary(rel)){try{const data=await api.file(rel);setTab({rel,content:data.content,stamp:data.stamp})}catch{setTab({rel,content:'Unable to read this file from the Dossier API.'})}}try{setBundle(await api.bundle(rel));setOffline(false)}catch{setBundle(null);setOffline(true)}},[]);useEffect(()=>{api.tree().then(setNodes).catch(()=>setOffline(true));const handler=(event:KeyboardEvent)=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();setPalette(true)}if((event.metaKey||event.ctrlKey)&&event.key==='\\'){event.preventDefault();setHideExplorer(value=>!value)}if((event.metaKey||event.ctrlKey)&&event.key==='/'){event.preventDefault();setHideRail(value=>!value)}if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='s'){event.preventDefault();void save()}if(event.key==='Escape')setPalette(false)};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[save]);return <div className={`app ${hideExplorer?'hide-explorer':''} ${hideRail?'hide-rail':''}`} data-theme={theme}><header className="topbar"><span className="brand">Dossier</span><span className="crumb">{selected||'Open a file to begin'}</span><button type="button" className="search-trigger" onClick={()=>setPalette(true)}><span>Search files</span><span className="kbd">⌘K</span></button><button type="button" className="jobs-trigger" onClick={()=>showPane('jobs')}>Jobs</button><button type="button" className="jobs-trigger" onClick={()=>showPane('audit')}>Audit</button><button type="button" className="jobs-trigger" onClick={()=>showPane('sync')}>Sync prompt</button><button type="button" className="jobs-trigger" onClick={()=>showPane('agent')}>Agent</button><button type="button" className="icon-btn" aria-label={`Use ${theme==='light'?'dark':'light'} theme`} onClick={()=>setTheme(theme==='light'?'dark':'light')}>{theme==='light'?'◐':'○'}</button></header><Explorer nodes={nodes} selected={selected} onSelect={node=>void open(node.rel)}/><main className="panel center"><div className="tabs">{tab&&<button type="button" className="tab active">{nameOf({rel:tab.rel})}{tab.dirty?' •':''}</button>}</div><div className="viewer">{saveError&&<div className="confirm" role="alert">{saveError}<button type="button" onClick={()=>setSaveError('')}>Dismiss</button></div>}{showAgent?<AgentPane/>:showSync?<SyncPane/>:showAudit?<AuditPane/>:showJobs?<JobsPane/>:tab?<Viewer tab={tab} onChange={content=>setTab(current=>current?{...current,content,dirty:true}:current)}/>:<div className="welcome"><h1>Put the folder on the light table.</h1><p>Open any file to read it in context. Dossier keeps the related source, analysis, artifact, render, and proof together in the Bundle Rail.</p></div>}</div></main><BundleRail bundle={bundle} selected={selected} onOpen={rel=>void open(rel)}/><footer className="status"><span className={offline?'offline':''}>{offline?'API unavailable · showing local shell':'Ready'}</span><span className="grow"/><span>⌘\ explorer</span><span>⌘/ rail</span></footer>{palette&&<Palette onClose={()=>setPalette(false)} onOpen={rel=>void open(rel)}/>}</div>}
+
+function flattenOnce(nodes:FileNode[],rel:string):FileNode|null{
+  const stack=[...nodes];
+  while(stack.length){
+    const node=stack.pop();
+    if(!node)continue;
+    if(node.rel===rel)return node;
+    if(node.children)stack.push(...node.children);
+  }
+  return null;
+}
+
+/* Exported so the area/pane map and the shortcut table can be asserted by grep
+   rather than by memory. */
+export {AREAS,SHORTCUTS};

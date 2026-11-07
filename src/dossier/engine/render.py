@@ -101,6 +101,11 @@ def export_pdf(docx: Path, pdf: Path) -> dict:
         word.Visible = False
         word.DisplayAlerts = 0
         document = None
+        # Cleanup failures are collected and reported rather than swallowed. A
+        # `Quit` that fails leaves exactly the invisible WINWORD.EXE this module
+        # exists to avoid, so a silent `pass` here would hide the next failure's
+        # cause — which is the failure mode the docstring describes.
+        cleanup: list[str] = []
         try:
             document = word.Documents.Open(str(docx), ReadOnly=True, AddToRecentFiles=False)
             document.ExportAsFixedFormat(str(pdf), WD_FORMAT_PDF)
@@ -108,13 +113,16 @@ def export_pdf(docx: Path, pdf: Path) -> dict:
             if document is not None:
                 try:
                     document.Close(WD_DO_NOT_SAVE)
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as exc:  # noqa: BLE001
+                    cleanup.append(f"document.Close failed: {type(exc).__name__}: {exc}")
             try:
                 word.Quit()
-            except Exception:  # noqa: BLE001
-                pass
-        return {"renderer": "word-private-com", "path": str(pdf), "pages": pdf_pages(pdf)}
+            except Exception as exc:  # noqa: BLE001
+                cleanup.append(f"word.Quit failed: {type(exc).__name__}: {exc}")
+        result = {"renderer": "word-private-com", "path": str(pdf), "pages": pdf_pages(pdf)}
+        if cleanup:
+            result["cleanup"] = cleanup
+        return result
 
     soffice = shutil.which("soffice")
     if soffice:
@@ -197,7 +205,7 @@ def render_stale(root: Path | str, backup_dir: Path | None = None) -> dict:
             shutil.copy2(pdf, keep)
         before = docx.stat().st_mtime_ns
         try:
-            export_pdf(docx, pdf)
+            outcome = export_pdf(docx, pdf)
         except Exception as exc:  # noqa: BLE001
             failed.append({"pdf": str(pdf.relative_to(root)),
                            "error": f"{type(exc).__name__}: {exc}"[:200]})
@@ -209,6 +217,10 @@ def render_stale(root: Path | str, backup_dir: Path | None = None) -> dict:
             "pages": pdf_pages(pdf) if fresh else None,
             "bytes": pdf.stat().st_size if pdf.exists() else 0,
         }
+        # A Word instance that would not close is the cause of the *next*
+        # failure, so it travels with this render's report instead of vanishing.
+        if outcome.get("cleanup"):
+            entry["cleanup"] = outcome["cleanup"]
         (rebuilt if fresh else failed).append(entry)
 
     return {
@@ -250,6 +262,8 @@ def report_path(root: Path | str, name: str) -> Path:
 
 
 def write_report(root: Path | str, name: str, payload: dict) -> Path:
+    from ..safety import trash_then_write_text
+
     path = report_path(root, name)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    trash_then_write_text(root, path, json.dumps(payload, indent=2, ensure_ascii=False))
     return path

@@ -91,34 +91,55 @@ def _core(root: Path) -> str:
     lines.append("### Where the workspace lives")
     lines.append("")
     lines.append(
-        f"This folder is `{root}`. Nothing here writes to a source file without a keystroke; "
-        "every overwrite routes through `.dossier/trash/` first."
+        f"This folder is the `{root.name}` workspace root. Nothing here writes to a source file "
+        "without a keystroke; every overwrite routes through `.dossier/trash/` first."
     )
     return "\n".join(lines)
 
 
-def upsert_block(path: Path, body: str, header: str = "") -> str:
+def _with_header(text: str, header: str) -> str:
+    """Put the pack's prescribed header at the top of the file, once.
+
+    The header is part of the generated contract, not one-time decoration. It was
+    only written when a pack *created* a file, so a pack file that already existed
+    kept no H1 at all — and AGENTS.md and GEMINI.md, which prescribe different
+    titles, came out byte-identical.
+    """
+    if not header or text.startswith(header):
+        return text
+    return header + text.lstrip("\n")
+
+
+def upsert_block(path: Path, body: str, header: str = "", root: Path | str | None = None) -> str:
     """Write `body` between managed markers, preserving everything outside them.
 
     Returns "created", "appended" or "replaced" so a caller can report honestly
-    what changed rather than assuming.
+    what changed rather than assuming. `root` is the workspace the replaced
+    version belongs to; `write_all` passes it, and it defaults to the file's own
+    folder for a direct call.
     """
+    from ..safety import trash_then_write_text
+
     path.parent.mkdir(parents=True, exist_ok=True)
+    trash_root = Path(root) if root is not None else path.parent
     managed = f"{START}\n{body}\n{END}\n"
     if not path.exists():
-        path.write_text((header + "\n" if header else "") + managed, encoding="utf-8")
+        path.write_text(header + managed, encoding="utf-8")
         return "created"
 
     existing = path.read_text(encoding="utf-8", errors="replace")
     if START in existing and END in existing:
         head, _, rest = existing.partition(START)
         _, _, tail = rest.partition(END)
-        path.write_text(head + managed.rstrip("\n") + tail, encoding="utf-8")
-        return "replaced"
+        updated, state = head + managed.rstrip("\n") + tail, "replaced"
+    else:
+        separator = "" if existing.endswith("\n\n") else ("\n" if existing.endswith("\n") else "\n\n")
+        updated, state = existing + separator + managed, "appended"
 
-    separator = "" if existing.endswith("\n\n") else ("\n" if existing.endswith("\n") else "\n\n")
-    path.write_text(existing + separator + managed, encoding="utf-8")
-    return "appended"
+    updated = _with_header(updated, header)
+    if updated != existing:
+        trash_then_write_text(trash_root, path, updated)
+    return state
 
 
 def _cursor_frontmatter() -> str:
@@ -181,7 +202,7 @@ def packs(root: Path | str) -> dict[str, dict]:
     path = _root_of(root)
     full = _core(path)
 
-    return {
+    packs_map: dict[str, dict] = {
         "AGENTS.md": {
             "body": full,
             "header": (
@@ -196,35 +217,6 @@ def packs(root: Path | str) -> dict[str, dict]:
         "GEMINI.md": {
             "body": full,
             "header": "# Gemini instructions\n\n",
-        },
-        "docs/agent/INJECT.md": {
-            "body": (
-                "# Injecting any model into Dossier\n\n"
-                "Dossier is a job-search engine with a language-model socket. The engine owns "
-                "everything mechanical and deterministic; a model plugs in for the judgement "
-                "work. Any model works — the socket is a markdown packet and a JSON handback, "
-                "not an SDK.\n\n"
-                "## The socket\n\n"
-                "1. `dossier agent next --root <folder>` tells you the next unit of work, or\n"
-                "   `dossier agent route --root <folder> \"<what the user asked>\"` picks a mode.\n"
-                "2. `dossier agent brief --root <folder> --mode <id>` renders the task packet.\n"
-                "   Paste it as the model's system or first user message. It is self-contained.\n"
-                "3. The model runs the deterministic commands, does the reasoning, writes the "
-                "listed artifacts, runs the verification commands, and returns the JSON handback.\n"
-                "4. `dossier agent commit --root <folder> --handback <file>` absorbs the result "
-                "and advances the loop.\n\n"
-                "## Why this shape\n\n"
-                "- The full resume-tailoring reference is too long to use as a task packet. "
-                "A brief with real paths and real commands is easier to execute.\n"
-                "- The engine holds the state, so the model does not need memory across sessions.\n"
-                "- Gates live in code, so a model that drifts is caught by a failing command "
-                "rather than by good intentions.\n\n"
-                "## Vendor packs\n\n"
-            ) + "\n".join(
-                f"- `{name}` — managed block, regenerated from the manifest"
-                for name in ("AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursor/rules/dossier.mdc")
-            ) + "\n\n" + full,
-            "header": "",
         },
         ".cursor/rules/dossier.mdc": {
             "body": full,
@@ -257,23 +249,68 @@ def packs(root: Path | str) -> dict[str, dict]:
         },
     }
 
+    # The vendor list is derived from this mapping rather than hand-kept: the
+    # literal list here named four packs while `packs()` emitted eight, so it
+    # silently omitted the Claude skill pack, the Cursor rule and both docs.
+    vendor_list = "\n".join(
+        f"- `{name}` — managed block, regenerated from the manifest"
+        for name in sorted(packs_map)
+    )
+    packs_map["docs/agent/INJECT.md"] = {
+        "body": (
+            "# Injecting any model into Dossier\n\n"
+            "Dossier is a job-search engine with a language-model socket. The engine owns "
+            "everything mechanical and deterministic; a model plugs in for the judgement "
+            "work. Any model works — the socket is a markdown packet and a JSON handback, "
+            "not an SDK.\n\n"
+            "## The socket\n\n"
+            "1. `dossier agent next --root <folder>` tells you the next unit of work, or\n"
+            "   `dossier agent route --root <folder> \"<what the user asked>\"` picks a mode.\n"
+            "2. `dossier agent brief --root <folder> --mode <id>` renders the task packet.\n"
+            "   Paste it as the model's system or first user message. It is self-contained.\n"
+            "3. The model runs the deterministic commands, does the reasoning, writes the "
+            "listed artifacts, runs the verification commands, and returns the JSON handback.\n"
+            "4. `dossier agent commit --root <folder> --handback <file>` absorbs the result "
+            "and advances the loop.\n\n"
+            "## Why this shape\n\n"
+            "- The full resume-tailoring reference is too long to use as a task packet. "
+            "A brief with real paths and real commands is easier to execute.\n"
+            "- The engine holds the state, so the model does not need memory across sessions.\n"
+            "- Gates live in code, so a model that drifts is caught by a failing command "
+            "rather than by good intentions.\n\n"
+            "## Vendor packs\n\n"
+        ) + vendor_list + "\n\n" + full,
+        "header": "",
+    }
+    return packs_map
+
 
 def write_all(root: Path | str) -> dict[str, str]:
     """Generate every pack. Returns {relative path: created|appended|replaced}."""
     path = _root_of(root)
     results: dict[str, str] = {}
     for rel, content in packs(path).items():
-        results[rel] = upsert_block(path / rel, content["body"], content.get("header", ""))
+        results[rel] = upsert_block(path / rel, content["body"], content.get("header", ""),
+                                    root=path)
     return results
 
 
 def verify_block(root: Path | str, rel: str) -> bool:
-    """True when the file carries a current managed block."""
+    """True when the file carries a current managed block *and* its header.
+
+    The header is checked too: it is part of what the generator prescribes (the
+    Claude skill and the Cursor rule are identified by it, and every other pack
+    opens with a distinct H1), so `--check` must be able to detect a wrong or
+    missing one instead of passing on the body alone.
+    """
     path = _root_of(root) / rel
     if not path.exists():
         return False
     text = path.read_text(encoding="utf-8", errors="replace")
     if START not in text or END not in text:
         return False
-    expected = packs(root)[rel]["body"]
-    return expected in text
+    pack = packs(root)[rel]
+    if pack["body"] not in text:
+        return False
+    header = pack.get("header", "")
+    return not header or text.startswith(header)

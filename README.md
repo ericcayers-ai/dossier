@@ -72,9 +72,23 @@ dossier corpus  build | rank | propagate | dedupe | folders
 dossier track   summary | cadence | outcome | followup
 dossier keywords gap | aggregate
 dossier render  [--docx X.docx [--pdf Y.pdf]] [--visual]
-dossier verify  source-diff | text-layer | visual | all
-dossier tailor  inspect | blocks | replace | cover-letter | import
+dossier verify  source-diff | text-layer | visual | template | all
+dossier sources [--open NAME [--policy P] | --close NAME]   # open one board, recorded
+dossier tailor  inspect | blocks | fields | template | replace | cover-letter | import
+dossier identity status | questions | answer | mine | write | match | labels | eval
+dossier feeds   list | fetch <source> [--board SLUG] [--limit N]
+dossier scrape  status | recipes | login | session-import | session-clear
+                | capture <url> | run [--recipe ID | --due]
+                [--challenge auto|block|await|stealth|stealth-await|solve] [--await SECONDS]
+                [--min-match N]
+dossier negotiate [--wage N --frequency … --occurrences N] [--write]
+dossier tree    status | add | link | view | sync          # trajectory DAG, committed at c043aa0
 ```
+
+`tree` is the career-trajectory subcommand (`dossier tree view --root .`). It was uncommitted
+when this file was written; `f8a1f8b` and `c043aa0` committed it, and `git show
+HEAD:src/dossier/cli.py | grep -c tree` answers **17** on `c043aa0`. `negotiate` is
+committed and takes `--wage`, `--frequency`, `--occurrences` and `--write`.
 
 Workspace commands require `--root <folder>`; repository-wide `agent manifest`
 does not. Use `uv run dossier` from the repo root or the installed
@@ -84,13 +98,19 @@ reading prose. `tests/test_matrix.py` parses and executes every command the
 contract declares, and sweeps every API route. A rejected command fails the
 suite rather than the session.
 
+> **Known defect (2026-10-11), fixed 2026-11-04.** `dossier agent manifest --root <dir>` used to
+> be rejected with `unrecognized arguments`; the leaf now accepts `--root` like its siblings.
+> `tests/test_matrix.py` parses every declared command, so a regression fails the suite.
+
 `dossier agent manifest` prints the whole contract as JSON, including the exact
 command line for each mode and the code that enforces each gate.
 
 ## The gates
 
-Fourteen hard stops, each enforced by a failing command rather than by good
-intentions. The full table is in `docs/CONTRACT.md`; the load-bearing ones:
+Sixteen hard stops, each enforced by a failing command rather than by good
+intentions. `challenge-is-explicit` replaced `challenge-is-a-blocker` on 2026-11-04: a
+challenge is answered by the policy the workspace declares (see `docs/SCRAPING.md`) and the
+answer is recorded, rather than refused outright. The full table is in `docs/CONTRACT.md`; the load-bearing ones:
 
 - **no-fabrication** — every claim in a generated document must trace to the base
   document, the identity doc, or the user's own words. `dossier verify source-diff`
@@ -135,6 +155,11 @@ intentions. The full table is in `docs/CONTRACT.md`; the load-bearing ones:
   carry-forward that returns no match rather than a guess.
 - An **Agent** pane showing the contract, the next unit of work, the live task
   packet, the gates and the workspace facts.
+- A **Trajectory** pane and a `dossier tree` subcommand that connect grounded
+  experiences, contacts, touchpoints, meetings, opportunities and milestones into
+  a sequential DAG (`.dossier/tree.json`). **Uncommitted as of 2026-10-11** — it
+  exists only in the working tree, so do not count on it from this revision. See
+  [tasks/WORKLIST.md](tasks/WORKLIST.md).
 
 The one route that does not return is `/api/events` (server-sent file events,
 the only entry in `api.app.STREAMING_PATHS`). It is bounded by a `seconds`

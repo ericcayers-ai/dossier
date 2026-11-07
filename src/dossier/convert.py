@@ -3,8 +3,6 @@ from pathlib import Path
 import csv
 import json
 import shutil
-import sys
-import threading
 
 
 def _pymupdf():
@@ -36,18 +34,21 @@ class Route:
     requires: str | None = None
 
 
-_word_lock = threading.Lock()
-_WORD = Path(r"C:/Program Files/Microsoft Office/root/Office16/WINWORD.EXE")
-
-
 def available_renderers():
-    word = sys.platform == "win32" and _WORD.exists()
-    return {
-        "word": RendererInfo("Word", word, str(_WORD)),
-        "libreoffice": RendererInfo("LibreOffice", shutil.which("soffice") is not None),
-        "pandoc": RendererInfo("Pandoc", shutil.which("pandoc") is not None),
-        "pymupdf": RendererInfo("PyMuPDF", True),
-    }
+    """Renderer availability, answered once — by `engine/render`.
+
+    This module used to carry its own Word-path check (one install location only)
+    and its own docx2pdf call, so the API and the CLI could disagree about
+    whether a renderer existed at all. The authoritative answer now lives in
+    `engine.render`; only the extra names this adapter's callers may read are
+    added here.
+    """
+    from .engine import render as docx_render
+
+    table = dict(docx_render.available_renderers())
+    pandoc = shutil.which("pandoc")
+    table["pandoc"] = RendererInfo("Pandoc", pandoc is not None, pandoc or "not found")
+    return table
 
 
 def routes(ext):
@@ -115,16 +116,18 @@ def convert(src, target, opts=None):
         document[0].get_pixmap(matrix=pymupdf.Matrix(150 / 72, 150 / 72), alpha=False).save(str(target))
         return target
     if ext == ".docx" and target_ext == ".pdf":
-        if not available_renderers()["word"].available:
-            raise RuntimeError("Word renderer unavailable; install Microsoft Word or use LibreOffice")
-        with _word_lock:
-            try:
-                from docx2pdf import convert as word_convert
-                word_convert(str(src), str(target), keep_active=True)
-            except Exception as exc:
-                raise RuntimeError(f"Word is busy with a dialog or conversion failed: {exc}") from exc
+        # One authoritative DOCX->PDF path: `engine/render` drives a private
+        # `DispatchEx` Word instance and always quits it. The docx2pdf call that
+        # used to live here attached to whatever Word instance was already
+        # registered, so a stale invisible WINWORD.EXE made every conversion after
+        # the first die with `AttributeError: Open.SaveAs` — the exact failure
+        # `engine/render` exists to prevent. `/api/render` and `/api/export` both
+        # come through here, so the API and the CLI now use the same renderer.
+        from .engine import render as docx_render
+
+        docx_render.export_pdf(src, target)
         if not target.exists() or target.stat().st_size == 0:
-            raise RuntimeError("Word conversion returned without a PDF output")
+            raise RuntimeError("the renderer returned without a PDF output")
         return target
     if ext == ".md" and target_ext == ".docx":
         _write_docx_from_markdown(src, target); return target

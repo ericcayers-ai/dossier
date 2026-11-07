@@ -16,6 +16,7 @@ from pathlib import Path
 
 from . import manifest
 from .workspace import Workspace, resolve
+from ..copy import plural
 
 HANDBACK_SCHEMA = {
     "type": "object",
@@ -159,6 +160,13 @@ DECISIONS: dict[str, list[str]] = {
         "Then stop at a second, separate approval before Submit. Submitting is irreversible.",
         "Hand file uploads to the user with the exact path; page automation cannot attach them.",
     ],
+    "capture": [
+        "Ask which board and which exact URL the user means. Never guess a search URL for a board the ledger refuses.",
+        "If the page needs a sign-in, hand the user `dossier scrape login <source> --url <page>`; never ask for their password and never type it.",
+        "A challenge, a 403 or a robots refusal is a blocker to report with the reason. Do not reach for a workaround.",
+        "Quote the run's own numbers: `complete`, `items_captured`, `failures`. A partial run is reported as partial, never as coverage.",
+        "When a board will be captured again, write the selectors into a recipe under .dossier/scrapes/ instead of capturing ad hoc.",
+    ],
 }
 
 
@@ -167,7 +175,7 @@ VERIFICATION: dict[str, list[dict]] = {
     "build": [
         {"command": "dossier verify source-diff --base <base.docx> --candidate <out.docx>",
          "proves": "Only the objective and section order changed; every other field is byte-identical."},
-        {"command": "dossier render <out.docx>",
+        {"command": "dossier render --docx <out.docx> --root <root>",
          "proves": "A PDF exists and is newer than its source."},
         {"command": "dossier verify visual --pdf <out.pdf>",
          "proves": "Page count, clipping, overflow and overlap inspected on the rendered page."},
@@ -193,7 +201,7 @@ VERIFICATION: dict[str, list[dict]] = {
          "proves": "Each next date is derived from a confirmed Applied date, not a row's own column."},
     ],
     "negotiate": [
-        {"command": "dossier negotiate roi --root <root>",
+        {"command": "dossier negotiate --root <root> --write",
          "proves": "Every surviving claim verbatim-matches the resume; the rest were dropped."},
     ],
 }
@@ -379,7 +387,7 @@ def render(brief: Brief, vendor: str = "generic") -> str:
                      f"fits {space.corpus.get('fits', {})}")
     if space.coverage.get("present"):
         lines.append(f"- Coverage: `{space.coverage.get('file')}` captured {space.coverage.get('captured_on')} "
-                     f"({space.coverage.get('age_days')} day(s) old)")
+                     f"({plural(space.coverage.get('age_days') or 0,'day')} old)")
     lines.append("")
 
     if brief.blockers:

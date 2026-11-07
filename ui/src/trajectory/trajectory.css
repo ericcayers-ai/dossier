@@ -1,11 +1,12 @@
+/* Hallmark · app · light-table workbench · oklch · 4px scale · refine 2026-11-04 */
 .trajectory-pane {
   width: 100%;
   max-width: 100%;
   height: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
-  padding: 22px clamp(12px, 2vw, 28px) 40px;
+  padding: var(--pane-pad-y) var(--pane-pad-x) var(--s10);
 }
 .trajectory-head {
   display: flex;
@@ -15,22 +16,26 @@
   gap: 12px 24px;
   margin-bottom: 16px;
 }
-.trajectory-head h1 { margin: 0 0 6px; font-size: var(--t6); letter-spacing: -.03em; }
+.trajectory-head h1 { margin: 0 0 8px; font-size: var(--t6); letter-spacing: -.03em; text-wrap: balance; }
 .trajectory-head p { max-width: 72ch; margin: 0; color: var(--ink-quiet); line-height: 1.55; }
-.trajectory-counts { display: flex; flex-wrap: wrap; gap: 6px; }
-.trajectory-counts span { border: 1px solid var(--rule); padding: 5px 8px; color: var(--ink); font: var(--t1)/1.4 var(--code); white-space: nowrap; }
-.trajectory-counts b { font-size: var(--t2); }
-.trajectory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 14px 0; padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-.trajectory-toolbar > button, .trajectory-form button, .trajectory-node-actions button, .trajectory-more, .trajectory-message button {
+.trajectory-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.trajectory-counts span { border: 1px solid var(--rule); padding: 4px 8px; color: var(--ink); font: var(--t1)/1.4 var(--code); white-space: nowrap; }
+.trajectory-counts b { font-variant-numeric: tabular-nums; font-size: var(--t2); }
+.trajectory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; padding: 12px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+/* A toolbar control and a form control are not the same weight of object: the
+   toolbar sits on the page and stays flat until hovered, a form's submit is filled.
+   Six selectors sharing one recipe is how a screen ends up looking assembled. */
+.trajectory-toolbar > button, .trajectory-node-actions button, .trajectory-more, .trajectory-message button {
   min-height: 32px;
   border: 1px solid var(--control-edge);
   border-radius: var(--radius);
-  padding: 6px 9px;
+  padding: 8px 8px;
   color: var(--ink);
-  background: var(--sheet);
+  background: transparent;
 }
+.trajectory-form button { min-height: 32px; border: 1px solid var(--control-edge); border-radius: var(--radius); padding: 8px 12px; color: var(--ink); background: var(--sheet); font-weight: 600; }
 .trajectory-toolbar > button:hover, .trajectory-form button:hover, .trajectory-node-actions button:hover, .trajectory-more:hover, .trajectory-message button:hover { border-color: var(--signal); }
-.trajectory-toolbar button:disabled, .trajectory-form button:disabled { opacity: .6; cursor: not-allowed; }
+.trajectory-toolbar button:disabled, .trajectory-form button:disabled { opacity: .62; cursor: not-allowed; }
 .trajectory-search { display: grid; grid-template-columns: auto minmax(150px, 1fr); align-items: center; gap: 8px; flex: 1 1 250px; min-width: 0; color: var(--ink-quiet); }
 .trajectory-search input, .trajectory-form input, .trajectory-form select, .trajectory-form textarea, .trajectory-output textarea {
   width: 100%;
@@ -38,7 +43,7 @@
   max-width: 100%;
   border: 1px solid var(--control-edge);
   border-radius: var(--radius);
-  padding: 7px 8px;
+  padding: 8px 8px;
   color: var(--ink);
   background: var(--ground);
 }
@@ -47,61 +52,67 @@
 .trajectory-workspace { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(230px, .8fr); align-items: start; gap: 16px; min-width: 0; }
 .trajectory-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 8px; min-width: 0; }
 .trajectory-group { min-width: 0; border: 1px solid var(--rule); background: var(--sheet); }
-.trajectory-group > summary { display: flex; justify-content: space-between; gap: 10px; padding: 10px 11px; cursor: pointer; color: var(--ink); font-size: var(--t2); font-weight: 650; }
+.trajectory-group > summary { display: flex; justify-content: space-between; gap: 12px; padding: 12px 12px; cursor: pointer; color: var(--ink); font-size: var(--t2); font-weight: 650; }
 .trajectory-group > summary::marker { color: var(--signal); }
 .trajectory-group-count { color: var(--ink-quiet); font: var(--t1) var(--code); }
-.trajectory-node-list { display: grid; gap: 7px; padding: 0 8px 8px; min-width: 0; }
-.trajectory-node { min-width: 0; overflow-wrap: anywhere; padding: 10px; border: 1px solid var(--rule); background: var(--ground); }
-.trajectory-node.state-active { border-left: 3px solid var(--signal); }
-.trajectory-node.state-complete { border-left: 3px solid var(--ink-quiet); }
-.trajectory-node.state-cancelled { border-left: 3px solid var(--rule); }
-.trajectory-node-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px; }
+.trajectory-node-list { display: grid; gap: 8px; padding: 0 8px 8px; min-width: 0; }
+.trajectory-node { min-width: 0; overflow-wrap: anywhere; padding: 12px; border: 1px solid var(--rule); border-top: 2px solid var(--rule); background: var(--ground); }
+.trajectory-node.state-planned { border-top-color: var(--control-edge); }
+.trajectory-node.state-active { border-top-color: var(--signal); }
+.trajectory-node.state-complete { border-top-color: var(--ink-quiet); }
+.trajectory-node.state-cancelled { border-top-color: var(--rule); }
+.trajectory-node-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
 .trajectory-state-control { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-quiet); font: var(--t1) var(--code); }
-.trajectory-state-control select { max-width: 112px; min-height: 25px; border: 1px solid var(--control-edge); border-radius: var(--radius); padding: 3px 5px; color: var(--ink); background: var(--sheet); font: var(--t1) var(--code); }
-.trajectory-node-type, .trajectory-state { color: var(--ink-quiet); font: var(--t1)/1.4 var(--code); }
-.trajectory-node h3 { margin: 6px 0 3px; font-size: var(--t2); line-height: 1.35; overflow-wrap: anywhere; }
+.trajectory-state-control select { max-width: 112px; min-height: 25px; border: 1px solid var(--control-edge); border-radius: var(--radius); padding: 4px 4px; color: var(--ink); background: var(--sheet); font: var(--t1) var(--code); }
+.trajectory-node-type { color: var(--ink-quiet); font: var(--t1)/1.4 var(--code); }
+.trajectory-node h3 { margin: 8px 0 4px; font-size: var(--t2); line-height: 1.35; overflow-wrap: anywhere; }
 .trajectory-id { display: block; color: var(--ink-quiet); font: var(--t1)/1.45 var(--code); overflow-wrap: anywhere; }
-.trajectory-meta, .trajectory-relation, .trajectory-details, .trajectory-blocked, .trajectory-ready { margin: 7px 0 0; color: var(--ink); font-size: var(--t1); line-height: 1.45; overflow-wrap: anywhere; }
+.trajectory-meta, .trajectory-relation, .trajectory-details, .trajectory-blocked, .trajectory-ready { margin: 8px 0 0; color: var(--ink); font-size: var(--t1); line-height: 1.45; overflow-wrap: anywhere; }
 /* Four unrelated facts, four elements separated by space — not one run-on
    string joined with middle dots. */
-.trajectory-meta-list { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.trajectory-blocked { border-left: 2px solid var(--stale); padding-left: 7px; }
-.trajectory-ready { border-left: 2px solid var(--signal); padding-left: 7px; }
+.trajectory-meta-list { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.trajectory-blocked { color: var(--stale-ink); }
+.trajectory-blocked::before { content: "Blocked "; font-weight: 650; }
+.trajectory-ready { color: var(--signal-ink); }
+.trajectory-ready::before { content: "Ready "; font-weight: 650; }
 .trajectory-relation b { font-weight: 650; }
-.trajectory-node-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-.trajectory-node-actions button { min-height: 28px; padding: 4px 6px; font-size: var(--t1); }
-.trajectory-artifacts { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 6px; }
-.trajectory-artifacts summary { cursor: pointer; color: var(--ink); font-size: var(--t1); }
-.trajectory-artifacts ul { margin: 6px 0 0; padding-left: 16px; }
+.trajectory-node-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.trajectory-node-actions button { min-height: 28px; padding: 4px 8px; font-size: var(--t1); }
+.trajectory-artifacts { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 8px; }
+.trajectory-artifacts summary { display: flex; align-items: center; min-height: 24px; cursor: pointer;
+  color: var(--ink); font-size: var(--t1); }
+.trajectory-artifacts ul { margin: 8px 0 0; padding-left: 16px; }
 .trajectory-artifacts li { margin: 4px 0; overflow-wrap: anywhere; }
 .trajectory-artifacts a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--signal); overflow-wrap: anywhere; }
-.trajectory-empty { margin: 0; padding: 10px; color: var(--ink-quiet); font-size: var(--t1); }
-.trajectory-more { width: 100%; font-size: var(--t1); }
-.trajectory-forms { display: grid; gap: 10px; min-width: 0; }
-.trajectory-form { display: grid; gap: 9px; min-width: 0; border: 1px solid var(--rule); padding: 12px; background: var(--sheet); }
+.trajectory-empty { margin: 0; padding: 12px; color: var(--ink-quiet); font-size: var(--t1); }
+.trajectory-more { white-space: nowrap; width: 100%; font-size: var(--t1); }
+.trajectory-forms { display: grid; gap: 12px; min-width: 0; }
+.trajectory-hint { color: var(--ink-quiet); }
+.trajectory-form { display: grid; gap: 8px; min-width: 0; border: 1px solid var(--rule); padding: 12px; background: var(--sheet); }
 .trajectory-form h2 { margin: 0; font-size: var(--t3); }
 .trajectory-form p { margin: 0; color: var(--ink-quiet); font-size: var(--t1); line-height: 1.45; }
 .trajectory-form label { display: grid; gap: 4px; min-width: 0; color: var(--ink); font-size: var(--t1); }
 .trajectory-form textarea { resize: vertical; overflow-wrap: anywhere; font: var(--t2)/1.45 var(--ui); }
 .trajectory-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; min-width: 0; }
-.trajectory-notice, .trajectory-error, .trajectory-footnote { margin: 10px 0; padding: 8px 10px; border-left: 2px solid var(--signal); color: var(--ink); font-size: var(--t1); line-height: 1.5; overflow-wrap: anywhere; }
-.trajectory-error { border-left-color: var(--stale); }
+.trajectory-notice, .trajectory-error, .trajectory-footnote { margin: 12px 0; padding: 8px 12px; border: 1px solid var(--rule); color: var(--ink); font-size: var(--t1); line-height: 1.5; overflow-wrap: anywhere; }
+.trajectory-error { border-color: var(--stale); }
+.trajectory-notice { border-color: var(--signal); }
 .trajectory-footnote { color: var(--ink-quiet); }
-.trajectory-message { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--rule); color: var(--ink); overflow-wrap: anywhere; }
+.trajectory-message { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--rule); color: var(--ink); overflow-wrap: anywhere; }
 .trajectory-output { margin-top: 12px; border: 1px solid var(--rule); background: var(--sheet); }
-.trajectory-output > summary { padding: 9px 11px; cursor: pointer; color: var(--ink); font-size: var(--t2); font-weight: 650; }
-.trajectory-output pre, .trajectory-output textarea { display: block; width: calc(100% - 16px); max-width: calc(100% - 16px); margin: 8px; padding: 10px; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; word-break: break-word; font: var(--t1)/1.5 var(--code); }
+.trajectory-output > summary { padding: 8px 12px; cursor: pointer; color: var(--ink); font-size: var(--t2); font-weight: 650; }
+.trajectory-output pre, .trajectory-output textarea { display: block; width: calc(100% - 16px); max-width: calc(100% - 16px); margin: 8px; padding: 12px; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; word-break: break-word; font: var(--t1)/1.5 var(--code); }
 .trajectory-output textarea { min-height: 180px; resize: vertical; }
 @media (max-width: 950px) {
   .trajectory-workspace { grid-template-columns: minmax(0, 1fr); }
   .trajectory-forms { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 }
 @media (max-width: 700px) {
-  .trajectory-pane { padding: 16px 10px 26px; }
-  .trajectory-head h1 { font-size: var(--t5); }
+  .trajectory-pane { padding: 16px 12px 24px; }
+.trajectory-head h1 { font-size: var(--t5); }
   .trajectory-search { flex-basis: 100%; grid-template-columns: 1fr; }
   .trajectory-search input { width: 100%; }
-  .trajectory-counts span { padding: 4px 6px; }
+  .trajectory-counts span { padding: 4px 8px; }
   .trajectory-groups { grid-template-columns: minmax(0, 1fr); }
   .trajectory-form-row { grid-template-columns: minmax(0, 1fr); }
 }

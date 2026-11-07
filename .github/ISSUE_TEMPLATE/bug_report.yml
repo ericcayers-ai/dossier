@@ -1,0 +1,58 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Include enough detail for someone else to
+        reproduce it. **Do not paste real job-search data** — no resumes, no
+        captured listings, no application records, no recruiter emails, and no
+        screenshots containing a real name, address, or contact detail.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The observed behaviour, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands or UI actions, starting from a clean checkout.
+      placeholder: |
+        1. uv run dossier --root <synthetic folder> --open
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of `git rev-parse --short HEAD`, or the release tag.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - CLI / engine action
+        - Web UI
+        - Ingest / normalisation / dedupe
+        - Resume render / PDF text check
+        - Model socket (brief / handback)
+        - Doctor / environment
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or traceback
+      description: Redact paths, tokens, and any personal data before pasting.
+      render: shell
+    validations:
+      required: false

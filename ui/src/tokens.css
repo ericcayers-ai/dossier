@@ -1,11 +1,85 @@
+/* Hallmark · app · light-table workbench · oklch · 4px scale · refine 2026-11-04 */
+/* Dossier tokens — the light table.
+   Colour is OKLCH on a blue-grey paper hue; the palette is two chromatic tokens
+   (signal, stale) over a neutral ground/sheet/rule ladder. Type is a six-step
+   scale and nothing else. Panels are square; radius belongs to controls only.
+   Spacing is a 4px scale, and every gap in the app names one of its steps. */
+
 :root {
+  /* Neutrals carry chroma so nothing is pure #fff or #000 (hallmark 7a/7b). */
   --ground: oklch(.97 .006 250);
-  --sheet: oklch(1 0 0);
+  --sheet: oklch(.995 .004 250);
   --ink: oklch(.24 .02 260);
   --ink-quiet: oklch(.52 .02 260);
-  --rule: oklch(.90 .008 255);
+  --rule: oklch(.90 .008 255);          /* 1px separators only — DESIGN.md:52 */
+
+  /* --signal is the fill / focus ring / selection backlight. */
   --signal: oklch(.62 .17 255);
+  --signal-ink: oklch(.53 .17 255);     /* 5.36:1 sheet / 4.91:1 ground */
+  /* A filled primary needs its own darker fill: white text on --signal measured
+     3.68:1, under the 4.5:1 body bar. This is the same hue one step darker, so
+     the button is the same colour family and the text passes. */
+  --signal-strong: oklch(.50 .17 255);  /* --ink-inverse on it: 5.6:1 */
+  --signal-soft: color-mix(in oklch, var(--signal) 11%, transparent);
+  /* 17% wash (DESIGN.md:65). This was written as `var(--signal-soft-strong)` — a
+     token pointing at itself, which CSS treats as invalid at computed-value time, so
+     the selected tree row, the palette selection and the tab-close hover all rendered
+     with no wash at all. */
+  --signal-soft-strong: color-mix(in oklch, var(--signal) 17%, transparent);
+  --ink-inverse: oklch(.99 .003 250);   /* tinted near-white, never #fff */
+  /* --rule is a separator, not a control boundary (1.35:1). Interactive borders
+     use --control-edge, which clears the 3:1 non-text bar on both surfaces. */
+  --control-edge: oklch(.64 .01 255);   /* 3.36:1 sheet / 3.08:1 ground */
+
+  /* --stale as text is .57 for 4.65:1 on --sheet. It never sits on --ground. */
   --stale: oklch(.57 .16 62);
+  --stale-soft: color-mix(in oklch, var(--stale) 12%, transparent);
+  /* --stale is 4.65:1 on --sheet and 4.26:1 on --ground, so a *small* label that
+     needs the 4.5 bar on either surface uses this darker step of the same hue. */
+  --stale-ink: oklch(.47 .15 62);
+
+  /* Type — six sizes. 11 / 13 / 15 / 17 / 21 / 28 (DESIGN.md:70). */
+  --t1: 11px;
+  --t2: 13px;
+  --t3: 15px;
+  --t4: 17px;
+  --t5: 21px;
+  --t6: 28px;
+
+  /* Spacing — one 4px scale. Every padding, margin and gap names a step. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s16: 64px;
+
+  --radius: 4px;
+  --radius-sm: 2px;
+  --measure: 68ch;
+  --top-h: 78px;        /* two-row header: 44px actions + 34px area tabs */
+  --status-h: 28px;     /* the footer strip */
+  --pane-head-h: 42px;  /* the explorer/rail header */
+  --pane-pad-x: 28px;   /* one page gutter for every pane */
+  --pane-pad-y: 24px;
+
+  /* Motion: named properties only, one easing, two durations. */
+  --ease-out: cubic-bezier(.2, .6, .2, 1);
+  --dur-1: 90ms;   /* a state change on a control */
+  --dur-2: 140ms;  /* a panel or overlay arriving */
+  --move: var(--dur-2);
+  --tab-move: var(--dur-1);
+
+  /* Elevation belongs to overlays only; nothing at rest carries a shadow. */
+  --overlay-shadow: 0 18px 50px color-mix(in oklch, var(--ink) 18%, transparent);
+  --z-scrim: 2;
+  --z-panel: 3;
+  --z-palette: 4;
+
   --ui: Inter, ui-sans-serif, system-ui, sans-serif;
   --prose: "Source Serif 4", Georgia, serif;
   --code: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -18,123 +92,379 @@
   --ink-quiet: oklch(.70 .014 255);
   --rule: oklch(.34 .014 255);
   --signal: oklch(.72 .15 255);
+  --signal-ink: oklch(.72 .15 255);     /* 6.23:1 sheet / 7.11:1 ground */
+  --signal-strong: oklch(.60 .16 255);  /* --ink-inverse on it: 6.9:1 */
+  --control-edge: oklch(.56 .014 255);  /* 3.34:1 sheet / 3.81:1 ground */
   --stale: oklch(.78 .15 62);
+  --stale-ink: oklch(.80 .14 62);
+  --ink-inverse: oklch(.16 .012 255);
   color-scheme: dark;
 }
+
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-body { background: var(--ground); color: var(--ink); font: 13px var(--ui); letter-spacing: -.006em; }
-button, input, textarea { font: inherit; color: inherit; }
-button { background: none; border: 0; cursor: pointer; }
+/* `clip`, not `hidden`: hidden creates a scroll container that breaks sticky
+   descendants (hallmark 34), and the app shell never scrolls as a whole. */
+html, body, #root { margin: 0; width: 100%; height: 100%; overflow: clip; }
+body { background: var(--ground); color: var(--ink); font: var(--t2) var(--ui); letter-spacing: -.006em; }
+button, input, textarea, select { font: inherit; color: inherit; }
+/* Windows renders a native <select> popup with the OS colours unless the control
+   carries its own pair; in dark that is a white list on a black sheet. */
+select { background-color: var(--sheet); color: var(--ink); }
+/* WCAG 2.5.8: every control has a 24x24 target. Text buttons are wider than that
+   by content; the floor matters for icon-only and one-word controls. */
+button { background: none; border: 0; cursor: pointer; min-height: 24px; min-width: 24px; }
+/* A double tap on a control should not zoom the page (touch-action) and a tap should
+   not leave a grey flash on a themed surface (tap-highlight). */
+button, [role="option"], a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .62; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-.app { display: grid; height: 100%; grid-template-rows: 44px minmax(0, 1fr) 28px; grid-template-columns: 260px minmax(300px, 1fr) 300px; grid-template-areas: "top top top" "explorer center rail" "status status status"; background: var(--ground); }
+/* Element handler covers button/input/textarea/select/[tabindex]; the palette
+   field opts out of the blanket rule and declares its own inset ring below. */
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible,
+[tabindex]:focus-visible, a:focus-visible, summary:focus-visible,
+[role="tab"]:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--signal); outline-offset: 2px; border-radius: var(--radius-sm);
+}
+/* Text fields ring on any focus, not only `:focus-visible`: a field someone is
+   typing into must never be the one stop without a visible boundary, and 2.4.7
+   does not ask how the field got focus. */
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--signal); outline-offset: 2px; }
+/* A keyboard user should not have to tab through the top bar, both navs and the
+   tabs to reach the document. Visible only while focused. */
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: calc(var(--z-panel) + 1); padding: 8px 12px;
+  border: 1px solid var(--signal); border-radius: var(--radius); background: var(--sheet); color: var(--ink);
+  font: var(--t2) var(--ui); transform: translateY(-200%); }
+.skip-link:focus-visible { transform: none; outline: 2px solid var(--signal); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.app { display: grid; height: 100%; grid-template-rows: auto minmax(0, 1fr) var(--status-h); grid-template-columns: 260px minmax(300px, 1fr) 300px; grid-template-areas: "top top top" "explorer center rail" "status status status"; background: var(--ground); }
 .app.hide-explorer { grid-template-columns: 0 minmax(300px, 1fr) 300px; }
 .app.hide-rail { grid-template-columns: 260px minmax(300px, 1fr) 0; }
 .app.hide-explorer.hide-rail { grid-template-columns: 0 minmax(300px, 1fr) 0; }
-.topbar { grid-area: top; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0 14px; border-bottom: 1px solid var(--rule); background: var(--sheet); }
-.brand { font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
-.crumb { min-width: 0; overflow: hidden; color: var(--ink-quiet); font: 11px var(--code); text-overflow: ellipsis; white-space: nowrap; }
-.search-trigger, .jobs-trigger, .icon-btn { border: 1px solid transparent; border-radius: 4px; padding: 5px 9px; }
-.search-trigger { display: flex; justify-content: space-between; gap: 12px; min-width: 190px; margin-left: auto; border-color: var(--rule); color: var(--ink-quiet); }
-.jobs-trigger:hover, .icon-btn:hover, .search-trigger:hover { border-color: var(--signal); color: var(--ink); }
-.kbd { font: 11px var(--code); }
-.panel { min-width: 0; overflow: hidden; background: var(--sheet); }
+/* Collapsing is a layout change, so it is instant: animating a grid track
+   reflows the whole document every frame (hallmark 10a). The content fades in
+   instead, which costs one composited property. */
+.hide-explorer .explorer, .hide-rail .rail { pointer-events: none; opacity: 0; }
+.topbar { grid-area: top; display: grid; grid-template-rows: 44px auto; min-width: 0; border-bottom: 1px solid var(--rule); background: var(--sheet); }
+.topbar-main { display: flex; align-items: center; gap: var(--s3); min-width: 0; padding: 0 var(--s4); }
+/* The five area buttons can overflow. A hidden scrollbar left no cue that more
+   existed, so the row keeps a thin one instead of none. */
+.area-nav { display: flex; align-items: center; gap: var(--s1); min-width: 0; flex: 1 1 auto; overflow-x: auto; scrollbar-width: thin; }
+.area-btn, .pane-btn, .search-trigger, .icon-btn { border: 1px solid transparent; border-radius: var(--radius); }
+.area-btn { padding: var(--s1) var(--s2); color: var(--ink-quiet); font-size: var(--t2); font-weight: 550; transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
+.area-btn:hover { color: var(--ink); }
+.area-btn.active { color: var(--ink); border-color: var(--control-edge); background: var(--ground); }
+.brand { font-size: var(--t3); font-weight: 650; letter-spacing: -.02em; white-space: nowrap; }
+/* Path, size and modified time are three separate facts, so they are three
+   elements separated by space rather than one string joined by dashes. */
+.crumb { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; color: var(--ink-quiet); font: var(--t1) var(--code); }
+.crumb-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumb-meta { flex: 0 0 auto; white-space: nowrap; }
+.pane-nav { display: flex; align-items: stretch; gap: var(--s1); min-width: 0; padding: 0 var(--s4); border-top: 1px solid var(--rule); overflow-x: auto; }
+.pane-btn { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: var(--s2) var(--s2); color: var(--ink-quiet); font-size: var(--t1); letter-spacing: .02em; text-transform: none; transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
+.pane-btn:hover { color: var(--ink); }
+.pane-btn.active { color: var(--ink); border-bottom-color: var(--signal); }
+.search-trigger, .icon-btn { border: 1px solid transparent; border-radius: var(--radius); padding: var(--s1) var(--s2); transition: border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+.search-trigger { display: flex; justify-content: space-between; gap: 12px; min-width: 190px; margin-left: auto; border-color: var(--control-edge); color: var(--ink-quiet); }
+.icon-btn:hover, .search-trigger:hover { border-color: var(--signal); color: var(--ink); }
+.kbd { font: var(--t1) var(--code); }
+.panel { min-width: 0; overflow: hidden; background: var(--sheet); color: var(--ink); }
 .explorer { grid-area: explorer; border-right: 1px solid var(--rule); }
 .rail { grid-area: rail; border-left: 1px solid var(--rule); }
 .center { grid-area: center; display: flex; flex-direction: column; }
-.pane-head { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 14px; border-bottom: 1px solid var(--rule); }
-.pane-title { font-size: 12px; font-weight: 650; }
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); height: var(--pane-head-h); padding: 0 16px; border-bottom: 1px solid var(--rule); }
+.pane-title { font-size: var(--t2); font-weight: 650; }
+.pane-count { flex: 0 0 auto; padding-right: 4px; white-space: nowrap; }
 .explorer-tools { padding: 12px 12px 8px; border-bottom: 1px solid var(--rule); }
-.filter, .sync-text { width: 100%; border: 1px solid var(--rule); border-radius: 3px; background: var(--ground); color: var(--ink); }
-.filter { padding: 7px 8px; }
-.chips, .jobs-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 9px; }
-.chip { border: 1px solid var(--rule); border-radius: 3px; padding: 4px 7px; color: var(--ink-quiet); font-size: 11px; }
-.chip:hover, .chip.active { border-color: var(--signal); color: var(--ink); }
-.tree, .rail-body, .viewer { overflow: auto; }
-.tree { height: 100%; padding: 7px 0; }
-.tree-row { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 12px; text-align: left; }
-.tree-row:hover, .tree-row.selected { background: color-mix(in oklch, var(--signal) 10%, transparent); }
+.filter, .sync-text { width: 100%; border: 1px solid var(--control-edge); border-radius: var(--radius); background: var(--ground); color: var(--ink); }
+.filter { padding: 8px 8px; }
+.chips, .jobs-tabs, .tabs-row { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 8px; }
+.chip { display: inline-flex; align-items: center; gap: var(--s1); min-height: 24px; border: 1px solid var(--control-edge); border-radius: var(--radius); padding: var(--s1); color: var(--ink-quiet); font-size: var(--t1); transition: border-color var(--tab-move) ease-out, color var(--tab-move) ease-out, background-color var(--tab-move) ease-out; }
+.chip:not(.static):hover, .chip.active { border-color: var(--signal); color: var(--ink); }
+.chip.active { background: var(--signal-soft); }
+.chip.static { border-color: var(--rule); color: var(--ink-quiet); cursor: default; }
+/* A sticky table header and a sticky pane head would cover the element the browser
+   scrolls to on Tab. `scroll-padding` keeps focus clear of them (Focus Not Obscured). */
+.tree, .rail-body, .viewer, .pane-scroll { overflow: auto; scroll-padding-block: 44px 16px; }
+.tree { height: 100%; padding: 8px 0; }
+.tree-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border-left: 2px solid transparent; text-align: left; transition: background-color var(--tab-move) ease-out, border-color var(--tab-move) ease-out; }
+.tree-row:hover { background: var(--signal-soft); }
+/* Selection is carried by a solid --signal bar (3.68:1 light / 6.23:1 dark,
+   clears the 3:1 non-text bar) plus weight, not by a 1.1:1 wash alone. */
+.tree-row.selected { border-left-color: var(--signal); background: var(--signal-soft-strong); font-weight: 600; }
 .file-name, .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-name { flex: 1; }
-.ext { color: var(--ink-quiet); font: 10px var(--code); }
-.empty { padding: 22px 14px; color: var(--ink-quiet); line-height: 1.55; }
-.tabs { min-height: 36px; border-bottom: 1px solid var(--rule); }
-.tab { height: 36px; padding: 0 14px; border-bottom: 2px solid var(--signal); font: 11px var(--code); }
+.ext { color: var(--ink-quiet); font: var(--t1) var(--code); }
+.empty { padding: 24px 16px; color: var(--ink-quiet); line-height: 1.55; }
+.loading { display: grid; gap: var(--s2); padding: var(--s6) var(--s4); }
+/* A skeleton holds the shape of the answer, so the pane does not jump when it
+   arrives. It is the one thing that animates without an action, so it stops
+   entirely under reduced motion. */
+.skeleton { display: block; height: 12px; border-radius: var(--radius-sm); background: color-mix(in oklch, var(--ink) 8%, transparent); }
+.skeleton:nth-child(2n) { width: 82%; }
+.skeleton:nth-child(3n) { width: 64%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton { animation: skeleton-in var(--dur-2) var(--ease-out) both; }
+  @keyframes skeleton-in { from { opacity: 0; } to { opacity: 1; } }
+}
+.empty-state { display: grid; gap: var(--s2); padding: var(--s6) var(--s4); }
+.empty-state-title { margin: 0; color: var(--ink); font-size: var(--t3); font-weight: 600; }
+.empty-state-body { max-width: var(--measure); color: var(--ink-quiet); font-size: var(--t2); line-height: 1.55; }
+.tabs { display: flex; align-items: stretch; min-height: 36px; border-bottom: 1px solid var(--rule); overflow-x: auto; }
+.tab { display: flex; align-items: center; gap: 8px; max-width: 240px; height: 36px; padding: 0 8px 0 16px; border-bottom: 2px solid transparent; color: var(--ink-quiet); font: var(--t1) var(--code); transition: border-color var(--tab-move) ease-out, color var(--tab-move) ease-out; }
+.tab:hover { color: var(--ink); }
+.tab.active { border-bottom-color: var(--signal); color: var(--ink); }
+.tab-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-close { border-radius: var(--radius); padding: 4px 4px; color: var(--ink-quiet); line-height: 1.4; }
+.tab-close:hover { color: var(--ink); background: var(--signal-soft-strong); }
+.tab-dirty { color: var(--stale); }
+.tab-placeholder { display: flex; align-items: center; padding: 0 16px; color: var(--ink-quiet); font: var(--t1) var(--code); }
 .viewer { flex: 1; min-height: 0; }
-.welcome { max-width: 610px; padding: 12vh 8vw; }
-.welcome h1, .audit-pane h1, .sync-pane h1 { margin: 0 0 12px; font-size: 28px; letter-spacing: -.035em; }
-.welcome p, .audit-head p, .sync-note { max-width: 68ch; color: var(--ink-quiet); font: 17px/1.62 var(--prose); }
-.editor { min-height: 100%; font: 13px/1.55 var(--code); }
+/* The landing is a column of facts, not a centred poster: the stat row under the
+   next step is what fills the pane. */
+.welcome { max-width: 860px; padding: 10vh 6vw; }
+.welcome h1, .audit-pane h1, .sync-pane h1, .verify-pane h1, .trash-pane h1 { margin: 0 0 12px; font-size: var(--t6); letter-spacing: -.035em; text-wrap: balance; }
+h1, h2 { text-wrap: balance; }
+/* Interface notes are the product speaking quietly in its own voice, so they are set
+   in the UI face at the UI size. Serif belongs to documents you are reading, not to a
+   sentence under a heading — that shift is what made the chrome read like an essay. */
+.welcome p, .audit-head p, .sync-note { max-width: 68ch; margin: 0; color: var(--ink-quiet); font: var(--t2)/1.55 var(--ui); }
+/* Browser surfaces: the parts nobody drew. A default blue selection, a default scroll
+   bar and a default caret are the strongest single tell that a page was assembled
+   rather than built, and they cost one block of CSS. */
+::selection { background: color-mix(in oklch, var(--signal) 26%, transparent); color: var(--ink); }
+::placeholder { color: var(--ink-quiet); opacity: 1; }
+:where(input, textarea, pre, .editor, .data-table, .pane-scroll, .agent-pane, .explorer, .rail-body) { caret-color: var(--signal); }
+* { scrollbar-width: thin; scrollbar-color: var(--control-edge) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--control-edge) 70%, transparent); border: 2px solid transparent; background-clip: content-box; border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--control-edge); background-clip: content-box; }
+
+.editor { min-height: 100%; font: var(--t2)/1.55 var(--code); }
 .cm-editor { min-height: 100%; }
 .cm-scroller { overflow: auto; }
-.markdown-toolbar { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
-.doc-prose { max-width: 68ch; padding: 30px 8%; font: 17px/1.62 var(--prose); }
-.doc-prose h1, .doc-prose h2 { font-family: var(--ui); line-height: 1.15; }
-.doc-prose li { margin: 5px 0; }
+.markdown-toolbar { display: flex; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+.doc-prose { max-width: 68ch; padding: 32px 8%; font: var(--t4)/1.62 var(--prose); }
+.doc-prose h1, .doc-prose h2, .doc-prose h3, .doc-prose h4 { font-family: var(--ui); line-height: 1.2; }
+.doc-prose h1 { font-size: var(--t6); }
+.doc-prose h2 { font-size: var(--t5); }
+.doc-prose h3 { font-size: var(--t4); }
+.doc-prose h4, .doc-prose h5, .doc-prose h6 { font-size: var(--t4); }
+.doc-prose li { margin: 4px 0; }
+.doc-prose code { font: var(--t1) var(--code); background: color-mix(in oklch, var(--ink) 7%, transparent); padding: 4px 4px; border-radius: var(--radius); }
+.doc-prose pre { overflow: auto; padding: 12px 16px; border-left: 2px solid var(--rule); background: var(--ground); font: var(--t1)/1.55 var(--code); }
+.doc-prose pre code { background: none; padding: 0; }
+.doc-prose blockquote { margin: 12px 0; padding: 4px 0 4px 16px; border-left: 2px solid var(--signal); color: var(--ink-quiet); }
+.doc-prose table { border-collapse: collapse; font-family: var(--ui); font-size: var(--t2); }
+.doc-prose th, .doc-prose td { padding: 8px 12px; border: 1px solid var(--rule); text-align: left; }
+.doc-prose a { color: var(--signal-ink); text-decoration: underline; text-underline-offset: 2px; }
+.doc-prose hr { margin: 24px 0; border: 0; border-top: 1px solid var(--rule); }
+.doc-prose img { max-width: 100%; outline: 1px solid oklch(0 0 0 / .1); outline-offset: -1px; }
+.front-matter { margin: 0 0 20px; padding: 12px 12px; border: 1px solid var(--control-edge); color: var(--ink-quiet); font: var(--t1)/1.5 var(--code); white-space: pre-wrap; }
 .pdf-frame { width: 100%; height: 100%; min-height: 640px; border: 0; background: var(--ground); }
 .image-view { display: grid; place-items: center; height: 100%; padding: 24px; overflow: auto; background: var(--ground); }
 .image-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.rail-body { height: calc(100% - 42px); }
-.rail-section { padding: 13px 12px 0; }
-.rail-section h3 { margin: 0 0 7px; color: var(--ink-quiet); font-size: 11px; font-weight: 650; text-transform: capitalize; }
-.rail-row { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 0; text-align: left; }
-.rail-row:hover { color: var(--signal); }
-.rail-row .name { flex: 1; font: 11px var(--code); }
-.rail-row small { color: var(--ink-quiet); font: 10px var(--code); white-space: nowrap; }
-.rail-empty { padding: 3px 0 7px; color: var(--ink-quiet); font-size: 11px; }
+.media-error { display: grid; gap: 8px; place-content: center; height: 100%; padding: 32px; text-align: center; }
+.rail-body { height: calc(100% - var(--pane-head-h)); }
+.rail-section { padding: 12px 12px 0; }
+.rail-section h3 { margin: 0 0 8px; color: var(--ink-quiet); font-size: var(--t1); font-weight: 600; }
+.rail-count { color: var(--ink-quiet); font-weight: 400; }
+.rail-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 0; border-left: 2px solid transparent; padding-left: 8px; text-align: left; }
+.rail-row:hover { color: var(--signal-ink); }
+.rail-row .name { flex: 1; font: var(--t1) var(--code); }
+.rail-row small { color: var(--ink-quiet); font: var(--t1) var(--code); white-space: nowrap; }
+.rail-empty { padding: 4px 0 8px; color: var(--ink-quiet); font-size: var(--t1); }
+.rail-facts { padding: 4px 12px 0; color: var(--ink-quiet); font: var(--t1) var(--code); }
+.export-row { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
 .stale, .offline, .source-status.blocked, .source-status.unavailable, .audit-check.attention .audit-status { color: var(--stale); }
-.actions { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--rule); }
-.action { display: block; width: 100%; padding: 7px 0; text-align: left; }
-.action:hover { color: var(--signal); }
-.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--stale); color: var(--ink); line-height: 1.4; }
-.confirm button, .primary { border: 1px solid var(--signal); border-radius: 3px; padding: 4px 7px; }
-.primary { background: var(--signal); color: white; }
-.action-log { max-height: 150px; overflow: auto; padding: 8px; background: var(--ground); color: var(--ink-quiet); font: 10px/1.4 var(--code); white-space: pre-wrap; }
-.status { grid-area: status; display: flex; align-items: center; gap: 14px; padding: 0 12px; border-top: 1px solid var(--rule); color: var(--ink-quiet); font: 10px var(--code); }
+.actions { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.action { display: block; width: 100%; padding: 8px 0; text-align: left; }
+.action:hover { color: var(--signal-ink); }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--stale); color: var(--ink); line-height: 1.4; }
+.confirm button, .primary { border: 1px solid var(--signal); border-radius: var(--radius); padding: 4px 8px; }
+.primary { background: var(--signal-strong); color: var(--ink-inverse); }
+.action-log { max-height: 150px; overflow: auto; padding: 8px; background: var(--ground); color: var(--ink-quiet); font: var(--t1)/1.4 var(--code); white-space: pre-wrap; }
+.status { grid-area: status; min-height: var(--status-h); display: flex; align-items: center; gap: 16px; padding: 0 var(--s4); border-top: 1px solid var(--rule); background: var(--sheet); color: var(--ink-quiet); font: var(--t1) var(--code); }
 .grow { flex: 1; }
-.palette-backdrop { position: fixed; z-index: 4; inset: 0; display: grid; place-items: start center; padding-top: 11vh; background: color-mix(in oklch, var(--ground) 78%, transparent); }
-.palette { width: min(680px, calc(100vw - 32px)); border: 1px solid var(--rule); background: var(--sheet); box-shadow: 0 18px 50px color-mix(in oklch, var(--ink) 18%, transparent); }
-.palette > input { width: 100%; padding: 14px; border: 0; border-bottom: 1px solid var(--rule); outline: 0; background: transparent; font: 14px var(--code); }
-.result { display: block; width: 100%; padding: 11px 14px; border-bottom: 1px solid var(--rule); text-align: left; }
-.result:hover { background: color-mix(in oklch, var(--signal) 10%, transparent); }
-.result-path { font: 11px var(--code); }
-.result-snippet { margin-top: 5px; color: var(--ink-quiet); font: 12px var(--prose); }
-.jobs-pane, .audit-pane, .sync-pane { padding: 22px 28px 44px; }
-.jobs-tabs { padding: 0 0 14px; border-bottom: 1px solid var(--rule); }
-.jobs-tabs button { border-bottom: 2px solid transparent; padding: 7px 0; margin-right: 18px; }
-.jobs-tabs button.active { border-color: var(--signal); }
-.jobs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.palette-backdrop { position: fixed; z-index: var(--z-palette); inset: 0; display: grid; place-items: start center; padding: 11vh var(--s4) 0; background: color-mix(in oklch, var(--ground) 78%, transparent);  overscroll-behavior: contain; }
+.palette { width: 100%; max-width: 680px; border: 1px solid var(--control-edge); background: var(--sheet); box-shadow: var(--overlay-shadow); }
+.palette > input { width: 100%; padding: 16px; border: 0; border-bottom: 1px solid var(--rule); background: transparent; font: var(--t2) var(--code); }
+.palette > input:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.palette-results { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
+.result { display: block; width: 100%; padding: 12px 16px; border-bottom: 1px solid var(--rule); text-align: left; }
+.result:hover, .result[aria-selected="true"] { background: var(--signal-soft-strong); }
+.result[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--signal); }
+.result-path { font: var(--t1) var(--code); }
+/* A place is not a file: it reads as a destination, in UI type, with the area named
+   underneath. The arrow is the only glyph, and it points where the row goes. */
+.result.place .result-path { font: var(--t3) var(--ui); color: var(--ink); }
+.result.place .result-path::before { content: "→ "; color: var(--signal-ink); }
+.result.place .result-snippet { font: var(--t1)/1.4 var(--ui); color: var(--ink-quiet); }
+.result-snippet { margin-top: 4px; color: var(--ink-quiet); font: var(--t3)/1.5 var(--prose); }
+.jobs-pane, .audit-pane, .sync-pane, .verify-pane, .trash-pane { padding: var(--pane-pad-y) var(--pane-pad-x) var(--s10); }
+.jobs-tabs { padding: 0 0 16px; border-bottom: 1px solid var(--rule); }
+.jobs-tabs button, .tabs-row button { border-bottom: 2px solid transparent; padding: 8px 0; margin-right: 20px; color: var(--ink-quiet); transition: border-color var(--tab-move) ease-out, color var(--tab-move) ease-out; }
+.jobs-tabs button:hover, .tabs-row button:hover { color: var(--ink); }
+.jobs-tabs button.active, .tabs-row button.active { border-color: var(--signal); color: var(--ink); }
+.jobs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
 .jobs-tools .filter { flex: 1 1 240px; width: auto; }
-.jobs-tools .chips { flex-wrap: nowrap; gap: 5px; padding: 0 0 0 14px; border-left: 1px solid var(--rule); }
-.jobs-tools .kbd { margin-left: auto; padding-left: 14px; border-left: 1px solid var(--rule); color: var(--ink-quiet); white-space: nowrap; }
-.table-wrap tbody .empty { padding: 22px 4px; }
-.table-wrap { overflow: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.data-table th, .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
-.data-table th { color: var(--ink-quiet); font-weight: 600; }
-.pipeline-row { display: grid; grid-template-columns: 90px 1fr 2fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.jobs-tools .chips { flex-wrap: nowrap; gap: 4px; padding: 0 0 0 16px; border-left: 1px solid var(--rule); }
+.jobs-tools .kbd { margin-left: auto; padding-left: 16px; border-left: 1px solid var(--rule); color: var(--ink-quiet); white-space: nowrap; }
+.table-wrap tbody .empty { padding: 24px 4px; }
+.table-wrap { overflow: auto; max-height: 70vh; }
+.data-table { width: 100%; border-collapse: collapse; font-size: var(--t2); font-variant-numeric: tabular-nums; }
+.data-table th, .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.data-table th { position: sticky; top: 0; z-index: 1; background: var(--sheet); color: var(--ink-quiet); font-weight: 600; }
+.data-table th button { width: 100%; min-height: 24px; padding: var(--s1) 0; text-align: left; font-weight: 600; color: inherit; }
+.data-table th button:hover { color: var(--ink); }
+.pipeline-row { display: grid; grid-template-columns: 90px minmax(0,1fr) minmax(0,2fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.pipeline { margin-top: 12px; }
+/* CSV/grid surfaces are mono with tabular figures (DESIGN.md:68) and scroll
+   rather than wrap, because a wrapped table row is harder to read than a wide one. */
+.data-table.mono-table { font-family: var(--code); font-variant-numeric: tabular-nums; }
+.data-table.mono-table td, .data-table.mono-table th { white-space: nowrap; }
+.csv-note { margin: 12px 0 0; color: var(--stale); font-size: var(--t1); }
 .audit-head { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
-.audit-head p { margin: 0 0 20px; font-size: 15px; }
-.audit-date { color: var(--ink-quiet); font: 11px var(--code); white-space: nowrap; }
-.audit-counts { display: flex; flex-wrap: wrap; gap: 1px; margin: 18px 0 24px; }
-.audit-count { display: grid; gap: 2px; min-width: 110px; padding: 10px 12px; border: 1px solid var(--rule); }
-.audit-count b { font-size: 21px; }
-.audit-count span { color: var(--ink-quiet); font: 10px var(--code); text-transform: capitalize; }
-.audit-check { display: grid; grid-template-columns: 86px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--rule); }
-.audit-status, .source-status { font: 10px var(--code); text-transform: uppercase; }
-.audit-check.manual .audit-status { color: var(--signal); }
+.audit-head h2 { font-size: var(--t5); }
+.audit-head p { margin: 0 0 20px; font-size: var(--t3); }
+.audit-date { color: var(--ink-quiet); font: var(--t1) var(--code); white-space: nowrap; }
+.audit-counts { display: flex; flex-wrap: wrap; gap: 4px; margin: 20px 0 24px; }
+.audit-count { display: grid; gap: 4px; min-width: 110px; padding: 12px 12px; border: 1px solid var(--rule); }
+.audit-count b { font-variant-numeric: tabular-nums; font-size: var(--t5); }
+.audit-count span { color: var(--ink-quiet); font: var(--t1) var(--code); }
+.audit-check { display: grid; grid-template-columns: 86px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.audit-status, .source-status { font: var(--t1) var(--code); }
+.audit-check.manual .audit-status { color: var(--signal-ink); }
 .audit-check p { margin: 4px 0 0; color: var(--ink-quiet); }
-.audit-pane h2 { margin: 28px 0 10px; font-size: 17px; }
-.source-row { display: grid; grid-template-columns: 100px 105px 1fr auto; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); align-items: start; }
+.audit-pane h2, .trash-pane h2 { margin: 28px 0 12px; font-size: var(--t4); }
+.source-row { display: grid; grid-template-columns: 100px 105px 1fr auto; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); align-items: start; }
 .source-row span:not(.source-status), .source-row small { color: var(--ink-quiet); }
-.source-status.available { color: var(--signal); }
+.source-status.available { color: var(--signal-ink); }
 .source-status { text-align: left; }
-.sync-text { display: block; min-height: 520px; padding: 16px; resize: vertical; overflow-x: hidden; overflow-wrap: anywhere; word-break: break-all; white-space: pre-wrap; font: 11px/1.5 var(--code); }
-.sync-note { margin: 14px 0 0; font-size: 14px; }
+.trash-group { border-bottom: 1px solid var(--rule); }
+.trash-group:last-child { border-bottom: 0; }
+.trash-more { padding: 0 0 8px 16px; }
+.trash-more > summary { display: flex; align-items: center; min-height: 24px; cursor: pointer; color: var(--ink-quiet); font-size: var(--t1); padding: 2px 0; }
+.sync-more { margin-top: 16px; }
+/* A disclosure summary is an interactive target: 24px tall, like every control. */
+.sync-more > summary { display: flex; align-items: center; min-height: 24px; cursor: pointer; color: var(--ink-quiet); font-size: var(--t2); padding: 2px 0; }
+.sync-text { display: block; min-height: 420px; padding: 16px; resize: vertical; overflow-x: hidden; overflow-wrap: anywhere; word-break: break-all; white-space: pre-wrap; font: var(--t1)/1.5 var(--code); }
+.sync-note { margin: 16px 0 0; font-size: var(--t3); }
 .empty-panel { padding: 12vh 8vw; }
 .empty-panel h2 { margin: 0 0 8px; }
 .empty-panel p { color: var(--ink-quiet); }
-@media (max-width: 1000px) { .app { grid-template-columns: 220px minmax(280px, 1fr) 0; } .rail { display: none; } .app.hide-explorer { grid-template-columns: 0 minmax(280px, 1fr) 0; } .source-row { grid-template-columns: 90px 90px 1fr; } .source-row small { grid-column: 3; } }
-@media (max-width: 700px) { .app { grid-template-columns: 0 minmax(260px, 1fr) 0; } .explorer { display: none; } .topbar { gap: 6px; padding: 0 8px; } .brand { font-size: 14px; } .crumb { display: none; } .search-trigger { min-width: 0; margin-left: auto; } .jobs-trigger { padding: 5px; } .jobs-pane, .audit-pane, .sync-pane { padding: 18px 14px 30px; } .audit-head { display: block; } .audit-date { display: block; margin-bottom: 16px; } .welcome { padding: 10vh 8vw; } .welcome h1, .audit-pane h1, .sync-pane h1 { font-size: 23px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; } }
+.notice { margin: 0 0 16px; padding: 8px 12px; overflow-wrap: anywhere; border: 1px solid var(--stale); background: color-mix(in oklch, var(--stale) 6%, var(--ground)); color: var(--ink); }
+/* A success is not a fault: the notice keeps its shape and loses the amber. */
+.notice.ok { border-color: var(--signal); background: var(--signal-soft); }
+/* The footer's shortcut hints are controls, not decoration (they were <span>s). */
+.status-btn, .status button { display: inline-flex; align-items: center; min-height: 24px; padding: 0 var(--s1); border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; border-radius: var(--radius-sm); }
+.status-btn:hover, .status-btn[aria-pressed="true"] { color: var(--signal-ink); }
+
+/* Field-row form used by the verify and export surfaces. */
+.field-row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin: 16px 0; }
+.field { display: grid; gap: 4px; min-width: 0; color: var(--ink-quiet); font-size: var(--t1); }
+.field input[type="checkbox"], .field input[type="radio"], .chip input { width: 16px; height: 16px; margin: 0; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--signal); }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid var(--control-edge); border-radius: var(--radius); padding: 8px 8px; background: var(--ground); color: var(--ink); font: var(--t2) var(--code); }
+.field textarea { min-height: 150px; resize: vertical; white-space: pre-wrap; }
+.button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.button-row button { border: 1px solid var(--control-edge); border-radius: var(--radius); padding: 8px 12px; }
+.button-row button:hover { border-color: var(--signal); }
+.results { display: grid; gap: 8px; margin: 16px 0 0; }
+.result-line { display: grid; grid-template-columns: 150px 90px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+/* The Trash rows carry a fourth column: the Restore button, or why the row is not
+   restorable. Four fixed columns do not fit a phone: at 390px the button was squeezed
+   to 12px wide by its grid track, so the row stacks instead. */
+.trash-pane .result-line { grid-template-columns: minmax(140px, 1fr) 80px 165px auto; }
+.trash-pane .result-line button { min-width: 96px; }
+@media (max-width: 700px) {
+  .trash-pane .result-line { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .trash-pane .result-line button { min-width: 0; justify-self: start; }
+}
+.result-line b { font: var(--t1) var(--code); font-weight: 600; }
+.result-line > :last-child { min-width: 0; overflow-wrap: anywhere; }
+.verdict { font: var(--t3); font-weight: 600; }
+.verdict.pass { color: var(--signal-ink); }
+.verdict.fail { color: var(--stale); }
+
+/* 180px starved the path down to 25px once the size and age spans took their
+   share: a 525px filename rendered as `_pr…`. The crumb keeps a readable
+   minimum and lets the path take the rest of the row. */
+@media (max-width: 1500px) { .crumb { max-width: min(52ch, 42vw); } }
+@media (max-width: 1500px) { .crumb-path { min-width: 16ch; } }
+@media (max-width: 1180px) { .crumb { display: none; } .pane-btn { padding: 4px 8px; } }
+@media (max-width: 1000px) {
+  /* The rail is the signature element; it must stay reachable. It slides in
+     over the document instead of being display:none. */
+  .app { grid-template-columns: 220px minmax(280px, 1fr) 0; }
+  .rail { position: fixed; top: var(--top-h); bottom: var(--status-h); right: 0; z-index: var(--z-panel); width: min(340px, 88vw); border-left: 1px solid var(--rule); transform: translateX(100%); transition: transform var(--dur-2) var(--ease-out); }
+  .app.rail-open .rail { transform: none; }
+  .app.hide-explorer { grid-template-columns: 0 minmax(280px, 1fr) 0; }
+  .rail-toggle { display: inline-flex !important; }
+  .source-row { grid-template-columns: 90px 90px 1fr; }
+  .source-row small { grid-column: 3; }
+}
+@media (max-width: 700px) {
+  /* Under 16px iOS zooms the whole page on focus. */
+  .field input, .field select, .field textarea, .filter, .search-input, .sync-text { font-size: 16px; }
+  .app { grid-template-columns: 0 minmax(260px, 1fr) 0; }
+  .explorer { position: fixed; top: var(--top-h); bottom: var(--status-h); left: 0; z-index: var(--z-panel); width: min(320px, 88vw); border-right: 1px solid var(--rule); background: var(--sheet); transform: translateX(-100%); transition: transform var(--dur-2) var(--ease-out); }
+  .app.explorer-open .explorer { transform: none; }
+  .explorer-toggle { display: inline-flex !important; }
+  .topbar-main { gap: var(--s2); padding: 0 var(--s4); }
+  .brand { font-size: var(--t2); }
+  .search-trigger { min-width: 0; flex: 1 1 96px; }
+  .search-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .area-nav { overflow-x: auto; scrollbar-width: thin; }
+  .area-btn { padding: var(--s1); font-size: var(--t1); }
+  .pane-nav { padding: 0 var(--s4); }
+  .pane-btn { padding: var(--s2) var(--s1); font-size: var(--t1); }
+  .jobs-pane, .audit-pane, .sync-pane, .verify-pane, .trash-pane { padding: 20px 16px 32px; }
+  .audit-head { display: block; }
+  .audit-date { display: block; margin-bottom: 16px; }
+  .welcome { padding: 8vh 5vw; }
+  .welcome h1, .audit-pane h1, .sync-pane h1, .verify-pane h1, .trash-pane h1 { font-size: var(--t5); }
+}
+.rail-toggle, .explorer-toggle { display: none; }
+.scrim { position: fixed; inset: var(--top-h) 0 var(--status-h); z-index: var(--z-scrim); background: color-mix(in oklch, var(--ink) 30%, transparent); border: 0; }
+
+/* Motion — DESIGN.md:101. 120ms panel collapse, 90ms tab change, one 400ms
+   --stale pulse when a background job marks a render out of date. */
+/* Pressed: a 1px travel is the tactile cue; it is a composited transform, and it
+   is the one place a control moves. Reduced motion removes it. */
+button:not(:disabled):active { transform: translateY(1px); }
+.primary:not(:disabled):active { background: var(--signal-ink); color: var(--ink-inverse); }
+[role="tab"]:not(:disabled):active { transform: none; }
+
+@keyframes stale-pulse { 0% { background-color: transparent; } 35% { background-color: var(--stale-soft); } 100% { background-color: transparent; } }
+.pulse { animation: stale-pulse 400ms ease-out 1; }
+/* A touch screen has no hover: a sticky hover colour after a tap reads as a
+   stuck selection. Every pointer-only affordance is neutralised here. */
+@media (hover: none) {
+  .tree-row:hover, .result:hover, .tab-close:hover, .rail-row:hover, .action:hover { background: transparent; }
+  .rail-row:hover, .action:hover, .button-row button:hover { border-color: var(--control-edge); }
+  .area-btn:hover, .pane-btn:hover, .icon-btn:hover, .search-trigger:hover,
+  .chip:not(.static):hover, .jobs-tabs button:hover, .tabs-row button:hover,
+  .data-table th button:hover { color: var(--ink-quiet); border-color: transparent; }
+  .area-btn.active, .pane-btn.active, .chip.active, .jobs-tabs button.active,
+  .tabs-row button.active { color: var(--ink); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
+  .pulse { animation: none !important; }
+  .app, .rail, .explorer { transition: none !important; }
+}
+@media print {
+  .topbar, .explorer, .rail, .status, .tabs, .markdown-toolbar, .scrim { display: none !important; }
+  .app { display: block; height: auto; }
+  .panel, .viewer { overflow: visible; }
+  .doc-prose { max-width: none; padding: 0; }
+}
+
+/* One frame during a theme flip, declared last so it wins on source order: every
+   colour transition on the page is off while the palette changes. */
+.theme-swapping *, .theme-swapping *::before, .theme-swapping *::after { transition-property: none; }
+
+/* A conversion's fidelity, stated above the thing it produced (DESIGN.md:165). */
+.render-caption { margin: 0 0 8px; color: var(--ink-quiet); font: var(--t1)/1.4 var(--ui); }

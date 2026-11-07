@@ -7,9 +7,10 @@ future reader can tell an intentional rule from an inherited accident.
 ## 1. The resume-tailoring skill
 
 **Was:** `office-productivity/references/resume-tailoring/SKILL.md` (88 KB) plus
-`references/job-search-copilot-modes.md` (48 KB), an entry-point alias, and five
-standalone helper scripts (`build_job_data.py`, `jd_skill_gap.py`,
-`followup_cadence.py`, `negotiation_roi.py`, `verify_docx_layout.py`).
+`references/resume-tailoring/references/job-search-copilot-modes.md` (48 KB), an entry-point
+alias, and five standalone helper scripts (`build_job_data.py`, `jd_skill_gap.py`,
+`followup_cadence.py`, `negotiation_roi.py`, `verify_docx_layout.py`). Both sizes check out
+against the parked copy (90,483 B and 48,656 B, measured 2026-10-11).
 
 **What survived, and where:**
 
@@ -33,9 +34,16 @@ which is exactly how the cadence and the facet builder drift apart.
 
 **What did not survive as executable logic:** prose-only steps. The longer
 skill remains the judgement and document-workflow reference; the engine and
-its brief own mechanical decisions and gates. The skill remains installed
-in the default Hermes profile. Other profiles are separate installations
-and are not asserted to be in sync.
+its brief own mechanical decisions and gates.
+
+> **Corrected 2026-10-11.** This paragraph used to read "The skill remains installed in the
+> default Hermes profile." It does not. `<dsh-home>\skills\office-productivity`
+> does not exist; the only copy on this machine is parked at
+> `<dsh-home>\skills-archive\2026-10-08-parked\parked\dsh_global\office-productivity\`
+> (SKILL.md 7,090 B there; the 90,483-byte resume-tailoring SKILL.md sits under
+> `references/resume-tailoring/`). Other profiles are separate installations and are not
+> asserted to be in sync. No engine behaviour depends on the skill being installed — this is a
+> provenance note, not a runtime dependency.
 
 ## 2. The Dossier app
 
@@ -62,12 +70,18 @@ now delegates to `engine.render.routes` instead of restating conversion fidelity
 
 ## 3. Prior job-search sessions and their workspace
 
-**Was:** a live workspace at `<workspace>` —
+**Was:** a live workspace at `<resume-corpus-root>` —
 766 files, 23 captured boards, 1789 corpus rows, 38 tracked applications, 23
 archived postings, 38 generated resume/cover-letter pairs, plus dated
 `workflow-state-*.md`, `LESSONS.md`, `diagnosis-*.md`, `keywords-*.md`,
 `jd-gap-input-*.md`, `ranked-jobs-*.json`, `nz-job-search-coverage-*.json` and a
 `scripts/` folder of one-off resync scripts.
+
+> **Measurement note (2026-10-11).** The sentence above is past-tense and is kept as written;
+> the other figures verify. The **766** file count matches no counting convention measurable
+> today: the same folder holds **770** files recursively including hidden entries, **728**
+> excluding `.dossier/`, and **707** excluding `.dossier/` and `_preview/`. Treat 766 as a
+> historical count taken at the time, not a current one — the sentence already says "Was:".
 
 **What survived:** the lessons, in `docs/LESSONS.md`, each turned into either a
 code rule or a test. The workspace itself was read, not copied — it stays where
@@ -109,3 +123,30 @@ session in that workspace hit the failure first.
   human-owned steps.
 - **No generated template fallback for a resume.** Without a real base `.docx`,
   `BaseDocumentMissing` is raised. A rebuild would silently flatten tables.
+
+## 4. The capture layers (2026-11-04)
+
+Three layers fetch a board, cheapest first, and the run record names the one used. The
+narrative, the recipe schema and the refusal vocabulary are in `docs/SCRAPING.md`; this
+section records only where each layer came from.
+
+| Layer | Code | Origin |
+|---|---|---|
+| Public JSON feeds | `feeds.py` | the six endpoints survived the 2026-09-26 consolidation; **no caller existed until 2026-11-04**, when `dossier feeds` was wired to the corpus shape |
+| obscura subprocess | `scrape/browser.py:ObscuraDriver` | `~/.dsh/tools/obscura/` v0.2.5, installed 2026-10-27 from reel `De9kMGeShp9`; chosen because it obeys robots by default and needs no Python browser dependency |
+| Playwright + Chromium | `scrape/browser.py:PlaywrightDriver` | the `browser` extra in `pyproject.toml`; the only engine that can hold the user's session |
+| Session store | `scrape/session.py` | new. Cookies + localStorage only; never a password |
+| Recipes | `scrape/recipes.py`, `templates/scrapes/` | new. Site specificity as data, validated before a request |
+| Runner | `scrape/runner.py` | new. Policy → robots → pace → engine → extract → sanitise → write |
+
+Two constraints are inherited rather than invented: `source-policy` (a prohibited board is
+refused before a network call, `engine/sources.assert_allowed`) and
+`partial-is-not-exhaustive` (a partial capture is never reported as coverage,
+`engine/sources.coverage`). The capture layer reuses both predicates rather than restating
+them, and adds two gates of its own — `session-is-the-users` and `challenge-is-explicit` —
+because a browser can reach content a JSON endpoint cannot.
+
+A URL the user names is filed under the `user_supplied` policy row (`web`). That row
+authorises *that page*, not a crawl: `scrape/guard.HOST_SOURCES` resolves a known board from
+the host first, so a LinkedIn URL still meets the prohibited row no matter what a recipe
+declares.

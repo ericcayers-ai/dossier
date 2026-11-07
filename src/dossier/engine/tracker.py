@@ -397,12 +397,10 @@ def record_outcome(root: Path | str, number: int, outcome: str, applied_date: st
     if number not in records:
         return {"written": False, "refused": "no-such-row", "detail": f"no row #{number}"}
 
-    from ..safety import trash
+    from ..safety import trash_then_write_text
     from ..config import AppConfig
 
     config = AppConfig.create(root)
-    trash(config, path)
-
     original = path.read_text(encoding="utf-8")
     header = _header_map(path)
     lines = original.splitlines(keepends=True)
@@ -440,7 +438,9 @@ def record_outcome(root: Path | str, number: int, outcome: str, applied_date: st
     if not changed:
         return {"written": False, "refused": "row-not-found", "detail": f"row #{number} not located in the table"}
 
-    path.write_text("".join(lines), encoding="utf-8")
+    # The backup is taken at the moment of the write, so a refused row (which
+    # returns above) never leaves a spurious copy in the trash.
+    trash_then_write_text(config, path, "".join(lines))
 
     logged_to = None
     if date_for_log:
@@ -450,7 +450,7 @@ def record_outcome(root: Path | str, number: int, outcome: str, applied_date: st
         text = followups.read_text(encoding="utf-8")
         if not text.endswith("\n"):
             text += "\n"
-        followups.write_text(text + f"- {date_for_log} (row #{number})\n", encoding="utf-8")
+        trash_then_write_text(root, followups, text + f"- {date_for_log} (row #{number})\n")
         logged_to = str(followups)
 
     return {
@@ -477,5 +477,9 @@ def append_followup(root: Path | str, number: int, when: str, channel: str = "",
     text = target.read_text(encoding="utf-8")
     if not text.endswith("\n"):
         text += "\n"
-    target.write_text(text + line + "\n", encoding="utf-8")
+    # Append-in-place still rewrites the whole file, so the pre-append state is
+    # filed in the trash first (gate: never-only-copy).
+    from ..safety import trash_then_write_text
+
+    trash_then_write_text(root, target, text + line + "\n")
     return {"written": True, "line": line, "path": str(target)}
