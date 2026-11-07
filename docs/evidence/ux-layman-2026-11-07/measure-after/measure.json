@@ -1,0 +1,839 @@
+{
+  "url": "http://127.0.0.1:51815",
+  "panes": {
+    "1440": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Folder": {
+        "h1": [
+          "Your folder"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Capture": {
+        "h1": [
+          "Capture"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Jobs": {
+        "h1": [
+          "Jobs"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Identity": {
+        "h1": [
+          "Identity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Build": {
+        "h1": [
+          "Build"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Verify": {
+        "h1": [
+          "Verify"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Audit": {
+        "h1": [
+          "Audit"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Trash": {
+        "h1": [
+          "Trash"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Sync": {
+        "h1": [
+          "Sync"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Loop": {
+        "h1": [
+          "Loop"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Opportunity": {
+        "h1": [
+          "Opportunity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "Panel": {
+        "h1": [
+          "Panel"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      }
+    },
+    "768": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Folder": {
+        "h1": [
+          "Your folder"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Capture": {
+        "h1": [
+          "Capture"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Jobs": {
+        "h1": [
+          "Jobs"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Identity": {
+        "h1": [
+          "Identity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Build": {
+        "h1": [
+          "Build"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Verify": {
+        "h1": [
+          "Verify"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Audit": {
+        "h1": [
+          "Audit"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Trash": {
+        "h1": [
+          "Trash"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Sync": {
+        "h1": [
+          "Sync"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Loop": {
+        "h1": [
+          "Loop"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Opportunity": {
+        "h1": [
+          "Opportunity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "Panel": {
+        "h1": [
+          "Panel"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      }
+    },
+    "390": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Folder": {
+        "h1": [
+          "Your folder"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Capture": {
+        "h1": [
+          "Capture"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Jobs": {
+        "h1": [
+          "Jobs"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Identity": {
+        "h1": [
+          "Identity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Build": {
+        "h1": [
+          "Build"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Verify": {
+        "h1": [
+          "Verify"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Audit": {
+        "h1": [
+          "Audit"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Trash": {
+        "h1": [
+          "Trash"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Sync": {
+        "h1": [
+          "Sync"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Loop": {
+        "h1": [
+          "Loop"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Opportunity": {
+        "h1": [
+          "Opportunity"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "Panel": {
+        "h1": [
+          "Panel"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      }
+    }
+  },
+  "console": [],
+  "focus": [
+    {
+      "tag": "button",
+      "label": "Search files",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "search-trigger",
+      "id": "",
+      "html": "<button type=\"button\" class=\"search-trigger\" aria-label=\"Search files\"><span>Search files</span><span class=\"kbd\">\u2318K</sp",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Start",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Start</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Files",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Files</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Search",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Search</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Papers",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Papers</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Housekeeping",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Housekeeping</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Agent",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn active",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn active\" aria-current=\"page\">Agent</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Use light theme",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "icon-btn",
+      "id": "",
+      "html": "<button type=\"button\" class=\"icon-btn\" aria-label=\"Use light theme\">\u25cb</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Loop",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "pane-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"pane-btn \">Loop</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Opportunity",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "pane-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"pane-btn \">Opportunity</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Panel",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "pane-btn active",
+      "id": "",
+      "html": "<button type=\"button\" class=\"pane-btn active\" aria-current=\"page\">Panel</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "input",
+      "label": "Filter files",
+      "ring": true,
+      "visible": true,
+      "type": "text",
+      "cls": "filter",
+      "id": "",
+      "html": "<input class=\"filter\" aria-label=\"Filter files\" placeholder=\"e.g. resume\" value=\"\" style=\"\">",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "All",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "chip active",
+      "id": "",
+      "html": "<button type=\"button\" class=\"chip active\" aria-pressed=\"true\">All</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": ".md",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "chip ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"chip \" aria-pressed=\"false\">.md</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": ".json",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "chip ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"chip \" aria-pressed=\"false\">.json</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "{}all_jobs.json",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "tree-row ",
+      "id": "",
+      "html": "<button type=\"button\" role=\"treeitem\" aria-level=\"1\" aria-posinset=\"1\" aria-setsize=\"3\" tabindex=\"0\" class=\"tree-row \" t",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Run the panel",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "primary",
+      "id": "",
+      "html": "<button type=\"button\" class=\"primary\">Run the panel</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "input",
+      "label": "",
+      "ring": true,
+      "visible": true,
+      "type": "text",
+      "cls": "",
+      "id": "",
+      "html": "<input placeholder=\"resume.md\" list=\"panel-files\" value=\"resume.md\" style=\"\">",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "input",
+      "label": "",
+      "ring": true,
+      "visible": true,
+      "type": "text",
+      "cls": "",
+      "id": "",
+      "html": "<input placeholder=\"posting.md\" list=\"panel-files\" value=\"\" style=\"\">",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "input",
+      "label": "",
+      "ring": true,
+      "visible": true,
+      "type": "text",
+      "cls": "",
+      "id": "",
+      "html": "<input placeholder=\"Support Engineer\" value=\"\" style=\"\">",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "\u2318\\ file list",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "status-btn",
+      "id": "",
+      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318\\ file list</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "\u2318/ related files",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "status-btn",
+      "id": "",
+      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318/ related files</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Keyboard shortcuts",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "",
+      "id": "",
+      "html": "<button type=\"button\" aria-label=\"Keyboard shortcuts\">?</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "a",
+      "label": "Skip to the open document",
+      "ring": true,
+      "visible": true,
+      "type": "",
+      "cls": "skip-link",
+      "id": "",
+      "html": "<a class=\"skip-link\" href=\"#main-content\">Skip to the open document</a>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Search files",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "search-trigger",
+      "id": "",
+      "html": "<button type=\"button\" class=\"search-trigger\" aria-label=\"Search files\"><span>Search files</span><span class=\"kbd\">\u2318K</sp",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Start",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Start</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Files",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Files</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Search",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Search</button>",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Papers",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Papers</button>",
+      "outline": "solid 2px"
+    }
+  ],
+  "dark": {
+    "1440": {
+      "Start here": {
+        "contrast": [],
+        "h1": [
+          "Start here"
+        ]
+      },
+      "Folder": {
+        "contrast": [],
+        "h1": [
+          "Your folder"
+        ]
+      },
+      "Capture": {
+        "contrast": [],
+        "h1": [
+          "Capture"
+        ]
+      },
+      "Jobs": {
+        "contrast": [],
+        "h1": [
+          "Jobs"
+        ]
+      },
+      "Identity": {
+        "contrast": [],
+        "h1": []
+      },
+      "Build": {
+        "contrast": [],
+        "h1": [
+          "Build"
+        ]
+      },
+      "Verify": {
+        "contrast": [],
+        "h1": []
+      },
+      "Audit": {
+        "contrast": [],
+        "h1": [
+          "Audit"
+        ]
+      },
+      "Trash": {
+        "contrast": [],
+        "h1": []
+      },
+      "Sync": {
+        "contrast": [],
+        "h1": []
+      },
+      "Loop": {
+        "contrast": [],
+        "h1": [
+          "Loop"
+        ]
+      },
+      "Opportunity": {
+        "contrast": [],
+        "h1": [
+          "Opportunity"
+        ]
+      },
+      "Panel": {
+        "contrast": [],
+        "h1": [
+          "Panel"
+        ]
+      }
+    }
+  },
+  "reduced": {
+    "skeleton_animation": "0s"
+  }
+}

@@ -1,0 +1,703 @@
+{
+  "01-start-1440": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Start here"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Start",
+    "h1": [
+      "Start here"
+    ],
+    "words": 140,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 5,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Dossier turns one job ad into one tailor",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "01-start-390": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Start here"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Start",
+    "h1": [
+      "Start here"
+    ],
+    "words": 140,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 5,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Dossier turns one job ad into one tailor",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "02-capture-1440": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Capture"
+    ],
+    "words": 66,
+    "primaries": [
+      "Scrape page"
+    ],
+    "fields": 3,
+    "buttons": 3,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Save one job ad from a link, or a whole ",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "02-capture-390": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Capture"
+    ],
+    "words": 66,
+    "primaries": [
+      "Scrape page"
+    ],
+    "fields": 3,
+    "buttons": 3,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": {
+        "text": "Save one job ad from a link, or a whole ",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "03-build-1440": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Build",
+      "Verify"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Papers",
+    "h1": [
+      "Build"
+    ],
+    "words": 50,
+    "primaries": [
+      "Read placeholders"
+    ],
+    "fields": 2,
+    "buttons": 2,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Papers",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Fill your own resume with one job\u2019s deta",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "03-build-390": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Build",
+      "Verify"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Papers",
+    "h1": [
+      "Build"
+    ],
+    "words": 50,
+    "primaries": [
+      "Read placeholders"
+    ],
+    "fields": 2,
+    "buttons": 2,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Papers",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": {
+        "text": "Fill your own resume with one job\u2019s deta",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "04-jobs-1440": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Jobs"
+    ],
+    "words": 61,
+    "primaries": [],
+    "fields": 1,
+    "buttons": 11,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 26
+      },
+      ".pane-purpose": {
+        "text": "Every job Dossier has saved, plus what y",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "04-jobs-390": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Jobs"
+    ],
+    "words": 61,
+    "primaries": [],
+    "fields": 1,
+    "buttons": 11,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 26
+      },
+      ".pane-purpose": {
+        "text": "Every job Dossier has saved, plus what y",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "consoleErrors": [],
+  "05-first-run-empty-1440": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Start here"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Start",
+    "h1": [
+      "Start here"
+    ],
+    "words": 149,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 5,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Dossier turns one job ad into one tailor",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "05-first-run-empty-390": {
+    "areas": [
+      "Start",
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Start here"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "File list",
+      "Related"
+    ],
+    "activeArea": "Start",
+    "h1": [
+      "Start here"
+    ],
+    "words": 149,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 5,
+    "contrast": {
+      ".area-btn": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Start",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Start here",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": {
+        "text": "Dossier turns one job ad into one tailor",
+        "ratio": 5.46,
+        "size": 15
+      },
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  }
+}

@@ -1,0 +1,653 @@
+{
+  "01-start-1440": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Folder"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Files",
+    "h1": [
+      "Put the folder on the light table."
+    ],
+    "words": 34,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 1,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Folder",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Put the folder on the light table.",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "01-start-390": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Folder"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Files",
+    "h1": [
+      "Put the folder on the light table."
+    ],
+    "words": 34,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 1,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Folder",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Put the folder on the light table.",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "02-capture-1440": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Capture"
+    ],
+    "words": 57,
+    "primaries": [
+      "Scrape page"
+    ],
+    "fields": 6,
+    "buttons": 3,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "02-capture-390": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Capture"
+    ],
+    "words": 57,
+    "primaries": [
+      "Scrape page"
+    ],
+    "fields": 6,
+    "buttons": 3,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Capture",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "03-build-1440": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Build",
+      "Verify"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Papers",
+    "h1": [
+      "Build"
+    ],
+    "words": 29,
+    "primaries": [
+      "Read placeholders"
+    ],
+    "fields": 2,
+    "buttons": 2,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Papers",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "03-build-390": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Build",
+      "Verify"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Papers",
+    "h1": [
+      "Build"
+    ],
+    "words": 29,
+    "primaries": [
+      "Read placeholders"
+    ],
+    "fields": 2,
+    "buttons": 2,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Papers",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Build",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "04-jobs-1440": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Jobs"
+    ],
+    "words": 44,
+    "primaries": [],
+    "fields": 1,
+    "buttons": 11,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 26
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "04-jobs-390": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Capture",
+      "Jobs",
+      "Identity"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Search",
+    "h1": [
+      "Jobs"
+    ],
+    "words": 44,
+    "primaries": [],
+    "fields": 1,
+    "buttons": 11,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 5.46,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Search",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Jobs",
+        "ratio": 16.16,
+        "size": 26
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent",
+      "identity"
+    ]
+  },
+  "consoleErrors": [],
+  "05-first-run-empty-1440": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Folder"
+    ],
+    "overflowX": 0,
+    "areasClipped": 0,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Files",
+    "h1": [
+      "Put the folder on the light table."
+    ],
+    "words": 30,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 1,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".area-btn.active": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 13
+      },
+      ".pane-btn.active": {
+        "text": "Folder",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Put the folder on the light table.",
+        "ratio": 16.16,
+        "size": 28
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 15
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  },
+  "05-first-run-empty-390": {
+    "areas": [
+      "Files",
+      "Search",
+      "Papers",
+      "Housekeeping",
+      "Agent"
+    ],
+    "panes": [
+      "Folder"
+    ],
+    "overflowX": 0,
+    "areasClipped": 6,
+    "toggleLabels": [
+      "Files",
+      "Rail"
+    ],
+    "activeArea": "Files",
+    "h1": [
+      "Put the folder on the light table."
+    ],
+    "words": 30,
+    "primaries": [
+      "Open Folder"
+    ],
+    "fields": 0,
+    "buttons": 1,
+    "contrast": {
+      ".area-btn": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".area-btn.active": {
+        "text": "Files",
+        "ratio": 14.97,
+        "size": 11
+      },
+      ".pane-btn.active": {
+        "text": "Folder",
+        "ratio": 16.16,
+        "size": 11
+      },
+      "main h1": {
+        "text": "Put the folder on the light table.",
+        "ratio": 16.16,
+        "size": 21
+      },
+      ".pane-purpose": null,
+      ".brand": {
+        "text": "Dossier",
+        "ratio": 16.16,
+        "size": 13
+      },
+      ".search-trigger": {
+        "text": "Search files\u2318K",
+        "ratio": 5.46,
+        "size": 13
+      }
+    },
+    "jargonInNav": [
+      "agent"
+    ]
+  }
+}
