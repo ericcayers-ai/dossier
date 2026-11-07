@@ -33,6 +33,19 @@ for `chromium_headless_shell-1248` — Playwright's browsers are not installed h
 `playwright install` is the fix and it is a download, so it waits for the owner.
 Receipt: `orchestrate-2026-11-07.md`.
 
+**2026-11-07, later: Playwright is installed and the browser suites pass.** Re-measured after the
+layman pass (a `df` check first — the run below started with the volume at 100 % and aborted with
+`OSError: [Errno 28]` in `test_template`/`test_trash_retention`; deleting 96 stale
+`%TEMP%\dossier-e2e-*` workspaces freed 11 GB and the same command then ran clean):
+
+| gate | command | result (2026-11-07) |
+|---|---|---|
+| tests | `.venv\Scripts\python.exe -m pytest -o addopts="" -q -p no:cacheprovider` | **449 passed, 1 failed** in 135 s — the failure is `test_safety.py::test_no_tracked_file_carries_personal_contact_details`, pre-existing on `master` and listed under *Next action* |
+| browser suite | `… pytest tests/test_e2e_ui.py` | **16 passed** in 60 s |
+| UI gate | `.ui-ux-master\measure.py`, extended with the new pane | **13 panes × 1440/768/390: 0 h1 misses, 0 contrast fails, 0 <24px targets, 0 unnamed, 0 overflow, console 0, dark 0, 29/29 focus rings** |
+| slop | `sloplint ui/src --scope app` | 0 FAIL, 2 WARN (both waived) |
+| before/after | `docs/evidence/ux-layman-2026-11-07/capture.py` | 20 screenshots, 2 metric files, console 0 |
+
 Receipts (26 `.md` in `docs/evidence/`): `2026-11-06-verification-pass.md` (the acceptance pass, with
 its per-entry subagent addendum and the stub sweep),
 `request-coverage-2026-11-06.md` (every owner request → evidence),
@@ -46,8 +59,12 @@ its per-entry subagent addendum and the stub sweep),
 - **27 modes, 18 gates, 34 artifacts, 54 unique `/api/*` paths (58 route registrations)** in the contract
   (`dossier agent manifest --json`), including `panel` — seven reviewers, each scoring and
   quoting the exact line behind its objection.
-- **12 UI panes**: Folder · Capture · Jobs · Identity · Build · Verify · Audit · Trash · Sync ·
-  Loop · Opportunity · Panel.
+- **13 UI panes in 6 areas** (2026-11-07): **Start** · Start here | **Files** · Folder |
+  **Search** · Capture, Jobs, Identity | **Papers** · Build, Verify | **Housekeeping** · Audit,
+  Trash, Sync | **Agent** · Loop, Opportunity, Panel. `Start here` is the default destination
+  (`#/start/start`) and states the loop as four steps with the engine's own next unit above them.
+  The twelve older panes and every address are unchanged. Receipt:
+  `docs/evidence/ux-layman-2026-11-07/README.md`.
 - `dossier panel`, `GET|POST /api/render`, `GET /api/convert/routes`, queued `?dir=` + search with
   path matches first.
 
@@ -78,9 +95,16 @@ its per-entry subagent addendum and the stub sweep),
 
 ## Next action
 
-1. **Commit in reviewed slices** — 152 entries uncommitted; the owner decides the slices
-   (evaluation + gate · navigation + landing · the panel · the write-path fix · docs).
-2. **Confirm the 15 proposed eval grades** — written 2026-11-07 at
+1. **Decide whether the workbench's own names change.** `Capture`, `Identity`, `Papers`,
+   `Housekeeping`, `Agent`, `Loop`, `Opportunity`, `Panel` are pinned by `tests/test_e2e_ui.py`, so
+   the 2026-11-07 pass added a plain-language front door instead of renaming them. The proposed
+   plain map is in `docs/evidence/ux-layman-2026-11-07/README.md`; acting on it means editing the
+   gate in the same commit.
+2. **`test_no_tracked_file_carries_personal_contact_details` is red on `master`** (5 tracked files
+   carry the owner's name or the New Zealand phone prefix: `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
+   `.github/ISSUE_TEMPLATE/config.yml`, `docs/evidence/fit-eval-2026-11-05.md`, `tests/test_panel.py`).
+   Pre-existing, untouched by the UI pass; fixing it is an owner edit to personal data.
+3. **Confirm the 15 proposed eval grades** — written 2026-11-07 at
    `docs/evidence/fit-eval-proposed-grades-2026-11-07.json` (one justification per row, tracker's
    prior grade beside it); the gold set is **unchanged** and no threshold moved. On the honest
    labels the ranker loses to arrival order (**nDCG@10 0.7283 against 0.7838**), so the next fix is
