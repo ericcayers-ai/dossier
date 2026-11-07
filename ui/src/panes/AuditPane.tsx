@@ -23,6 +23,7 @@ export default function AuditPane():ReactNode{
     <div className="audit-head">
       <div>
         <h1>Audit</h1>
+        <p className="pane-purpose">A health check of the folder: what is missing, what is out of date, and which job boards Dossier may read.</p>
       </div>
       <span className="audit-date">Generated {data.generated_on}</span>
     </div>

@@ -74,6 +74,7 @@ export default function JobsPane():ReactNode{
     <div className="audit-head">
       <div>
         <h1>Jobs</h1>
+        <p className="pane-purpose">Every job Dossier has saved, plus what you have applied to and what is due a follow-up.</p>
       </div>
     </div>
     <div className="jobs-tabs" role="tablist" aria-label="Job workspace">

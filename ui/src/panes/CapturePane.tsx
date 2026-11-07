@@ -47,6 +47,7 @@ export default function CapturePane():ReactNode{
     <div className="audit-head">
       <div>
         <h1>Capture</h1>
+        <p className="pane-purpose">Save one job ad from a link, or a whole board. The copy stays in this folder.</p>
       </div>
     </div>
 
@@ -54,28 +55,35 @@ export default function CapturePane():ReactNode{
       :status.state.status==='failed'?<ErrorState error={status.state.error} what="Reading capture status" onRetry={status.reload}/>
       :<>
         <div className="chips" role="status" aria-live="polite">
-          {Object.entries(status.state.data.engines).map(([name,engine])=><span className={`chip static ${engine.available?'active':''}`} key={name}>{name}{engine.available?` ${engine.version??''}`:' missing'}</span>)}
-          <span className="chip static">{`challenge: ${status.state.data.challenge.configured}`}</span>
-          <span className="chip static">{`${count(status.state.data.captured_postings,'posting')} archived`}</span>
+          <span className="chip static active">{`${count(status.state.data.captured_postings,'job ad')} saved`}</span>
         </div>
-        {!status.state.data.engines.playwright?.available&&<p className="notice">No Playwright, so an authenticated capture is unavailable. Install it with <code>uv sync --all-extras</code>.</p>}
 
-        <h2 className="pane-title">One page</h2>
+        <h2 className="pane-title">One job ad</h2>
         <div className="field-row">
           <label className="field"><span>Page URL</span><input value={url} onChange={event=>setUrl(event.target.value)} placeholder="https://boards.example/job/123"/></label>
-          <label className="field"><span>Source</span><input value={source} onChange={event=>setSource(event.target.value)} placeholder="blank = resolve from the host"/></label>
-          <label className="field"><span>Challenge</span><select value={challenge} onChange={event=>setChallenge(event.target.value)}>
-            <option value="">workspace policy ({status.state.data.challenge.configured})</option>
-            {status.state.data.challenge.policies.map(policy=><option key={policy} value={policy}>{policy}</option>)}
-          </select></label>
-          <label className="chip"><input type="checkbox" checked={session} onChange={event=>setSession(event.target.checked)}/> use saved session</label>
         </div>
         <div className="button-row">
-          <button type="button" className="primary" onClick={()=>void scrapePage()} disabled={busy!==null||!url.trim()}>{busy==='page'?'Scraping…':'Scrape page'}</button>
+          <button type="button" className="primary" onClick={()=>void scrapePage()} disabled={busy!==null||!url.trim()}>{busy==='page'?'Saving…':'Scrape page'}</button>
         </div>
+        <details className="sync-more">
+          <summary>Advanced: which page reader, and saved sessions</summary>
+          <div className="chips" role="status" aria-live="polite">
+            {Object.entries(status.state.data.engines).map(([name,engine])=><span className={`chip static ${engine.available?'active':''}`} key={name}>{name}{engine.available?` ${engine.version??''}`:' missing'}</span>)}
+            <span className="chip static">{`challenge: ${status.state.data.challenge.configured}`}</span>
+          </div>
+          <div className="field-row">
+            <label className="field"><span>Source</span><input value={source} onChange={event=>setSource(event.target.value)} placeholder="blank = work it out from the link"/></label>
+            <label className="field"><span>Challenge</span><select value={challenge} onChange={event=>setChallenge(event.target.value)}>
+              <option value="">folder policy ({status.state.data.challenge.configured})</option>
+              {status.state.data.challenge.policies.map(policy=><option key={policy} value={policy}>{policy}</option>)}
+            </select></label>
+            <label className="chip"><input type="checkbox" checked={session} onChange={event=>setSession(event.target.checked)}/> use the session you saved</label>
+          </div>
+        </details>
+        {!status.state.data.engines.playwright?.available&&<p className="notice">No Playwright, so a page that needs a sign-in cannot be saved. Install it with <code>uv sync --all-extras</code>.</p>}
 
-        <h2 className="pane-title">A whole board</h2>
-        <p className="sync-note">Recipes live in <code>.dossier/scrapes/</code>.</p>
+        <h2 className="pane-title">A whole job board</h2>
+        <p className="sync-note">A board needs a recipe, kept in <code>.dossier/scrapes/</code>.</p>
         <div className="field-row">
           <label className="field"><span>Recipe</span><select value={recipe} onChange={event=>setRecipe(event.target.value)}>
             <option value="">choose a recipe…</option>
@@ -86,7 +94,7 @@ export default function CapturePane():ReactNode{
         {chosen&&<p className="sync-note">{`${chosen.start_url}${chosen.last_run?.captured_at?`, last run ${chosen.last_run.captured_at} (${chosen.last_run.complete?'complete':'partial'})`:''}`}</p>}
         <div className="button-row">
           <button type="button" onClick={()=>void runRecipe()} disabled={busy!==null||!chosen}>{busy==='recipe'?'Walking the board…':'Run recipe'}</button>
-          <button type="button" onClick={()=>status.reload()}>Refresh status</button>
+          <button type="button" onClick={()=>status.reload()}>Refresh</button>
         </div>
 
         {error?<ErrorState error={error} what="Running the capture"/>:null}

@@ -37,6 +37,7 @@ export default function SyncPane():ReactNode{
     <div className="audit-head">
       <div>
         <h1>Sync</h1>
+        <p className="pane-purpose">Hand this session to another AI in one paste. Nothing is sent anywhere unless you paste it.</p>
       </div>
       <button type="button" className="primary" onClick={()=>void copy()}>{copied?'Copied':'Copy prompt'}</button>
     </div>

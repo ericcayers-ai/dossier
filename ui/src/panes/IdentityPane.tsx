@@ -108,6 +108,7 @@ export default function IdentityPane():ReactNode{
     <div className="audit-head">
       <div>
         <h1>Identity</h1>
+        <p className="pane-purpose">What you are looking for. Dossier judges how well a job fits against these answers, not against a guess.</p>
       </div>
     </div>
 

@@ -89,6 +89,7 @@ export default function AgentPane():ReactNode{
     <div className="agent-head">
       <div>
         <h1>Loop</h1>
+        <p className="pane-purpose">The engine’s own contract: which jobs Dossier finishes itself and which need a model to read and write.</p>
       </div>
       <span className="grow"/>
       <span className="agent-version">{`${data.modes.length} modes`}</span>

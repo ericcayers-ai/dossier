@@ -6,7 +6,7 @@ import {ErrorState} from './StateViews';
 
 /** The verify gate had no UI at all. It is the gate whose exit code the workflow
  *  asserts on, so it is the first capability wired (FINDINGS-INDEX B7 order). */
-export default function VerifyPane({candidate=''}:{candidate?:string}):ReactNode{
+export default function VerifyPane({candidate='',files=[]}:{candidate?:string;files?:string[]}):ReactNode{
   const [base,setBase]=useState('');
   const [target,setTarget]=useState(candidate);
   const [pdf,setPdf]=useState('');
@@ -35,13 +35,17 @@ export default function VerifyPane({candidate=''}:{candidate?:string}):ReactNode
     <div className="audit-head">
       <div>
         <h1>Verify</h1>
+        <p className="pane-purpose">Check a document before you send it: layout kept, text readable, pages rendered.</p>
       </div>
     </div>
 
     <div className="field-row">
-      <label className="field"><span>Base document (source)</span><input value={base} onChange={event=>setBase(event.target.value)} placeholder="job-posting-….md"/></label>
-      <label className="field"><span>Candidate document (tailored)</span><input value={target} onChange={event=>setTarget(event.target.value)} placeholder="….docx"/></label>
-      <label className="field"><span>Rendered PDF</span><input value={pdf} onChange={event=>setPdf(event.target.value)} placeholder="….pdf"/></label>
+      <label className="field"><span>Base document (source)</span><input value={base} onChange={event=>setBase(event.target.value)} placeholder="job-posting-….md" list="verify-base"/>
+        <datalist id="verify-base">{files.slice(0,200).map(rel=><option key={rel} value={rel}/>)}</datalist></label>
+      <label className="field"><span>Candidate document (tailored)</span><input value={target} onChange={event=>setTarget(event.target.value)} placeholder="….docx" list="verify-candidate"/>
+        <datalist id="verify-candidate">{files.slice(0,200).map(rel=><option key={rel} value={rel}/>)}</datalist></label>
+      <label className="field"><span>Rendered PDF</span><input value={pdf} onChange={event=>setPdf(event.target.value)} placeholder="….pdf" list="verify-pdf"/>
+        <datalist id="verify-pdf">{files.slice(0,200).map(rel=><option key={rel} value={rel}/>)}</datalist></label>
       <label className="field"><span>Expected pages</span><input value={pages} onChange={event=>setPages(event.target.value)} inputMode="numeric" placeholder="1"/></label>
     </div>
 
