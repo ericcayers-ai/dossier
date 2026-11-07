@@ -221,13 +221,37 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--signal); ou
 .viewer { flex: 1; min-height: 0; }
 /* The landing is a column of facts, not a centred poster: the stat row under the
    next step is what fills the pane. */
+/* Start here — the four steps of one application, in the order a person does them.
+   Rows, not cards: a checklist is a list, and four bordered tiles would read as a
+   dashboard of unrelated things. The state word carries the status; the only filled
+   control on the pane is the engine's next move, which sits above this list. */
+.start-pane { padding: var(--pane-pad-y) var(--pane-pad-x) var(--s10); overflow: auto; height: 100%; }
+.start-pane h2 { margin: 28px 0 12px; font-size: var(--t4); }
+.steps { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.step { display: grid; grid-template-columns: 20px minmax(0, 1fr) 64px auto; gap: 12px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.step-index { color: var(--ink-quiet); font: var(--t1)/1.5 var(--code); }
+.step-body { display: grid; gap: 2px; min-width: 0; }
+.step-body b { font-weight: 600; }
+.step-detail { color: var(--ink-quiet); font-size: var(--t2); overflow-wrap: anywhere; }
+.step-state { color: var(--ink-quiet); font: var(--t1) var(--code); white-space: nowrap; }
+.step.next .step-state, .step.done .step-index { color: var(--signal-ink); }
+.step button { min-height: 24px; padding: 4px 8px; border: 1px solid var(--control-edge); border-radius: var(--radius); white-space: nowrap; }
+.step button:hover { border-color: var(--signal); }
+.start-folder { margin-top: 8px; }
+.start-command { margin: 8px 0; padding: 8px 12px; overflow-x: auto; border: 1px solid var(--control-edge); background: var(--ground); font: var(--t1)/1.5 var(--code); }
+@media (max-width: 700px) {
+  .start-pane { padding: 20px 16px 32px; }
+  .step { grid-template-columns: 20px minmax(0, 1fr); }
+  .step-state, .step button { grid-column: 2; justify-self: start; }
+}
+
 .welcome { max-width: 860px; padding: 10vh 6vw; }
-.welcome h1, .audit-pane h1, .sync-pane h1, .verify-pane h1, .trash-pane h1 { margin: 0 0 12px; font-size: var(--t6); letter-spacing: -.035em; text-wrap: balance; }
+.welcome h1, .audit-pane h1, .sync-pane h1, .verify-pane h1, .trash-pane h1, .start-pane h1 { margin: 0 0 12px; font-size: var(--t6); letter-spacing: -.035em; text-wrap: balance; }
 h1, h2 { text-wrap: balance; }
 /* Interface notes are the product speaking quietly in its own voice, so they are set
    in the UI face at the UI size. Serif belongs to documents you are reading, not to a
    sentence under a heading — that shift is what made the chrome read like an essay. */
-.welcome p, .audit-head p, .sync-note { max-width: 68ch; margin: 0; color: var(--ink-quiet); font: var(--t2)/1.55 var(--ui); }
+.welcome p, .audit-head p, .sync-note, .pane-purpose { max-width: 68ch; margin: 0; color: var(--ink-quiet); font: var(--t2)/1.55 var(--ui); }
 /* Browser surfaces: the parts nobody drew. A default blue selection, a default scroll
    bar and a default caret are the strongest single tell that a page was assembled
    rather than built, and they cost one block of CSS. */
@@ -411,12 +435,16 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--signal); }
   .explorer { position: fixed; top: var(--top-h); bottom: var(--status-h); left: 0; z-index: var(--z-panel); width: min(320px, 88vw); border-right: 1px solid var(--rule); background: var(--sheet); transform: translateX(-100%); transition: transform var(--dur-2) var(--ease-out); }
   .app.explorer-open .explorer { transform: none; }
   .explorer-toggle { display: inline-flex !important; }
-  .topbar-main { gap: var(--s2); padding: 0 var(--s4); }
+  .topbar-main { gap: var(--s1); padding: 0 var(--s2); }
   .brand { font-size: var(--t2); }
   .search-trigger { min-width: 0; flex: 1 1 96px; }
-  .search-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  /* Six areas and a 190px search field do not share a 390px row: the field keeps the
+     key hint and its accessible name, and gives the width to the areas. */
+  .search-trigger span:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .area-nav { overflow-x: auto; scrollbar-width: thin; }
-  .area-btn { padding: var(--s1); font-size: var(--t1); }
+  /* Six areas plus the folder list, the search field and the theme switch share one
+     390px row: 8px of horizontal padding per area is what pushed the last one out. */
+  .area-btn { padding: 2px 4px; font-size: var(--t1); }
   .pane-nav { padding: 0 var(--s4); }
   .pane-btn { padding: var(--s2) var(--s1); font-size: var(--t1); }
   .jobs-pane, .audit-pane, .sync-pane, .verify-pane, .trash-pane { padding: 20px 16px 32px; }

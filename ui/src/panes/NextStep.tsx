@@ -1,18 +1,17 @@
 import type {ReactNode} from 'react';
 import {agentApi} from '../lib/api';
 import {useLoad} from '../lib/useLoad';
-import {count,isOne} from '../lib/copy';
 
-/** The landing pane answers the only question a stranger has: what now?
+/** The engine's answer to the only question a stranger has: what now?
  *
- *  The engine already knows — `agent status` returns one next unit, its reason, and
- *  the blockers standing in front of it — but before this strip that answer was two
- *  clicks deep under an area called "Agent". A workspace blocked on "no base .docx"
- *  therefore looked like an empty file browser.
+ *  `agent status` returns one next unit, its reason, and the blockers standing in
+ *  front of it. This strip is that answer, in one card, with one action: the
+ *  label names the unit, the sentence says why, and the button opens the pane that
+ *  fixes it. The counts it used to print are now the four-step list beside it, so
+ *  a number appears once.
  *
  *  It renders nothing while loading and nothing on failure: the shell already says
- *  whether the API is reachable, and a second error line on the welcome screen would
- *  be noise, not information. */
+ *  whether the API is reachable, and a second error line here would be noise. */
 export default function NextStep({onGo}:{onGo:(pane:string)=>void}):ReactNode{
   const status=useLoad(()=>agentApi.status(),[]);
   if(status.state.status!=='ready')return null;
@@ -20,11 +19,10 @@ export default function NextStep({onGo}:{onGo:(pane:string)=>void}):ReactNode{
   const unit=data.next;
   if(!unit)return null;
   const target=PANE_OF[unit.mode]??'agent';
-  const counts=Object.entries(data.counts||{}).filter(([,value])=>Number(value)>0);
   /* The reason and the first blocker usually say the same thing in two sentences
      ("No base .docx in this folder." twice). A blocker the reason already carries
-     is not repeated; the rest sit behind a summary so the welcome screen stays one
-     fact, one action, one line. */
+     is not repeated; the rest sit behind a summary so the card stays one fact, one
+     action, one line. */
   const reason=(unit.reason||unit.summary||'').trim().toLowerCase();
   const fresh=(data.blockers||[]).filter(blocker=>!reason.includes(blocker.slice(0,48).toLowerCase()));
   const blockerList=<ul className="agent-blockers">{fresh.map(blocker=><li key={blocker}>{blocker}</li>)}</ul>;
@@ -40,14 +38,6 @@ export default function NextStep({onGo}:{onGo:(pane:string)=>void}):ReactNode{
         <summary>{`${fresh.length} blockers`}</summary>
         {blockerList}
       </details>)}
-    {/* The same numbers as a stat row. A comma list of six counts left the pane hollow;
-        one cell per count is the readout a light table should have. */}
-    {counts.length>0&&<dl className="welcome-facts">
-      {counts.map(([name,value])=><div className="welcome-fact" key={name}>
-        <dt>{name.replace(/_/g,' ')}</dt><dd>{value}</dd>
-      </div>)}
-      {data.sessions>0&&<div className="welcome-fact"><dt>recorded sessions</dt><dd>{data.sessions}</dd></div>}
-    </dl>}
   </div>;
 }
 

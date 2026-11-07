@@ -73,15 +73,15 @@ export default function BundleRail({bundle,selected,onOpen,onRetry,onChanged,pul
 
   const byteTotal=all.reduce((sum,member)=>sum+(member.size??0),0);
 
-  return <aside className="panel rail" aria-label="Bundle rail" inert={inert||undefined}>
+  return <aside className="panel rail" aria-label="Files related to the open document" inert={inert||undefined}>
     <div className="pane-head">
-      <span className="pane-title">Bundle rail</span>
+      <span className="pane-title">Related files</span>
       {bundle.status==='ready'&&all.length>0
         ?<span className={`kbd ${stale.length?'stale':''} ${pulse?'pulse':''}`}>{`${bundle.data.stem_key?`${bundle.data.stem_key}: `:''}${stale.length?`${stale.length} stale of ${all.length}`:`${all.length} current`}`}</span>
         :<span className="kbd">n/a</span>}
     </div>
     <div className="rail-body">
-      {!selected?<div className="empty">Select a file.</div>
+      {!selected?<div className="empty">Open a document to see the files that belong with it.</div>
         :bundle.status==='loading'?<Loading what="the bundle"/>
         :bundle.status==='failed'?<ErrorState inline error={bundle.error} what="resolving this file’s bundle" onRetry={onRetry}/>
         :all.length===0?<div className="empty">No sibling files share this stem.</div>

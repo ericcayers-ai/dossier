@@ -3,6 +3,7 @@ import type {KeyboardEvent,ReactNode} from 'react';
 import type {FileNode} from '../lib/api';
 import type {Loadable} from '../lib/useLoad';
 import {extOf,flatten,formatAge,formatBytes,icon,nameOf} from '../lib/files';
+import {count} from '../lib/copy';
 import {EmptyState,ErrorState,Loading} from './StateViews';
 
 const KINDS=['all','md','json','txt','pdf','docx','csv'];
@@ -118,7 +119,7 @@ export default function Explorer({tree,selected,onSelect,onRetry,inert}:{tree:Lo
   };
 
   return <aside className="panel explorer" inert={inert||undefined}>
-    <div className="pane-head"><span className="pane-title">Explorer</span><span className="kbd pane-count" aria-hidden="true">{tree.status==='ready'?`${files.length} files`:'n/a'}</span></div>
+    <div className="pane-head"><span className="pane-title">Your files</span><span className="kbd pane-count" aria-hidden="true">{tree.status==='ready'?count(files.length,'file'):'n/a'}</span></div>
     <div className="explorer-tools">
       <input className="filter" aria-label="Filter files" placeholder="e.g. resume" value={filter} onChange={event=>{setFilter(event.target.value);resetScroll()}}/>
       <div className="chips">{kinds.map(value=><button type="button" key={value} className={`chip ${kind===value?'active':''}`} aria-pressed={kind===value} onClick={()=>{setKind(value);resetScroll()}}>{value==='all'?'All':`.${value}`}</button>)}</div>

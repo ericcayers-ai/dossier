@@ -3,6 +3,7 @@ import type {ReactNode} from 'react';
 import {ApiError,api,fault,isConflict} from './lib/api';
 import type {Bundle,FileNode} from './lib/api';
 import {baseName,extOf,flatten,formatAge,formatBytes,isBinary} from './lib/files';
+import {count} from './lib/copy';
 import {clearDraft,clockTime,preferredTheme,readDraft,storeTheme,writeDraft} from './lib/session';
 import type {Tab} from './lib/session';
 import {useLoad} from './lib/useLoad';
@@ -13,7 +14,6 @@ import type {Loadable} from './lib/useLoad';
    its tab is chosen, and one Suspense boundary holds the space while it arrives. */
 import Explorer from './panes/Explorer';
 import BundleRail from './panes/BundleRail';
-import NextStep from './panes/NextStep';
 const Viewer=lazy(()=>import('./panes/Viewer'));
 const Palette=lazy(()=>import('./panes/Palette'));
 const JobsPane=lazy(()=>import('./panes/JobsPane'));
@@ -27,6 +27,7 @@ const BuildPane=lazy(()=>import('./panes/BuildPane'));
 const AgentPane=lazy(()=>import('./panes/AgentPane'));
 const PanelPane=lazy(()=>import('./panes/PanelPane'));
 const TrajectoryPane=lazy(()=>import('./trajectory/TrajectoryPane'));
+const StartPane=lazy(()=>import('./panes/StartPane'));
 
 /** One skeleton for every pane boundary: same rhythm as `Loading`, no h1 (the arriving
  *  pane owns the heading) and `aria-busy` so a screen reader is told to wait. */
@@ -37,8 +38,8 @@ function PaneSkeleton():ReactNode{
   </div>;
 }
 
-type Pane='files'|'jobs'|'identity'|'capture'|'build'|'audit'|'trash'|'sync'|'agent'|'verify'|'trajectory'|'panel';
-type Area='files'|'search'|'papers'|'housekeeping'|'agent';
+type Pane='start'|'files'|'jobs'|'identity'|'capture'|'build'|'audit'|'trash'|'sync'|'agent'|'verify'|'trajectory'|'panel';
+type Area='start'|'files'|'search'|'papers'|'housekeeping'|'agent';
 type Pending={kind:'open'|'close';rel:string};
 /** A slide-over is only a slide-over below its breakpoint; above it the panel is
  *  always on screen. The panel is `inert` while off-canvas, so a closed drawer is
@@ -58,10 +59,15 @@ function useMediaQuery(query:string):boolean{
 type Conflict={rel:string};
 type SaveState={status:'idle'|'saving'|'saved'|'failed';at?:number;message?:string};
 
-/* Five areas, at most three panes each. Eleven flat buttons in one strip clipped
+/* Six areas, at most three panes each. Eleven flat buttons in one strip clipped
    at 1100 px and gave the topbar no hierarchy; an area is a place in the app, a
-   pane is a tab inside it. Only the active area's panes are mounted. */
+   pane is a tab inside it. Only the active area's panes are mounted.
+
+   `Start` comes first because a job search begins with a question, not a file
+   browser: it is the only new destination this pass added, and every other area
+   and pane below it is unchanged. */
 const AREAS:Array<{id:Area;label:string;panes:Array<{id:Pane;label:string}>}>=[
+  {id:'start',label:'Start',panes:[{id:'start',label:'Start here'}]},
   {id:'files',label:'Files',panes:[{id:'files',label:'Folder'}]},
   {id:'search',label:'Search',panes:[{id:'capture',label:'Capture'},{id:'jobs',label:'Jobs'},{id:'identity',label:'Identity'}]},
   {id:'papers',label:'Papers',panes:[{id:'build',label:'Build'},{id:'verify',label:'Verify'}]},
@@ -90,20 +96,12 @@ function paneFromHash(hash:string):Pane|null{
 }
 function hashFor(pane:Pane):string{return `#/${PANE_AREA[pane]}/${pane}`}
 
-/* Which pane actually fixes the unit of work the engine returned. The engine knows
-   the mode; only the UI knows where that mode lives, so the map belongs here. */
-const MODE_PANE:Record<string,Pane>={
-  setup:'files',identity:'identity',match:'jobs',capture:'capture',build:'build',
-  verify:'verify',audit:'audit',sources:'audit',track:'jobs',apply:'jobs',
-  interview:'agent',upskill:'agent',negotiate:'agent',handback:'agent',
-};
-
 const SHORTCUTS:[string,string][]=[
   ['⌘K','Search names and full text'],
   ['⌘S','Save the open document'],
   ['⌘W','Close the open tab'],
-  ['⌘\\','Collapse or show the Explorer'],
-  ['⌘/','Collapse or show the Bundle Rail'],
+  ['⌘\\','Collapse or show the file list'],
+  ['⌘/','Collapse or show the files related to the open one'],
   ['Esc','Close the palette, dialog or conflict banner'],
   ['?','Show this list'],
 ];
@@ -113,7 +111,7 @@ export default function App():ReactNode{
   const [tabs,setTabs]=useState<Tab[]>([]);
   const [selected,setSelected]=useState('');
   const [palette,setPalette]=useState(false);
-  const [pane,setPane]=useState<Pane>(()=>paneFromHash(window.location.hash)??'files');
+  const [pane,setPane]=useState<Pane>(()=>paneFromHash(window.location.hash)??'start');
   const area=PANE_AREA[pane];
 
   /* The address follows the pane, and the browser's own back/forward moves between
@@ -134,7 +132,7 @@ export default function App():ReactNode{
   },[pane]);
   useEffect(()=>{
     const sync=()=>{const next=paneFromHash(window.location.hash);if(next)setPane(next)};
-    if(!window.location.hash)window.history.replaceState(null,'',hashFor(paneFromHash('')??'files'));
+    if(!window.location.hash)window.history.replaceState(null,'',hashFor(paneFromHash('')??'start'));
     window.addEventListener('popstate',sync);
     window.addEventListener('hashchange',sync);
     return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)};
@@ -471,7 +469,7 @@ export default function App():ReactNode{
         {node?.size!==undefined&&<span className="crumb-meta">{formatBytes(node.size)}</span>}
         {node?.mtime_ns!==undefined&&<span className="crumb-meta">{`modified ${formatAge(node.mtime_ns)}`}</span>}
       </span>
-      <button type="button" className="search-trigger" ref={searchRef} onClick={()=>setPalette(true)}><span>Search files</span><span className="kbd">⌘K</span></button>
+      <button type="button" className="search-trigger" ref={searchRef} aria-label="Search files" onClick={()=>setPalette(true)}><span>Search files</span><span className="kbd">⌘K</span></button>
       <nav className="area-nav" aria-label="Workspace areas">
         {AREAS.map(item=><button
           type="button"
@@ -492,8 +490,8 @@ export default function App():ReactNode{
           onClick={()=>{goToPane(item.id);setRailOpen(false);setExplorerOpen(false)}}
         >{item.label}</button>)}
         <span className="grow"/>
-        <button type="button" className="icon-btn explorer-toggle" aria-expanded={explorerOpen} aria-label="Files: show or hide the file explorer" onClick={()=>setExplorerOpen(value=>!value)}>Files</button>
-        <button type="button" className="icon-btn rail-toggle" aria-expanded={railOpen} aria-label="Rail: show or hide the bundle rail" onClick={()=>setRailOpen(value=>!value)}>Rail</button>
+        <button type="button" className="icon-btn explorer-toggle" aria-expanded={explorerOpen} aria-label="Files: show or hide the file list" onClick={()=>setExplorerOpen(value=>!value)}>File list</button>
+        <button type="button" className="icon-btn rail-toggle" aria-expanded={railOpen} aria-label="Related files: show or hide the panel of files that belong with the open one" onClick={()=>setRailOpen(value=>!value)}>Related</button>
       </nav>
     </header>
 
@@ -502,7 +500,9 @@ export default function App():ReactNode{
     <main className="panel center" id="main-content" tabIndex={-1}>
       {/* A tablist with no tab inside it fails aria-required-children, and an empty
           document strip is not a tab set. The role appears with the first tab. */}
-      <div className="tabs" role={tabs.length?'tablist':undefined} aria-label={tabs.length?'Open documents':undefined}>
+      {/* A document strip with nothing in it is a row of grey words about a document
+          that does not exist. On the start screen, with no tabs, it is simply absent. */}
+      {(pane!=='start'||tabs.length>0)&&<div className="tabs" role={tabs.length?'tablist':undefined} aria-label={tabs.length?'Open documents':undefined}>
         {tabs.map((tab,index)=><div
           key={tab.rel}
           role="tab"
@@ -519,7 +519,7 @@ export default function App():ReactNode{
           <button type="button" className="tab-close" aria-label={`Close ${baseName(tab.rel)}`} onClick={event=>{event.stopPropagation();requestClose(tab.rel)}}>×</button>
         </div>)}
         {tabs.length===0&&<span className="tab-placeholder">No document open</span>}
-      </div>
+      </div>}
 
       <div className="viewer" id="document-view" role={tabs.length?'tabpanel':undefined} aria-label={tabs.length?'Open document':undefined}>
         {conflict&&<div className="confirm" role="alertdialog" aria-label="File changed on disk">
@@ -532,7 +532,8 @@ export default function App():ReactNode{
         {saveState.status==='failed'&&<div className="confirm" role="alert">{saveState.message}<button type="button" onClick={()=>setSaveState({status:'idle'})}>Dismiss</button></div>}
 
         <Suspense fallback={<PaneSkeleton/>}>
-        {pane==='files'
+        {pane==='start'?<StartPane onGo={next=>goToPane(next as Pane)}/>
+          :pane==='files'
           ?activeTab
             ?<>
               {draftOffer?.rel===activeTab.rel&&<div className="confirm" role="alert">
@@ -545,8 +546,11 @@ export default function App():ReactNode{
                 :<Viewer tab={activeTab} onChange={content=>onEdit(activeTab.rel,content)} onRetry={()=>void load(activeTab.rel)} onMode={setViewerMode}/>}
             </>
             :<div className="welcome">
-              <h1>Put the folder on the light table.</h1>
-              <NextStep onGo={next=>goToPane(next as Pane)}/>
+              <h1>Your folder</h1>
+              <p className="pane-purpose">Everything Dossier reads is here. Pick a file on the left to open it, or use Start here for the four steps of an application.</p>
+              {docxFiles.length===0
+                ?<p className="notice">No <code>.docx</code> in this folder yet. Add the resume you send to employers here, then Start here walks through the rest.</p>
+                :<p className="sync-note">{`${count(docxFiles.length,'.docx')} here: ${docxFiles.slice(0,4).join(', ')}`}</p>}
             </div>
           :pane==='jobs'?<JobsPane/>
           :pane==='identity'?<IdentityPane/>
@@ -557,7 +561,7 @@ export default function App():ReactNode{
           :pane==='sync'?<SyncPane/>
           :pane==='panel'?<PanelPane candidate={selected} files={readableFiles}/>
           :pane==='agent'?<AgentPane/>
-          :pane==='verify'?<VerifyPane candidate={selected}/>
+          :pane==='verify'?<VerifyPane candidate={selected} files={readableFiles}/>
           :<TrajectoryPane/>}
         </Suspense>
       </div>
@@ -574,8 +578,8 @@ export default function App():ReactNode{
       <span className={saveState.status==='failed'?'stale':''} role="status" aria-live="polite">{saveLine}</span>
       {editHint&&<span>{editHint}</span>}
       {selected&&<span>{`${selected}${activeTab?.dirty?' — unsaved':''}`}</span>}
-      <button type="button" className="status-btn" aria-pressed={hideExplorer} onClick={()=>{setHideExplorer(value=>!value);setExplorerOpen(value=>!value)}}>{'⌘\\ explorer'}</button>
-      <button type="button" className="status-btn" aria-pressed={hideRail} onClick={()=>{setHideRail(value=>!value);setRailOpen(value=>!value)}}>{'⌘/ rail'}</button>
+      <button type="button" className="status-btn" aria-pressed={hideExplorer} onClick={()=>{setHideExplorer(value=>!value);setExplorerOpen(value=>!value)}}>{'⌘\\ file list'}</button>
+      <button type="button" className="status-btn" aria-pressed={hideRail} onClick={()=>{setHideRail(value=>!value);setRailOpen(value=>!value)}}>{'⌘/ related files'}</button>
       <button type="button" onClick={()=>setHelp(true)} aria-label="Keyboard shortcuts">?</button>
     </footer>
 
