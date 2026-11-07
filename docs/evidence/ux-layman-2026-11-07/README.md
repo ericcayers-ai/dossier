@@ -88,7 +88,7 @@ empty state `Select a file.` → *"Open a document to see the files that belong 
 
 ## What changed
 
-- **`ui/src/panes/StartPane.tsx`** (new, 118 lines) — the front door and the app's default
+- **`ui/src/panes/StartPane.tsx`** (new, 112 lines) — the front door and the app's default
   destination (`#/start/start`). It reads two routes that already existed (`/api/workspace`, the
   folder resolver; `/api/identity`) and states the loop as **four numbered steps** with a state word
   each (`Done` / `Next` / `Not yet`), the engine's own counts (`126 files`, `1 job ad saved`), and a
