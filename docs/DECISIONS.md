@@ -106,3 +106,31 @@ for a CS student, which is the correct answer to the wrong question. A capture's
 `--min-match` filters on the same number and records `filtered: true` with the score, so a
 filtered run reports `complete: false` rather than archiving everything and calling it a
 shortlist.
+
+## 2026-11-09 — publishing this repository
+
+The repository is public at `github.com/ericcayers-ai/dossier`. Four decisions were made to make
+that honest, each with a receipt in `docs/evidence/publish-gate-2026-11-09.md`:
+
+- **Personal job-search data is not repository content.** 93 occurrences of real employer names,
+  absolute home paths and a phone fixture were replaced across 37 tracked files, `.agent_state/` was
+  untracked, and the deleted `.verification/tailoredresumes-before.json` — which listed 23 real
+  applications with cover-letter filenames and sha256s — was purged from every commit before the
+  first push. The graded labels file stays gitignored: it is the owner's data, not the repo's.
+- **`pymupdf` is not a runtime dependency.** It is AGPL-3.0-or-commercial, which does not sit
+  coherently beside an MIT `LICENSE`. PDF text, geometry and rasterising moved to PDFium
+  (`pypdfium2`, BSD-3-Clause/Apache-2.0) behind `render.text_layout` / `render.pdf_to_png`; PyMuPDF
+  is an optional extra and a test-only fixture tool. `tests/test_licences.py` now fails if a
+  runtime dependency turns copyleft.
+- **The bearer token never travels in a URL.** The client appended `?token=` to `/api/raw`,
+  `/api/render` and `/api/events`; the server accepted it. Both halves are gone — the HttpOnly
+  `SameSite=Lax` cookie authorises those requests already — because a URL credential reaches the
+  address bar, history, `Referer` and the access log, which is exactly what `token-never-leaks`
+  forbids.
+- **A markup file in the workspace is not executable application code.** `/api/raw` serves HTML,
+  SVG and XML as an attachment inside `Content-Security-Policy: sandbox`, with `nosniff`, because
+  otherwise any page a capture dropped into the folder would run with the app's own API authority.
+
+Two findings were recorded and deliberately not changed in this pass: `GET /api/export` mutates on a
+GET and accepts a missing `Origin` (it writes only inside the workspace root), and `await_seconds`
+plus request-body size are unbounded (a loopback-only threat model). Both are listed in the receipt.

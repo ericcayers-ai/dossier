@@ -5,21 +5,6 @@ import json
 import shutil
 
 
-def _pymupdf():
-    """PyMuPDF under its supported module name, falling back to the `fitz` alias.
-
-    `fitz` is deprecated and prints a warning through whatever stream was
-    current when it was first imported, which raises inside a test runner whose
-    capture is already closed.
-    """
-    try:
-        import pymupdf
-        return pymupdf
-    except ImportError:
-        import fitz
-        return fitz
-
-
 @dataclass
 class RendererInfo:
     name: str
@@ -109,11 +94,12 @@ def convert(src, target, opts=None):
     if src.resolve() == target.resolve():
         raise ValueError("source and target must differ")
     if ext == ".pdf" and target_ext == ".png":
-        pymupdf = _pymupdf()
-        document = pymupdf.open(str(src))
-        if not document.page_count:
-            raise ValueError("PDF has no pages")
-        document[0].get_pixmap(matrix=pymupdf.Matrix(150 / 72, 150 / 72), alpha=False).save(str(target))
+        # One rasteriser path: `engine/render.pdf_to_png` prefers PDFium (permissive)
+        # and falls back to PyMuPDF when the optional extra is installed, so this
+        # module never imports an AGPL library directly.
+        from .engine import render as pdf_engine
+
+        pdf_engine.pdf_to_png(src, target, page=0, dpi=150)
         return target
     if ext == ".docx" and target_ext == ".pdf":
         # One authoritative DOCX->PDF path: `engine/render` drives a private

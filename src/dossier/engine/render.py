@@ -43,7 +43,9 @@ def available_renderers() -> dict[str, RendererInfo]:
         "word": RendererInfo("Word", word is not None, str(word or "not found")),
         "libreoffice": RendererInfo("LibreOffice", shutil.which("soffice") is not None,
                                     shutil.which("soffice") or "not found"),
-        "pymupdf": RendererInfo("PyMuPDF", _has_pymupdf(), "python import pymupdf"),
+        "pdfium": RendererInfo("PDFium", _has_pdfium(), "python import pypdfium2"),
+        "pymupdf": RendererInfo("PyMuPDF (AGPL, optional)", _has_pymupdf(),
+                                "python import pymupdf"),
     }
 
 
@@ -68,6 +70,61 @@ def _pymupdf():
         return fitz
 
 
+def _has_pdfium() -> bool:
+    """PDFium is the default engine: BSD-3-Clause / Apache-2.0, not copyleft."""
+    try:
+        import pypdfium2  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def text_layout(pdf: Path) -> dict | None:
+    """Pages, page sizes and text blocks for one PDF, with a top-left origin.
+
+    One shape for two engines so `verify` never has to know which is installed:
+    PDFium first (permissive), PyMuPDF second (AGPL, optional extra). Block
+    coordinates are top-left based like PyMuPDF's, because the margin check is
+    written in that frame; PDFium reports bottom-left, so `y` is flipped here.
+    """
+    pdf = Path(pdf)
+    if _has_pdfium():
+        import pypdfium2 as pdfium
+
+        pages: list[dict] = []
+        with pdfium.PdfDocument(str(pdf)) as document:
+            for index in range(len(document)):
+                page = document[index]
+                width, height = page.get_size()
+                textpage = page.get_textpage()
+                blocks = []
+                for rect_index in range(textpage.count_rects()):
+                    left, bottom, right, top = textpage.get_rect(rect_index)
+                    text = textpage.get_text_bounded(left, bottom, right, top)
+                    if not text.strip():
+                        continue
+                    blocks.append({"x0": left, "y0": height - top,
+                                   "x1": right, "y1": height - bottom, "text": text})
+                pages.append({"width": width, "height": height, "blocks": blocks})
+        return {"engine": "pdfium", "pages": pages}
+
+    if _has_pymupdf():
+        pymupdf = _pymupdf()
+        pages = []
+        with pymupdf.open(str(pdf)) as document:
+            for page in document:
+                blocks = [
+                    {"x0": block[0], "y0": block[1], "x1": block[2], "y1": block[3],
+                     "text": block[4]}
+                    for block in page.get_text("blocks") if block[4].strip()
+                ]
+                pages.append({"width": page.rect.width, "height": page.rect.height,
+                              "blocks": blocks})
+        return {"engine": "pymupdf", "pages": pages}
+
+    return None
+
+
 def _has_pywin32() -> bool:
     try:
         import win32com.client  # noqa: F401
@@ -77,10 +134,10 @@ def _has_pywin32() -> bool:
 
 
 def pdf_pages(path: Path) -> int | None:
-    if not _has_pymupdf():
+    layout = text_layout(path)
+    if layout is None:
         return None
-    with _pymupdf().open(str(path)) as document:
-        return document.page_count
+    return len(layout["pages"])
 
 
 class RendererUnavailable(RuntimeError):
@@ -150,11 +207,24 @@ def export_pdf(docx: Path, pdf: Path) -> dict:
 
 def pdf_to_png(pdf: Path, png: Path, page: int = 0, dpi: int = 150) -> Path:
     """Rasterise one PDF page so a human or a vision model can look at it."""
-    if not _has_pymupdf():
-        raise RendererUnavailable("PyMuPDF is not importable; cannot rasterise the PDF.")
-    pymupdf = _pymupdf()
     pdf, png = Path(pdf), Path(png)
     png.parent.mkdir(parents=True, exist_ok=True)
+    if _has_pdfium():
+        import pypdfium2 as pdfium
+
+        with pdfium.PdfDocument(str(pdf)) as document:
+            if not len(document):
+                raise ValueError("PDF has no pages")
+            if page >= len(document):
+                raise IndexError(f"page {page} out of range ({len(document)} pages)")
+            document[page].render(scale=dpi / 72).to_pil().save(str(png))
+        return png
+    if not _has_pymupdf():
+        raise RendererUnavailable(
+            "No PDF rasteriser is importable; install pypdfium2 (permissive) or the "
+            "optional PyMuPDF extra."
+        )
+    pymupdf = _pymupdf()
     with pymupdf.open(str(pdf)) as document:
         if not document.page_count:
             raise ValueError("PDF has no pages")

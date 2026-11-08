@@ -82,22 +82,23 @@ def text_layer(pdf: Path, expect: list[str] | None = None, keywords: list[str] |
     verifier that fails a clean document teaches people to ignore it.
     """
     pdf = Path(pdf)
-    if not render._has_pymupdf():
-        return {"pdf": str(pdf), "ok": False,
-                "issues": [{"type": "no-extractor", "detail": "PyMuPDF is not importable"}]}
-    pymupdf = _pymupdf()
+    layout = render.text_layout(pdf)
+    if layout is None:
+        return {"pdf": str(pdf), "ok": False, "issues": [{
+            "type": "no-extractor",
+            "detail": "No PDF text extractor is importable; install pypdfium2 (permissive) "
+                      "or the optional PyMuPDF extra",
+        }]}
     issues: list[dict] = []
     pages_text: list[str] = []
 
-    with pymupdf.open(str(pdf)) as document:
-        for index, page in enumerate(document):
-            pages_text.append(page.get_text("text"))
-            blocks = [block for block in page.get_text("blocks") if block[4].strip()]
-            # A page with no text block at all is a page an ATS reads as nothing.
-            # The branch that was here tested `blocks and not any(True for _ in
-            # blocks)`, which cannot be true, so the issue type was unreachable.
-            if not blocks:
-                issues.append({"type": "empty-page", "page": index + 1})
+    for index, page in enumerate(layout["pages"]):
+        pages_text.append("\n".join(block["text"] for block in page["blocks"]))
+        # A page with no text block at all is a page an ATS reads as nothing.
+        # The branch that was here tested `blocks and not any(True for _ in
+        # blocks)`, which cannot be true, so the issue type was unreachable.
+        if not page["blocks"]:
+            issues.append({"type": "empty-page", "page": index + 1})
     text = "\n".join(pages_text)
 
     if not text.strip():
@@ -155,10 +156,13 @@ def visual(pdf: Path, expected_pages: int | None = None, margin_tol: float = 4.0
     therefore never be true on a text diff or a geometry sweep alone.
     """
     pdf = Path(pdf)
-    if not render._has_pymupdf():
-        return {"pdf": str(pdf), "ok": False, "page_image": None, "issues": [
-            {"type": "no-rasteriser", "detail": "PyMuPDF is not importable"}]}
-    pymupdf = _pymupdf()
+    layout = render.text_layout(pdf)
+    if layout is None:
+        return {"pdf": str(pdf), "ok": False, "page_image": None, "issues": [{
+            "type": "no-rasteriser",
+            "detail": "No PDF reader is importable; install pypdfium2 (permissive) or the "
+                      "optional PyMuPDF extra",
+        }]}
     issues: list[dict] = []
     margins = margins or {}
     left = float(margins.get("left") or 36.0)
@@ -166,28 +170,28 @@ def visual(pdf: Path, expected_pages: int | None = None, margin_tol: float = 4.0
     top = float(margins.get("top") or 36.0)
     bottom = float(margins.get("bottom") or 36.0)
 
-    with pymupdf.open(str(pdf)) as document:
-        page_count = document.page_count
-        if expected_pages is not None and page_count != expected_pages:
-            issues.append({"type": "page-count", "expected": expected_pages, "actual": page_count})
-        for index, page in enumerate(document):
-            width, height = page.rect.width, page.rect.height
-            x_min, x_max = left - margin_tol, width - right + margin_tol
-            y_min, y_max = top - margin_tol, height - bottom + margin_tol
-            blocks = [block for block in page.get_text("blocks") if block[4].strip()]
-            if not blocks:
-                issues.append({"type": "blank-page", "page": index + 1})
-                continue
-            for block in blocks:
-                x0, y0, x1, y1, text = block[0], block[1], block[2], block[3], block[4]
-                if x0 < x_min or x1 > x_max or y0 < y_min or y1 > y_max:
-                    issues.append({
-                        "type": "overflow",
-                        "page": index + 1,
-                        "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
-                        "page_size": [round(width, 1), round(height, 1)],
-                        "text": text.strip()[:50],
-                    })
+    page_count = len(layout["pages"])
+    if expected_pages is not None and page_count != expected_pages:
+        issues.append({"type": "page-count", "expected": expected_pages, "actual": page_count})
+    for index, page in enumerate(layout["pages"]):
+        width, height = page["width"], page["height"]
+        x_min, x_max = left - margin_tol, width - right + margin_tol
+        y_min, y_max = top - margin_tol, height - bottom + margin_tol
+        blocks = page["blocks"]
+        if not blocks:
+            issues.append({"type": "blank-page", "page": index + 1})
+            continue
+        for block in blocks:
+            x0, y0, x1, y1, text = (block["x0"], block["y0"], block["x1"], block["y1"],
+                                    block["text"])
+            if x0 < x_min or x1 > x_max or y0 < y_min or y1 > y_max:
+                issues.append({
+                    "type": "overflow",
+                    "page": index + 1,
+                    "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
+                    "page_size": [round(width, 1), round(height, 1)],
+                    "text": text.strip()[:50],
+                })
 
     page_image = Path(image) if image is not None else pdf.parent / f"{pdf.stem}-page-1.png"
     try:

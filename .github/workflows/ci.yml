@@ -1,0 +1,62 @@
+name: ci
+
+# The repo's own gate, run by someone other than the person who wrote the change.
+# A public repository whose 450-test suite only ever ran on its author's laptop has
+# no gate at all; three separate audits said so.
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the Python project
+        # `pymupdf` is the AGPL test-only extra: it synthesises fixture PDFs.
+        run: uv sync --extra dev --extra pymupdf --extra scrape
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install and build the UI
+        run: |
+          cd ui
+          npm ci
+          npm run build
+
+      - name: Install the browser the e2e suite drives
+        run: uv run python -m playwright install --with-deps chromium
+
+      - name: Contract, unit and end-to-end tests
+        run: uv run python -m pytest -o addopts="" -q -p no:cacheprovider
+
+      - name: A generated vendor pack may not drift from the manifest
+        run: uv run dossier agent adapters --check --root .
+
+      - name: No runtime dependency may be copyleft
+        run: uv run python -m pytest tests/test_licences.py -o addopts="" -q
+
+      - name: No tracked file may carry personal contact details
+        run: uv run python -m pytest tests/test_safety.py -o addopts="" -q

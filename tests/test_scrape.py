@@ -789,3 +789,25 @@ def test_a_recipe_run_records_filtered_items_without_counting_them_as_failures(t
     result = runner.run_recipe(tmp_path, recipe, delay_ms=0)
     assert result["filtered"] and result["filtered"][0]["score"] <= 25
     assert result["failures"] == []
+
+
+def test_a_shim_argument_carrying_a_cmd_metacharacter_is_refused(tmp_path):
+    """`cmd /c` re-parses its command line, so `&` in a URL would fork a command.
+
+    Measured: the list form truncates the URL at the `&`. That is the injection, so an
+    argument carrying a cmd metacharacter is refused on the shim path only; the `.exe`
+    path passes argv untouched.
+    """
+    from dossier.scrape import browser
+
+    shim = tmp_path / "obscura.cmd"
+    shim.write_text("@echo off\n", encoding="ascii")
+    with pytest.raises(RuntimeError, match="re-parse"):
+        browser._obscura_command(shim, ["fetch", "http://127.0.0.1:1/job/1?a=1&calc"])
+
+    benign = browser._obscura_command(shim, ["fetch", "http://127.0.0.1:1/job/1"])
+    assert benign[:3] == ["cmd", "/c", str(shim)]
+
+    exe = tmp_path / "obscura.exe"
+    assert browser._obscura_command(exe, ["fetch", "http://x/?a=1&b=2"]) == [
+        str(exe), "fetch", "http://x/?a=1&b=2"]

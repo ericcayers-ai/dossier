@@ -34,6 +34,12 @@ def test_no_tracked_file_carries_personal_contact_details():
     generated from a real workspace is one `git add -A` away from publishing somebody's job
     search. The invariant is asserted over the tracked file list, not over one path, so a new
     receipt cannot slip past it.
+
+    The GitHub account handle is deliberately *not* in this list: since 2026-11-09 the repository
+    is published under that account, so `github.com/<account>/dossier` links in CONTRIBUTING.md
+    and the issue templates are the published identity, not a leak. The owner's personal name, a
+    real mailbox, a phone number and a LinkedIn profile remain forbidden, which is what this
+    test is for.
     """
     import subprocess
     from pathlib import Path
@@ -50,7 +56,7 @@ def test_no_tracked_file_carries_personal_contact_details():
     # Assembled from parts so this file does not itself contain the strings it forbids.
     needles = [part.encode() for part in (
         "@gmail" + ".com", "linkedin.com" + "/in/", "+" + "64 ", "+" + "64-",
-        "ericc" + "ayers")]
+        "eric " + "ayers")]
     offenders = []
     for raw in listed.split(b"\0"):
         if not raw:

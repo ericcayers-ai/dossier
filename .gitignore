@@ -87,3 +87,6 @@ docs/history/graphify-legacy-2026-09-12/worktree.json
 # A labels sheet is generated from the owner's own folder and carries real employer and
 # role names. The metric is reproducible from the folder; the names must never enter git.
 docs/evidence/*-labels-*.json
+
+# Agent working state (local scratch, never part of the product)
+.agent_state/

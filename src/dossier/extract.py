@@ -28,10 +28,15 @@ def extract_text(path:Path):
                 parts += [p.text for p in section.header.paragraphs]; parts += [p.text for p in section.footer.paragraphs]
             return '\n'.join(x for x in parts if x),meta
         if ext=='.pdf':
-            try:
-                import pymupdf as _pdf
-            except ImportError:
-                import fitz as _pdf
-            d=_pdf.open(str(path)); meta['pages']=len(d); return '\n'.join(p.get_text() for p in d),meta
+            # One PDF engine for the whole app: `render.text_layout` prefers PDFium
+            # (permissive) and only falls back to PyMuPDF when the optional extra is
+            # installed, so no module imports an AGPL library directly.
+            from .engine import render as pdf_engine
+            layout = pdf_engine.text_layout(path)
+            if layout is None:
+                return '', {'error': 'no PDF text extractor is available'}
+            meta['pages'] = len(layout['pages'])
+            return '\n'.join(block['text'] for page in layout['pages']
+                             for block in page['blocks']), meta
         return '',meta
     except Exception as e: return '', {'error':str(e)}

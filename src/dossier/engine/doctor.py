@@ -15,15 +15,15 @@ from pathlib import Path
 
 from . import render
 
-REQUIRED = ("fastapi", "uvicorn", "watchfiles", "docx", "pymupdf")
-OPTIONAL = ("win32com", "pypdf", "openpyxl", "pandas", "PIL")
+REQUIRED = ("fastapi", "uvicorn", "watchfiles", "docx", "pypdfium2")
+OPTIONAL = ("win32com", "pypdf", "pymupdf", "openpyxl", "pandas", "PIL")
 
 CAPABILITIES = {
     "docx_read": "python-docx",
     "docx_write": "python-docx",
     "docx_to_pdf": "Microsoft Word or LibreOffice",
-    "pdf_text_layer": "pymupdf",
-    "pdf_to_image": "pymupdf",
+    "pdf_text_layer": "pypdfium2 (permissive)",
+    "pdf_to_image": "pypdfium2 (permissive)",
     "fts_search": "sqlite3 with FTS5",
     "capture_public": "obscura, or Playwright+Chromium",
     "capture_authenticated": "Playwright+Chromium with a user-created session",
@@ -84,8 +84,8 @@ def report(root: Path | str | None = None) -> dict:
         "docx_read": all(entry["ok"] for entry in required if entry["module"] == "docx"),
         "docx_write": all(entry["ok"] for entry in required if entry["module"] == "docx"),
         "docx_to_pdf": renderers["word"]["available"] or renderers["libreoffice"]["available"],
-        "pdf_text_layer": renderers["pymupdf"]["available"],
-        "pdf_to_image": renderers["pymupdf"]["available"],
+        "pdf_text_layer": renderers["pdfium"]["available"] or renderers["pymupdf"]["available"],
+        "pdf_to_image": renderers["pdfium"]["available"] or renderers["pymupdf"]["available"],
         "fts_search": _fts5(),
         "private_word_instance": _importable("win32com")["ok"],
         "capture_public": bool(engines.get("obscura", {}).get("available")

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import mimetypes
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
@@ -92,13 +93,22 @@ def create_app(config: AppConfig) -> FastAPI:
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):
-        """API answers are state, not a cacheable resource.
+        """API answers are state, not a cacheable resource, and every answer carries the
+        headers that make an inline response inert.
 
         A live workspace changes under the client (a capture lands, a document is
         written), and a heuristically cached GET showed a stale file tree until a
         hard reload. `no-store` is the honest header for a local-first app.
+
+        The three security headers are cheap and close real classes: `nosniff` stops
+        `/api/raw` being type-sniffed into script, `frame-ancestors 'none'` stops the
+        app being framed, and `no-referrer` stops a URL (and anything in it) leaking
+        to a third party from a rendered document.
         """
         response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         return response
@@ -112,8 +122,14 @@ def create_app(config: AppConfig) -> FastAPI:
             supplied = request.headers.get("authorization", "")
             header_token = supplied.removeprefix("Bearer ").strip() if supplied.startswith("Bearer ") else ""
             cookie_token = request.cookies.get("dossier_token", "")
-            query_token = request.query_params.get("token", "")
-            if header_token != config.token and cookie_token != config.token and query_token != config.token:
+            # A `?token=` query parameter used to be accepted as well, and the client
+            # appended it to `<img>`, `<a>` and EventSource URLs. That put the bearer
+            # token in the address bar, the browser history, the `Referer` of any
+            # link followed, and the server's own access log — the opposite of the
+            # `token-never-leaks` gate. The SameSite=Lax cookie authorises every one
+            # of those requests already, so the query form is gone, not deprecated.
+            if not (secrets.compare_digest(header_token, config.token)
+                    or secrets.compare_digest(cookie_token, config.token)):
                 return Response("Unauthorized", status_code=401)
         return await call_next(request)
 
@@ -276,7 +292,21 @@ def create_app(config: AppConfig) -> FastAPI:
         if not path.is_file():
             raise HTTPException(404, "file not found")
         filename = path.name.replace('"', "'")
-        return FileResponse(path, media_type=mimetypes.guess_type(path.name)[0] or "application/octet-stream", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+        media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        # Markup served from this origin would execute with the app's own cookie and API
+        # authority (a folder can hold any HTML a capture dropped there), so anything the
+        # browser can execute is handed over as a download inside a sandbox rather than
+        # rendered inline. `nosniff` stops a mislabelled file being sniffed into script.
+        executable = media_type.startswith(("text/html", "application/xhtml")) or media_type in {
+            "image/svg+xml", "text/xml", "application/xml",
+        }
+        disposition = "attachment" if executable else "inline"
+        headers = {
+            "Content-Disposition": f'{disposition}; filename="{filename}"',
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox; frame-ancestors 'none'",
+        }
+        return FileResponse(path, media_type=media_type, headers=headers)
 
     @app.get("/api/search")
     def do_search(q: str, limit: int = 50):

@@ -191,7 +191,21 @@ python -m dossier.cli doctor --root .
 
 `pyproject.toml` pins `pythonpath = ["src"]` for pytest. The build serves
 `ui/dist` from FastAPI; during UI development `npm run dev` works with the Vite
-proxy, passing the backend token in the browser URL.
+proxy. The bearer token is only ever sent as a header or as the HttpOnly
+`SameSite=Lax` cookie the shell sets — never in a URL, where it would land in
+history, `Referer` and the access log.
+
+## Licence
+
+MIT for this repository's own code (`LICENSE`), and every package a default
+install needs is permissive: MIT, BSD-2/3-Clause, Apache-2.0, MPL-2.0 or PSF.
+`THIRD-PARTY.md` lists them, and `tests/test_licences.py` fails if a runtime
+dependency ever turns copyleft.
+
+PyMuPDF is **not** a runtime dependency. It is AGPL-3.0-or-commercial, so it
+lives in the optional `pymupdf` extra and the PDF work runs on PDFium
+(`pypdfium2`, BSD-3-Clause/Apache-2.0) by default. If you redistribute a *bundled*
+application rather than the source, read `THIRD-PARTY.md` first.
 
 ## Where everything came from
 

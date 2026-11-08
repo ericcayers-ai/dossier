@@ -5,11 +5,14 @@ from the rendered page, because this model cannot see images.
 """
 import json
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(r"<home>/OneDrive/Desktop/Programs/dossier/tests/fixtures")))
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "tests" / "fixtures"))
+sys.path.insert(0, str(REPO / "src"))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import uvicorn
@@ -18,14 +21,13 @@ from playwright.sync_api import sync_playwright
 from dossier.api.app import create_app
 from dossier.config import AppConfig
 
-REPO = Path(r"<home>/OneDrive/Desktop/Programs/dossier")
 OUT = REPO / ".ui-ux-master" / "receipts" / "p5"
 OUT.mkdir(parents=True, exist_ok=True)
-WS = Path(r"<home>/AppData/Local/Temp/uiux-workspace")
+WS = Path(tempfile.gettempdir()) / "uiux-workspace"
 
-PANES = ["Folder", "Capture", "Jobs", "Identity", "Build", "Verify", "Audit",
+PANES = ["Start here", "Folder", "Capture", "Jobs", "Identity", "Build", "Verify", "Audit",
          "Trash", "Sync", "Loop", "Opportunity", "Panel"]
-AREA_OF = {"Folder": "Files", "Capture": "Search", "Jobs": "Search", "Identity": "Search",
+AREA_OF = {"Start here": "Start", "Folder": "Files", "Capture": "Search", "Jobs": "Search", "Identity": "Search",
            "Build": "Papers", "Verify": "Papers", "Audit": "Housekeeping", "Trash": "Housekeeping",
            "Sync": "Housekeeping", "Loop": "Agent", "Opportunity": "Agent",
            "Panel": "Agent"}

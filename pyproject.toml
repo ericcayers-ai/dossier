@@ -10,12 +10,21 @@ description = "Local-first document dossier explorer"
 # class as panopto-course-assistant: the licence existed only as a file.
 license = "MIT"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn[standard]", "watchfiles", "python-docx", "pymupdf", "pypdf", "pillow", "docx2pdf", "jinja2", "defusedxml", "httpx>=0.28"]
+# Every runtime dependency here is permissive (MIT / BSD / Apache / PSF), so the MIT
+# licence in LICENSE covers a default install. PDF text, geometry and rasterising run
+# on PDFium through `pypdfium2` (BSD-3-Clause / Apache-2.0). PyMuPDF is NOT a runtime
+# dependency: it is AGPL-3.0-or-commercial, and it lives in the `pymupdf` extra below
+# for anyone who wants the alternative engine or runs the fixture-generating tests.
+dependencies = ["fastapi", "uvicorn[standard]", "watchfiles", "python-docx", "pypdfium2", "pypdf", "pillow", "docx2pdf", "jinja2", "defusedxml", "httpx>=0.28"]
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
 # Windows DOCX rendering drives a private Word instance through COM.
 windows = ["pywin32"]
+# AGPL-3.0-or-commercial (Artifex). Optional on purpose: importing it makes the
+# combined work AGPL if you ever distribute a bundled application. The default
+# install does not need it; see THIRD-PARTY.md.
+pymupdf = ["pymupdf"]
 # Authenticated capture: Playwright drives a real Chromium profile so the user can
 # sign in themselves and the session (cookies + localStorage) can be reused. The
 # public, no-session path does not need this extra; it uses the obscura binary when

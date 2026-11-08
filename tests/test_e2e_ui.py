@@ -147,7 +147,8 @@ def _shot(page, name: str) -> None:
     page.screenshot(path=str(EVIDENCE / f"e2e-{name}.png"), full_page=True)
 
 
-AREA_OF = {"Folder": "Files", "Capture": "Search", "Jobs": "Search", "Identity": "Search",
+AREA_OF = {"Start here": "Start", "Folder": "Files", "Capture": "Search", "Jobs": "Search",
+           "Identity": "Search",
            "Build": "Papers", "Verify": "Papers", "Audit": "Housekeeping",
            "Trash": "Housekeeping", "Sync": "Housekeeping", "Loop": "Agent",
            "Opportunity": "Agent", "Panel": "Agent"}

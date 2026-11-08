@@ -5,8 +5,14 @@ below is a command whose receipt is named.
 
 ## Tree
 
-`master`, HEAD `c043aa0`, remote private (404 from GitHub). Python 3.13 (`.venv`), React 19 + Vite.
+`master`, HEAD `4e9c0e0` plus the 2026-11-09 publish-gate commit, published at
+`github.com/ericcayers-ai/dossier` (public). Python 3.13 (`.venv`), React 19 + Vite.
 `pyproject.toml` sets `addopts = "-q"`, so a scoped run needs `-o addopts=""`.
+
+**2026-11-09: the suite is fully green and the licence is coherent.** `456 passed, 0 failed`;
+playwright is installed; `pymupdf` (AGPL) is no longer a runtime dependency — PDF work runs on
+PDFium (`pypdfium2`) and `tests/test_licences.py` fails if a runtime dependency ever turns
+copyleft. `.github/workflows/ci.yml` runs the gate. Receipt: `publish-gate-2026-11-09.md`.
 
 ## Verified, in one place
 
@@ -99,13 +105,15 @@ its per-entry subagent addendum and the stub sweep),
    `Housekeeping`, `Agent`, `Loop`, `Opportunity`, `Panel` are pinned by `tests/test_e2e_ui.py`, so
    the 2026-11-07 pass added a plain-language front door instead of renaming them. The proposed
    plain map is in `docs/evidence/ux-layman-2026-11-07/README.md`; acting on it means editing the
-   gate in the same commit.
-2. **`test_no_tracked_file_carries_personal_contact_details` is red on `master`** (5 tracked files
-   carry the owner's name or the New Zealand phone prefix: `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
-   `.github/ISSUE_TEMPLATE/config.yml`, `docs/evidence/fit-eval-2026-11-05.md`, `tests/test_panel.py`).
-   Pre-existing, untouched by the UI pass; fixing it is an owner edit to personal data.
+   gate in the same commit. Since 2026-11-09 the `Start here` pane is inside both gates, so all 13
+   panes are measured (STATE used to claim 13 while `measure.py` walked 12).
+2. **The contact-details invariant is green.** Fixed 2026-11-09 by scrubbing 93 occurrences of
+   real employer names, home paths and a phone fixture across 37 files, and by narrowing the test's
+   needle from the GitHub account handle to the personal identifiers it is actually for.
 3. **Confirm the 15 proposed eval grades** — written 2026-11-07 at
    `docs/evidence/fit-eval-proposed-grades-2026-11-07.json` (one justification per row, tracker's
    prior grade beside it); the gold set is **unchanged** and no threshold moved. On the honest
    labels the ranker loses to arrival order (**nDCG@10 0.7283 against 0.7838**), so the next fix is
-   `score_job`, not the slack. Re-record the baseline yourself once the set is one you believe.
+   `score_job`, not the slack. The eval workspace lived in `%TEMP%` and is gone, so the 23 postings
+   must be archived as a fixture before the number can be reproduced. Re-record the baseline
+   yourself once the set is one you believe.

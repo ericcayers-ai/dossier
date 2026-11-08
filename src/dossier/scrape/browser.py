@@ -105,11 +105,31 @@ def obscura_path() -> Path | None:
     return None
 
 
-def _obscura_command(binary: Path) -> list[str]:
-    # A `.cmd` shim cannot be exec'd directly on Windows; it needs the shell.
+def _obscura_command(binary: Path, args: list[str]) -> list[str]:
+    """The argv for the obscura binary, refusing a shim argument that cmd would re-parse.
+
+    A `.cmd`/`.bat` shim has to run through `cmd /c`, and cmd re-parses the flattened
+    command line rather than taking argv: `subprocess.list2cmdline` only quotes an
+    argument that contains a space or a tab, so a captured URL such as
+    `http://host/?a=1&calc` reaches cmd unquoted and the `&` forks a second command.
+    Measured on this machine (`probe-cmd-shim.py`): the `cmd /c` list form truncates the
+    URL at the `&`, which is the fork, not a quoting accident.
+
+    So the shim is still supported for ordinary URLs, and an argument carrying a cmd
+    metacharacter is refused with a sentence that names the fix. The `.exe` build of
+    obscura has none of these semantics; this only ever applies to a shim.
+    """
     if binary.suffix.casefold() in {".cmd", ".bat"}:
-        return ["cmd", "/c", str(binary)]
-    return [str(binary)]
+        for argument in args:
+            offender = next((bad for bad in '&|<>^"\r\n' if bad in argument), None)
+            if offender is not None:
+                raise RuntimeError(
+                    f"refusing to pass {argument[:60]!r} to the {binary.suffix} shim "
+                    f"{binary.name}: cmd.exe would re-parse {offender!r} as a command "
+                    "separator. Point DOSSIER_OBSCURA at the obscura .exe instead."
+                )
+        return ["cmd", "/c", str(binary), *args]
+    return [str(binary), *args]
 
 
 def obscura_version(binary: Path | None = None) -> str | None:
@@ -117,7 +137,7 @@ def obscura_version(binary: Path | None = None) -> str | None:
     if binary is None:
         return None
     try:
-        result = subprocess.run(_obscura_command(binary) + ["--version"], capture_output=True,
+        result = subprocess.run(_obscura_command(binary, ["--version"]), capture_output=True,
                                 text=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
         return None
@@ -156,7 +176,7 @@ class ObscuraDriver:
         handle = tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8")
         handle.close()
         dump_path = Path(handle.name)
-        command = _obscura_command(self.binary) + [
+        extra = [
             "fetch", fetch.url,
             "--dump", "html",
             "-o", str(dump_path),
@@ -164,20 +184,21 @@ class ObscuraDriver:
             "--wait-until", fetch.wait_until,
         ]
         if fetch.selector:
-            command += ["--selector", fetch.selector]
+            extra += ["--selector", fetch.selector]
         if fetch.allow_private:
-            command += ["--allow-private-network"]
+            extra += ["--allow-private-network"]
         if fetch.stealth:
-            command += ["--stealth"]
+            extra += ["--stealth"]
         if fetch.await_clear_s:
             # obscura has no window to hand to a person, but its adaptive settle is
             # the same idea: give the page time before the snapshot is taken.
-            command += ["--wait", str(max(1, int(fetch.await_clear_s)))]
+            extra += ["--wait", str(max(1, int(fetch.await_clear_s)))]
         if fetch.user_agent:
-            command += ["--user-agent", fetch.user_agent]
+            extra += ["--user-agent", fetch.user_agent]
         if fetch.storage_dir:
             fetch.storage_dir.mkdir(parents=True, exist_ok=True)
-            command += ["--storage-dir", str(fetch.storage_dir)]
+            extra += ["--storage-dir", str(fetch.storage_dir)]
+        command = _obscura_command(self.binary, extra)
         if fetch.screenshot:
             notes.append("obscura cannot dump and screenshot in one pass; "
                          "no image was taken (use --driver playwright for one)")

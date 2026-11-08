@@ -57,11 +57,17 @@ export type PruneReport={retention_days:number;retention_source:string;enabled:b
 export type TrashListing={entries:TrashEntry[];external:TrashRow[];unmanaged:TrashRow[];root:string;retention:TrashRetention;startup_prune:PruneReport;last_prune:PruneReport|null};
 
 const tokenKey='dossier-token';
-const queryToken=new URLSearchParams(window.location.search).get('token');
-if(queryToken)sessionStorage.setItem(tokenKey,queryToken);
+// The shell (GET /) sets an HttpOnly, SameSite=Lax cookie, and that is how every API call is
+// authorised. A `?token=` on the page URL used to be copied into sessionStorage as a second
+// path; it is gone for the same reason the API stopped accepting a query token — a credential
+// in a URL reaches history, the Referer and the access log. A token can still be supplied per
+// call with `authHeaders()` below, which no browser code path does by default.
 const token=()=>sessionStorage.getItem(tokenKey)||'';
 const authHeaders=():HeadersInit=>token()?{Authorization:`Bearer ${token()}`}:{};
-const withToken=(url:string)=>{const value=token();if(!value)return url;return `${url}${url.includes('?')?'&':'?'}token=${encodeURIComponent(value)}`};
+// The bearer token never goes in a URL. It used to be appended to /api/raw, /api/render and
+// /api/events, which put it in the address bar, browser history, the Referer of a followed
+// link and the server's access log — the `token-never-leaks` gate says it must not. The
+// SameSite=Lax cookie the shell is served with authorises all three requests instead.
 
 /** A failed API call, carrying the status so the caller can say what happened. */
 export class ApiError extends Error{
@@ -142,7 +148,7 @@ export const api={
  save:(rel:string,content:string,expect?:FileStamp)=>request<{rel:string;stamp:FileStamp}>('/api/file',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({rel,content,expect})}),
  bundle:(rel:string)=>request<Bundle>(`/api/bundle?rel=${encodeURIComponent(rel)}`),
  search:(query:string)=>request<Array<{rel:string;snippet?:string;kind?:string}>>(`/api/search?q=${encodeURIComponent(query)}`),
- raw:(rel:string)=>withToken(`/api/raw?rel=${encodeURIComponent(rel)}`),
+ raw:(rel:string)=>`/api/raw?rel=${encodeURIComponent(rel)}`,
  /* A GET serves the cached PDF; a miss (409) is built by the POST, then fetched again.
     The GET must stay cheap: it is an <iframe src>, not a job. */
  render:async(rel:string):Promise<string>=>{
@@ -152,7 +158,7 @@ export const api={
      await fetch('/api/render',{method:'POST',credentials:'same-origin',
        headers:{'Content-Type':'application/json'},body:JSON.stringify({rel})});
    }
-   return withToken(url);
+   return url;
  },
  convertRoutes:(rel:string)=>request<{rel:string;ext:string;routes:Array<{target:string;fidelity:string;requires:string|null}>}>(`/api/convert/routes?rel=${encodeURIComponent(rel)}`),
  exportFile:(rel:string,target:string)=>request<ExportResult>(`/api/export?rel=${encodeURIComponent(rel)}&target=${encodeURIComponent(target)}`),
@@ -180,7 +186,7 @@ export const api={
  },
  trash:()=>request<TrashListing>(`/api/trash`), trashRestore:(entry:TrashEntry)=>request<{restored?:boolean;rel?:string;path?:string}>(`/api/trash/restore`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rel:entry.rel,trash_rel:entry.trash_rel})}),
  trashPrune:(dryRun=false)=>request<PruneReport>(`/api/trash/prune`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dry_run:dryRun})}),
- eventsUrl:()=>withToken('/api/events'),
+ eventsUrl:()=>'/api/events',
  identity:()=>request<IdentityState>('/api/identity'),
  identityAnswers:(answers:Record<string,string>)=>request<{saved:string[];complete:boolean;missing_required:string[];fields:number}>('/api/identity/answers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers})}),
  identityWrite:(name?:string)=>request<{path:string;fields:number;missing_required:string[]}>('/api/identity/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}),

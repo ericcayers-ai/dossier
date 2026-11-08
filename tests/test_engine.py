@@ -718,7 +718,7 @@ def test_render_routes_state_their_fidelity():
 
 def test_available_renderers_is_honest_about_absence():
     info = render.available_renderers()
-    assert set(info) == {"word", "libreoffice", "pymupdf"}
+    assert set(info) == {"word", "libreoffice", "pdfium", "pymupdf"}
     assert isinstance(info["word"].available, bool)
 
 
@@ -825,6 +825,9 @@ def test_visual_produces_a_page_image_and_fails_without_one(tmp_path, monkeypatc
     assert Path(result["page_image"]).exists()
     assert result["image_bytes"] > 0
 
+    # Both engines must be gone for the gate to fail; PDFium is the default and
+    # PyMuPDF the optional fallback, so one absence is no longer a failure.
+    monkeypatch.setattr(render, "_has_pdfium", lambda: False)
     monkeypatch.setattr(render, "_has_pymupdf", lambda: False)
     blocked = verify.visual(pdf)
     assert blocked["ok"] is False

@@ -317,3 +317,42 @@ def test_a_converter_failure_is_a_sentence_not_a_traceback(config, monkeypatch):
     assert answer.status_code == 503, answer.text
     assert "DOCX renderer could not run" in answer.json()["detail"]
     assert client.get("/api/render?rel=page.docx", headers=headers).status_code == 409
+
+
+def test_a_token_in_the_query_string_is_not_accepted(tmp_path):
+    """The bearer token lives in a header or the Lax cookie, never in a URL.
+
+    A `?token=` was accepted once, and the client appended it to `<img>`, `<a>` and
+    EventSource URLs — which put the credential in the address bar, in browser
+    history, in the `Referer` of a followed link and in the access log. The gate that
+    forbids it is `token-never-leaks`; this is the half that the CLI test never covered.
+    """
+    from dossier.config import AppConfig
+
+    client = TestClient(create_app(AppConfig.create(tmp_path, token="query-token")))
+    assert client.get("/api/health?token=query-token").status_code == 401
+    # the header still works, so the refusal is about the channel and not the value
+    assert client.get("/api/health", headers={"Authorization": "Bearer query-token"}).status_code == 200
+
+
+def test_raw_serves_markup_as_a_download_inside_a_sandbox(tmp_path):
+    """A page in the folder must not become script with the app's own authority."""
+    from dossier.config import AppConfig
+
+    (tmp_path / "note.md").write_text("plain text")
+    (tmp_path / "page.html").write_text("<script>alert(1)</script>")
+    (tmp_path / "drawing.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>")
+    client = TestClient(create_app(AppConfig.create(tmp_path, token="raw-token")))
+    headers = {"Authorization": "Bearer raw-token"}
+
+    for name in ("page.html", "drawing.svg"):
+        answer = client.get(f"/api/raw?rel={name}", headers=headers)
+        assert answer.status_code == 200, answer.text
+        assert answer.headers["x-content-type-options"] == "nosniff"
+        assert "sandbox" in answer.headers["content-security-policy"]
+        assert answer.headers["content-disposition"].startswith("attachment"), name
+
+    plain = client.get("/api/raw?rel=note.md", headers=headers)
+    assert plain.status_code == 200
+    assert plain.headers["content-disposition"].startswith("inline")
+    assert plain.headers["x-content-type-options"] == "nosniff"
