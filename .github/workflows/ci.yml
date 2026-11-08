@@ -32,7 +32,8 @@ jobs:
 
       - name: Install the Python project
         # `pymupdf` is the AGPL test-only extra: it synthesises fixture PDFs.
-        run: uv sync --extra dev --extra pymupdf --extra scrape
+        # `browser` is Playwright, which the e2e suite drives.
+        run: uv sync --extra dev --extra pymupdf --extra scrape --extra browser
 
       - uses: actions/setup-node@v4
         with:
