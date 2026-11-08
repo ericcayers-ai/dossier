@@ -1,4 +1,5 @@
 import pytest
+import os
 
 from dossier.safety import Conflict, PathEscape, atomic_write, matches, resolve_in_root, stamp, trash
 
@@ -7,7 +8,11 @@ def test_escape(tmp_path):
     with pytest.raises(PathEscape):
         resolve_in_root(tmp_path, '../x')
     with pytest.raises(PathEscape):
-        resolve_in_root(tmp_path, 'C:/x')
+        resolve_in_root(tmp_path, '/etc/passwd')
+    if os.name == 'nt':
+        # `C:/x` is only absolute on Windows; on POSIX it is a file named `C:`.
+        with pytest.raises(PathEscape):
+            resolve_in_root(tmp_path, 'C:/x')
 
 
 def test_atomic_conflict(tmp_path):

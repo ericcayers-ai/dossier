@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 
@@ -203,11 +204,15 @@ def test_no_route_answers_a_path_that_escapes_the_workspace(tmp_path):
 
     client = TestClient(create_app(AppConfig.create(tmp_path, token="escape-token")))
     headers = {"Authorization": "Bearer escape-token"}
-    for hostile in ("../outside.txt", "..\outside.txt", "/etc/passwd", "C:\Windows\win.ini",
-                    "sub/../../outside.txt"):
-        response = client.get("/api/file", params={"rel": hostile}, headers=headers)
-        assert response.status_code == 400, (hostile, response.status_code, response.text[:120])
-        assert "escapes root" in response.text or "absolute" in response.text, hostile
+    hostile = ["../outside.txt", "/etc/passwd", "sub/../../outside.txt"]
+    if os.name == "nt":
+        # A backslash is a separator on Windows only; on POSIX a backslash is a legal filename character,
+        # so asserting 400 for one there would test nothing.
+        hostile += ["..\\outside.txt", "C:\\Windows\\win.ini"]
+    for rel in hostile:
+        response = client.get("/api/file", params={"rel": rel}, headers=headers)
+        assert response.status_code == 400, (rel, response.status_code, response.text[:120])
+        assert "escapes root" in response.text or "absolute" in response.text, rel
 
 
 def test_every_declared_api_route_is_behind_the_token(tmp_path):

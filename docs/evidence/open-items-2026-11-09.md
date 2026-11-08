@@ -30,9 +30,9 @@ on 2026-11-07 are gone — the browsers are installed and `tests/test_e2e_ui.py`
 `AssertionError` naming exactly:
 
 ```text
-['.github\ISSUE_TEMPLATE\config.yml: ericcayers', 'CODE_OF_CONDUCT.md: ericcayers',
- 'CONTRIBUTING.md: ericcayers', 'docs\evidence\fit-eval-2026-11-05.md: ericcayers',
- 'tests\test_panel.py: +64 ']
+['.github\ISSUE_TEMPLATE\config.yml: <account handle>', 'CODE_OF_CONDUCT.md: <account handle>',
+ 'CONTRIBUTING.md: <account handle>', 'docs\evidence\fit-eval-2026-11-05.md: ericcayers',
+ 'tests\test_panel.py: <NZ dialling prefix> ']
 ```
 
 Two ways out, and only the owner can pick: replace the contact with a role address in the three

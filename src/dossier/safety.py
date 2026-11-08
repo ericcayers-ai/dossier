@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-import hashlib, json, os, shutil, tempfile, threading, time
+import hashlib, json, os, re, shutil, tempfile, threading, time
 
 from .config import AppConfig
 
@@ -67,7 +67,10 @@ def _trash_relative(config:"AppConfig", path:Path)->Path:
         rel = path.relative_to(root)
     except ValueError:
         anchor = (path.drive or path.anchor or "").replace(":", "")
-        head = [part for part in anchor.split("\\") if part]
+        # Split on both separators: on POSIX the anchor is "/", and leaving it in
+        # `head` made the joined destination absolute, i.e. the source file itself —
+        # which is exactly what the invariant below refuses. Found by CI on Linux.
+        head = [part for part in re.split(r"[\/]+", anchor) if part]
         return Path("_external", *head, *path.parts[1:])
     # Re-resolve as a check that the relative form lands back inside the root,
     # then hand back the relative form.
