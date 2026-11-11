@@ -16,7 +16,8 @@ from datetime import date
 from pathlib import Path
 
 from ..engine import tailor
-from ..engine.tracker import canonical_status, parse as parse_tracker
+from ..engine.tracker import (ACTIONABLE, applied_dates, canonical_status,
+                              parse as parse_tracker)
 from ..copy import plural
 
 IDENTITY_SUFFIX = "-IDENTITY.md"
@@ -183,29 +184,22 @@ def _tracker_state(root: Path) -> dict:
     for record in records:
         status = canonical_status(record.get("status", "unknown"))
         counts[status] = counts.get(status, 0) + 1
-    followups = root / "follow-ups.md"
-    applied_dates: dict[int, str] = {}
-    if followups.exists():
-        text = followups.read_text(encoding="utf-8", errors="replace")
-        for match in re.finditer(r"Applied\s+(\d{4}-\d{2}-\d{2}).*?#(\d+)", text, re.IGNORECASE):
-            try:
-                date.fromisoformat(match.group(1))
-            except ValueError:
-                continue
-            applied_dates[int(match.group(2))] = match.group(1)
+    # The engine owns the confirmed-date rule (tracker notes and follow-up log);
+    # a second reader here once missed dates `track outcome --applied` records.
+    dates, _sources = applied_dates(root)
     return {
         "present": history_path.exists(),
         "path": str(history_path),
         "rows": len(records),
         "status_counts": dict(sorted(counts.items())),
         "confirmed_application_dates": {
-            str(number): when for number, when in sorted(applied_dates.items())
+            str(number): when for number, when in sorted(dates.items())
         },
         "actionable_without_date": [
-            index
-            for index, record in enumerate(records, start=1)
-            if canonical_status(record.get("status", "")) in {"applied", "responded", "interview"}
-            and index not in applied_dates
+            record["number"]
+            for record in records
+            if canonical_status(record.get("status", "")) in ACTIONABLE
+            and record["number"] not in dates
         ],
     }
 

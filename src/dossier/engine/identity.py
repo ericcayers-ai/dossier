@@ -498,7 +498,9 @@ def write_identity(root: Path | str, *, name: str | None = None) -> dict:
     target = Path(name) if name else None
     if target is None:
         existing = sorted(root.glob("*-IDENTITY.md"))
-        target = existing[0] if existing else root / "IDENTITY.md"
+        # The name must match the *-IDENTITY.md discovery rule, or mining and the
+        # agent's identity blocker never see the document this command just wrote.
+        target = existing[0] if existing else root / f"{root.name}-IDENTITY.md"
     elif not target.is_absolute():
         target = root / target
 

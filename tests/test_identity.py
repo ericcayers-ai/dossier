@@ -136,6 +136,20 @@ def test_write_refuses_an_empty_identity(tmp_path):
         identity.write_identity(tmp_path)
 
 
+def test_write_names_a_new_document_so_the_workspace_can_find_it(tmp_path):
+    """A first write must land on *-IDENTITY.md: a plain IDENTITY.md default was
+    invisible to document mining and to the agent's identity blocker."""
+    identity.save_answers(tmp_path, {"target_roles": "software engineer",
+                                     "seniority": "graduate", "employment": "full-time",
+                                     "location": "Hamilton", "right_to_work": "NZ citizen"})
+    written = identity.write_identity(tmp_path)
+    assert written["path"].endswith("-IDENTITY.md")
+    from dossier.agent import workspace
+    space = workspace.resolve(tmp_path)
+    assert space.identity_doc is not None
+    assert not any("IDENTITY.md found" in blocker for blocker in space.blockers)
+
+
 # -- scoring ---------------------------------------------------------------
 
 PROFILE = {

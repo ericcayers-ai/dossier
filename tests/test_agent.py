@@ -129,6 +129,24 @@ def test_workspace_resolves_the_real_facts(tmp_path):
     assert space.corpus["fits"] == {"High": 1, "Medium": 1}
 
 
+def test_workspace_reads_a_confirmed_date_from_the_tracker_notes(tmp_path):
+    """`track outcome --applied --confirmed` records the date in the Notes column.
+    The agent state must see the same date the engine's summary and cadence do;
+    a follow-ups-only reader here reported a confirmed row as undated."""
+    root = _make_workspace(tmp_path / "Tailored")
+    (root / "follow-ups.md").unlink()
+    (root / "job-history.md").write_text(
+        "# Log\n\n| Date | Company | Role | Fit | Resume file | Status | Notes |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| Aug 2026 | Acme | Engineer | High | a.docx | applied | Applied 2026-09-01 |\n",
+        encoding="utf-8",
+    )
+    space = workspace.resolve(root)
+    assert space.tracker["confirmed_application_dates"] == {"1": "2026-09-01"}
+    assert space.tracker["actionable_without_date"] == []
+    assert not any("confirmed 'Applied" in blocker for blocker in space.blockers)
+
+
 def test_workspace_reports_a_missing_base_document_as_a_blocker(tmp_path):
     root = _make_workspace(tmp_path / "Tailored")
     space = workspace.resolve(root)

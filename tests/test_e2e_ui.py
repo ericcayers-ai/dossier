@@ -324,9 +324,11 @@ def test_a_user_builds_their_identity_and_sees_matching_jobs(page, app):
     expect(page.locator("p.kbd", has_text="answered")).to_be_visible()
     page.get_by_role("button", name="Write IDENTITY.md").click()
     expect(page.locator(".notice").first).to_contain_text("Wrote", timeout=20_000)
-    identity_doc = (app["root"] / "IDENTITY.md")
-    assert identity_doc.is_file(), sorted(p.name for p in app["root"].glob("*.md"))
-    assert "{{" not in identity_doc.read_text(encoding="utf-8")
+    # The written document must match the *-IDENTITY.md discovery rule, whatever
+    # the workspace is named — a plain IDENTITY.md was invisible to the agent.
+    identity_docs = sorted(app["root"].glob("*-IDENTITY.md"))
+    assert identity_docs, sorted(p.name for p in app["root"].glob("*.md"))
+    assert "{{" not in identity_docs[0].read_text(encoding="utf-8")
 
     page.get_by_role("tab", name="Matches").click()
     page.get_by_role("button", name="Score the corpus").click()
