@@ -145,8 +145,9 @@ def next_unit(root: Path | str, workspace: Workspace | None = None) -> dict:
     if coverage_state.get("stale"):
         return _candidate(
             "sources",
-            "Coverage snapshot is missing or older than 7 days: source freshness is unproven, "
-            "and a partial capture must not be reported as exhaustive.",
+            "Coverage snapshot is missing or older than 7 days: source freshness is unproven. "
+            "A fresh `dossier feeds fetch <source>` or `dossier scrape run --due` records it; "
+            "a partial capture must not be reported as exhaustive.",
             targets=[coverage_state.get("path")] if coverage_state.get("present") else [])
 
     # 5. Renders older than their source — a stale PDF is a wrong artifact.

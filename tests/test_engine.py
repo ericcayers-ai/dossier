@@ -581,6 +581,42 @@ def test_coverage_is_stale_without_a_snapshot(tmp_path):
     assert result["stale"] is True
 
 
+def test_record_coverage_writes_the_runs_own_numbers(tmp_path):
+    path = sources.record_coverage(tmp_path, "greenhouse", records=87, complete=True)
+    assert path.name == f"nz-job-search-coverage-{dt.date.today().isoformat()}.json"
+    snapshot = sources.coverage(tmp_path)
+    assert snapshot["present"] is True
+    assert snapshot["stale"] is False
+    assert snapshot["source_counts"] == {"greenhouse": 87}
+    assert snapshot["source_statuses"] == {"greenhouse": "captured"}
+    assert snapshot["limits"] == {}
+    assert "None" not in snapshot["detail"]
+    assert "1 source" in snapshot["detail"]
+
+
+def test_a_second_fetch_does_not_erase_the_first_sources_counts(tmp_path):
+    older = tmp_path / "nz-job-search-coverage-2026-01-01.json"
+    older.write_text(json.dumps({"captured_on": "2026-01-01",
+                                 "current_source_counts": {"seek": 4}}), encoding="utf-8")
+    sources.record_coverage(tmp_path, "greenhouse", records=87, complete=True)
+    sources.record_coverage(tmp_path, "lever", records=303, complete=True)
+    snapshot = sources.coverage(tmp_path)
+    assert snapshot["source_counts"] == {"greenhouse": 87, "lever": 303}
+    assert json.loads(older.read_text(encoding="utf-8"))["current_source_counts"] == {"seek": 4}
+
+
+def test_a_partial_capture_is_recorded_as_partial_until_a_complete_one(tmp_path):
+    sources.record_coverage(tmp_path, "seek", records=10, complete=False,
+                            reason="stopped at --limit 10")
+    snapshot = sources.coverage(tmp_path)
+    assert snapshot["source_statuses"] == {"seek": "partial"}
+    assert snapshot["limits"] == {"seek": "stopped at --limit 10"}
+    sources.record_coverage(tmp_path, "seek", records=40, complete=True)
+    snapshot = sources.coverage(tmp_path)
+    assert snapshot["source_statuses"] == {"seek": "captured"}
+    assert snapshot["limits"] == {}
+
+
 # -- tailor and verify -----------------------------------------------------
 
 def _make_resume(path: Path) -> Path:

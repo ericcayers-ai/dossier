@@ -1,3 +1,4 @@
+import html
 from dataclasses import dataclass
 
 # The policy table and its single predicate both live in `engine.sources`. Two
@@ -11,7 +12,9 @@ from .engine.sources import FETCHABLE_POLICIES, POLICIES, SourceRefused, assert_
 PROHIBITED = {name for name, entry in POLICIES.items()
               if entry["policy"] not in FETCHABLE_POLICIES}
 ENDPOINTS = {
-    "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{board}/jobs",
+    # ?content=true is what makes Greenhouse send the posting body at all;
+    # without it every row arrives with an empty description.
+    "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{board}/jobs?content=true",
     "lever": "https://api.lever.co/v0/postings/{site}?mode=json",
     "ashby": "https://api.ashbyhq.com/posting-api/job-board/{board}",
     "himalayas": "https://himalayas.app/jobs/api",
@@ -64,27 +67,64 @@ class FeedAdapter:
         return []
 
 
+#: What each board-scoped API actually calls the posting body, in preference
+#: order, and how it arrives. Greenhouse sends `content` only when the endpoint
+#: asks for it, entity-escaped; Lever sends plain text beside its HTML; Ashby
+#: sends HTML. Reading only `description` left every row's body empty, so
+#: requirement extraction judged postings by title alone.
+DESCRIPTION_FIELDS = {
+    "greenhouse": (("content", "escaped_html"), ("description", "html")),
+    "lever": (("descriptionPlain", "text"), ("description", "html")),
+    "ashby": (("descriptionPlain", "text"), ("descriptionHtml", "html"),
+              ("description", "html")),
+}
+
+
+def _description(item: dict, source: str) -> str:
+    for key, kind in DESCRIPTION_FIELDS.get(source, (("description", "text"),)):
+        value = item.get(key)
+        if not value:
+            continue
+        value = str(value)
+        if kind == "escaped_html":
+            value = html.unescape(value)
+        if kind in ("html", "escaped_html"):
+            # The scrape layer already owns HTML -> readable text; a second
+            # stripper here is the drift docs/LESSONS.md warns about.
+            from .scrape.extract import text
+            value = text(value)
+        return value
+    return ""
+
+
 def _jobs(items, source):
     records = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        location = item.get("location", item.get("locations", ""))
+        # Lever nests what the other boards send flat: the title is `text`,
+        # the URL is `applyUrl`, and location/commitment live in `categories`.
+        categories = item.get("categories") if isinstance(item.get("categories"), dict) else {}
+        location = item.get("location", item.get("locations", "")) or categories.get("location", "")
         if isinstance(location, list):
             location = ", ".join(str(x) for x in location)
         elif isinstance(location, dict):
             # Greenhouse answers `location: {name: "Hamilton"}`; `str(dict)` in a
             # corpus row is a location nobody can filter on.
             location = location.get("name") or location.get("label") or ""
+        url = (item.get("url") or item.get("absolute_url") or item.get("apply_url")
+               or item.get("applyUrl") or item.get("hostedUrl") or item.get("jobUrl") or "")
+        work_type = (item.get("work_type") or item.get("employment_type")
+                     or item.get("employmentType") or categories.get("commitment") or "")
         records.append(Job(
             str(item.get("id", item.get("job_id", ""))),
-            str(item.get("title", item.get("name", ""))),
+            str(item.get("title", item.get("name", item.get("text", "")))),
             str(item.get("company", item.get("company_name", ""))),
             str(location),
-            str(item.get("url", item.get("absolute_url", item.get("apply_url", "")))),
+            str(url),
             source,
-            str(item.get("description", "")),
-            str(item.get("work_type", item.get("employment_type", ""))),
+            _description(item, source),
+            str(work_type),
             str(item.get("salary", item.get("compensation", ""))),
         ))
     return records
@@ -293,6 +333,12 @@ def fetch_board(source: str, *, board: str = "", http=None, root=None,
              "location": job.location, "url": job.url, "source": job.source,
              "description": job.description, "work_type": job.work_type,
              "pay": job.pay} for job in jobs]
+    if board:
+        for row in rows:
+            if not row["employer"]:
+                # Lever and Ashby send no company per posting; the board slug
+                # is the company's own identifier, not a guess about it.
+                row["employer"] = board
     return {"source": name, "url": url, "records": len(rows), "jobs": rows}
 
 

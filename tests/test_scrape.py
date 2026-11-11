@@ -441,6 +441,38 @@ def test_a_limit_makes_the_run_partial(tmp_path, monkeypatch):
     assert "limit 1 of 2" in result["reason"]
 
 
+def test_a_recipe_run_records_coverage_the_audit_can_read(tmp_path, monkeypatch):
+    from dossier import cli
+
+    monkeypatch.setattr(runner, "_fetched", _fake_fetch({
+        "https://example.com/jobs": LIST_HTML,
+        "https://example.com/job/1": DETAIL_HTML,
+    }))
+    _write_recipe(tmp_path, _recipe_dict())
+    code = cli.main(["scrape", "run", "--recipe", "fixture-listing",
+                     "--root", str(tmp_path), "--json"])
+    assert code == 0
+    snapshot = json.loads(next(tmp_path.glob("nz-job-search-coverage-*.json")).read_text(encoding="utf-8"))
+    assert snapshot["source_statuses"] == {"web": "captured"}
+    assert snapshot["current_source_counts"] == {"web": 1}
+
+
+def test_a_partial_recipe_run_is_recorded_as_partial(tmp_path, monkeypatch):
+    from dossier import cli
+
+    monkeypatch.setattr(runner, "_fetched", _fake_fetch({
+        "https://example.com/jobs": TWO_CARDS_HTML,
+        "https://example.com/job/1": DETAIL_HTML,
+    }))
+    _write_recipe(tmp_path, _recipe_dict())
+    code = cli.main(["scrape", "run", "--recipe", "fixture-listing", "--limit", "1",
+                     "--root", str(tmp_path), "--json"])
+    assert code == 1
+    snapshot = json.loads(next(tmp_path.glob("nz-job-search-coverage-*.json")).read_text(encoding="utf-8"))
+    assert snapshot["source_statuses"] == {"web": "partial"}
+    assert "limit 1 of 2" in snapshot["current_limits"]["web"]
+
+
 def test_one_failed_item_makes_the_run_partial_even_when_others_land(tmp_path, monkeypatch):
     base = _fake_fetch({
         "https://example.com/jobs": LIST_HTML,

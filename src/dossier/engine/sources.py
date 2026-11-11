@@ -21,6 +21,7 @@ import unicodedata
 from datetime import date
 from pathlib import Path
 from ..copy import plural
+from ..safety import trash_then_write_text
 
 # policy: official_public | partner_only | user_supplied | manual_only | prohibited
 POLICIES: dict[str, dict] = {
@@ -300,6 +301,14 @@ def coverage(root: Path | str) -> dict:
     statuses = data.get("source_statuses") or {}
     counts = data.get("current_source_counts") or {}
     limits = data.get("current_limits") or {}
+    measured = []
+    if statuses:
+        measured.append(plural(len(statuses), "source"))
+    if data.get("merged_rows") is not None:
+        measured.append(f"{data['merged_rows']} merged rows")
+    if data.get("ranking_rows") is not None:
+        measured.append(f"{data['ranking_rows']} ranked")
+    middle = ", ".join(measured) + ", " if measured else ""
     return {
         "present": True,
         "path": str(path),
@@ -320,10 +329,46 @@ def coverage(root: Path | str) -> dict:
         "limits": limits,
         "limit_count": len(limits),
         "detail": (
-            f"{path.name} captured {captured_on}; {data.get('merged_rows')} merged rows, "
-            f"{data.get('ranking_rows')} ranked, {age_days if age_days is not None else '?'} days old."
+            f"{path.name} captured {captured_on}; {middle}"
+            f"{age_days if age_days is not None else '?'} days old."
         ),
     }
+
+
+def record_coverage(root: Path | str, source: str, *, records: int, complete: bool,
+                    reason: str = "") -> Path:
+    """Write one capture run's own numbers into today's coverage snapshot.
+
+    Only what the run measured: the source, its row count, and whether the
+    capture was complete. A same-day snapshot is merged so a second fetch does
+    not erase the first source's counts; older snapshots stay on disk as
+    history. A partial capture is recorded as partial with its reason, never
+    as captured (`partial-is-not-exhaustive`).
+    """
+    root = Path(root)
+    today = date.today().isoformat()
+    path = root / f"nz-job-search-coverage-{today}.json"
+    data: dict = {}
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                data = loaded
+        except (OSError, ValueError):
+            data = {}
+    statuses = dict(data.get("source_statuses") or {})
+    counts = dict(data.get("current_source_counts") or {})
+    limits = dict(data.get("current_limits") or {})
+    statuses[source] = "captured" if complete else "partial"
+    counts[source] = int(records)
+    if complete:
+        limits.pop(source, None)
+    else:
+        limits[source] = reason or "the capture was partial"
+    data.update({"captured_on": today, "source_statuses": statuses,
+                 "current_source_counts": counts, "current_limits": limits})
+    trash_then_write_text(root, path, json.dumps(data, indent=2, ensure_ascii=False))
+    return path
 
 
 def ledger(root: Path | str) -> dict:

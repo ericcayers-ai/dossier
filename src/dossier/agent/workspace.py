@@ -340,7 +340,8 @@ def resolve(root: Path | str) -> Workspace:
         )
     if workspace.coverage.get("stale"):
         workspace.blockers.append(
-            "Coverage snapshot is missing or older than 7 days; source freshness is unproven."
+            "Coverage snapshot is missing or older than 7 days; source freshness is unproven. "
+            "Run `dossier feeds fetch <source>` or `dossier scrape run --due` to record a fresh capture."
         )
 
     ready = []

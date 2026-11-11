@@ -882,6 +882,9 @@ def _feeds(args) -> int:
                                           "captured_on": date.today().isoformat(),
                                           "records": len(rows),
                                           "truncated": truncated}, indent=2), encoding="utf-8")
+        source_engine.record_coverage(
+            root, source, records=len(rows), complete=not truncated,
+            reason=f"stopped at --limit {limit}; the board may hold more" if truncated else "")
         summary = {"source": source, "url": result["url"], "records": len(rows),
                    "total": result["records"], "truncated": truncated,
                    "path": str(target), "out": str(out_dir),
@@ -906,6 +909,7 @@ def _scrape(args) -> int:
     must act on, 2 means the request itself was wrong (a bad recipe, a policy
     refusal, a missing engine).
     """
+    from .engine import sources as source_engine
     from .scrape import browser, recipes as recipe_module, runner
     from .scrape.errors import ScrapeError
     from .scrape.session import SessionStore, import_netscape_cookies
@@ -1050,6 +1054,9 @@ def _scrape(args) -> int:
                 delay_ms=args.delay_ms, challenge=args.challenge,
                 await_clear_s=args.await_seconds, min_match=args.min_match)
             results.append(result)
+            source_engine.record_coverage(
+                root, result["source"], records=result["items_captured"],
+                complete=bool(result["complete"]), reason=result.get("reason") or "")
             if not args.json:
                 verdict = "complete" if result["complete"] else "PARTIAL"
                 print(f"{verdict}: {recipe.id} - {result['items_captured']} captured, "
