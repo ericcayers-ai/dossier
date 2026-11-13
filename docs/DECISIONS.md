@@ -134,3 +134,14 @@ that honest, each with a receipt in `docs/evidence/publish-gate-2026-11-09.md`:
 Two findings were recorded and deliberately not changed in this pass: `GET /api/export` mutates on a
 GET and accepts a missing `Origin` (it writes only inside the workspace root), and `await_seconds`
 plus request-body size are unbounded (a loopback-only threat model). Both are listed in the receipt.
+
+## 2026-11-14 — committed eval workspace fixture and `score_job` calibration
+
+Archived the 23-posting evaluation set under `tests/fixtures/eval-workspace/` with
+`docs/evidence/fit-eval-baseline-2026-11-12.json` so `fit-is-measured` runs in CI without `%TEMP%`
+state (`tests/test_evaluation.py` pins `corpus_hash == 3c8314caac2e` and `nDCG@10 0.8596` > arrival
+`0.7838`). Fixed four false-positive/capture-gap bugs in `engine/identity.py::score_job`
+(`_GENERIC_TITLE_TOKENS`, whole-word `_INTERNSHIP_WORD`, context-bound `_YEARS_EXPERIENCE`, and
+excluding uncaptured locations from the place denominator) and stripped 19 zero-width characters
+from the archived postings so `cybersafe_scan.py` passes with 0 findings. Cost: changing scoring
+weights or fixture rows requires re-recording the baseline with `dossier identity eval --write-baseline`.

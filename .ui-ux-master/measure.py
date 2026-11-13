@@ -195,6 +195,7 @@ def main():
                 page.locator(".area-btn", has_text=AREA_OF[label]).first.click()
                 page.wait_for_timeout(120)
                 page.locator(".pane-btn", has_text=label).first.click()
+                page.locator("main h1").first.wait_for(state="visible", timeout=5000)
                 page.wait_for_timeout(350)
                 data = page.evaluate(MEASURE)
                 heading = page.locator("h1").first
@@ -221,6 +222,7 @@ def main():
             page.locator(".area-btn", has_text=AREA_OF[label]).first.click()
             page.wait_for_timeout(120)
             page.locator(".pane-btn", has_text=label).first.click()
+            page.locator("main h1").first.wait_for(state="visible", timeout=5000)
             page.wait_for_timeout(250)
             data = page.evaluate(MEASURE)
             report["dark"]["1440"][label] = {"contrast": data["contrast"], "h1": data["h1"]}

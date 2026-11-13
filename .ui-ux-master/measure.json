@@ -1,10 +1,21 @@
 {
-  "url": "http://127.0.0.1:59305",
+  "url": "http://127.0.0.1:62145",
   "panes": {
     "1440": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
       "Folder": {
         "h1": [
-          "Put the folder on the light table."
+          "Your folder"
         ],
         "contrast": [],
         "small_targets": [],
@@ -136,9 +147,20 @@
       }
     },
     "768": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
       "Folder": {
         "h1": [
-          "Put the folder on the light table."
+          "Your folder"
         ],
         "contrast": [],
         "small_targets": [],
@@ -270,9 +292,20 @@
       }
     },
     "390": {
+      "Start here": {
+        "h1": [
+          "Start here"
+        ],
+        "contrast": [],
+        "small_targets": [],
+        "unnamed_controls": [],
+        "overflow": [],
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
       "Folder": {
         "h1": [
-          "Put the folder on the light table."
+          "Your folder"
         ],
         "contrast": [],
         "small_targets": [],
@@ -408,13 +441,24 @@
   "focus": [
     {
       "tag": "button",
-      "label": "Search files\u2318K",
+      "label": "Search files",
       "ring": true,
       "visible": true,
       "type": "button",
       "cls": "search-trigger",
       "id": "",
-      "html": "<button type=\"button\" class=\"search-trigger\"><span>Search files</span><span class=\"kbd\">\u2318K</span></button>",
+      "html": "<button type=\"button\" class=\"search-trigger\" aria-label=\"Search files\"><span>Search files</span><span class=\"kbd\">\u2318K</sp",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Start",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Start</button>",
       "outline": "solid 2px"
     },
     {
@@ -590,7 +634,7 @@
       "type": "text",
       "cls": "",
       "id": "",
-      "html": "<input placeholder=\"resume.md\" list=\"panel-files\" value=\"resume.md\">",
+      "html": "<input placeholder=\"resume.md\" list=\"panel-files\" value=\"resume.md\" style=\"\">",
       "outline": "solid 2px"
     },
     {
@@ -601,7 +645,7 @@
       "type": "text",
       "cls": "",
       "id": "",
-      "html": "<input placeholder=\"posting.md\" list=\"panel-files\" value=\"\">",
+      "html": "<input placeholder=\"posting.md\" list=\"panel-files\" value=\"\" style=\"\">",
       "outline": "solid 2px"
     },
     {
@@ -612,29 +656,29 @@
       "type": "text",
       "cls": "",
       "id": "",
-      "html": "<input placeholder=\"Support Engineer\" value=\"\">",
+      "html": "<input placeholder=\"Support Engineer\" value=\"\" style=\"\">",
       "outline": "solid 2px"
     },
     {
       "tag": "button",
-      "label": "\u2318\\ explorer",
+      "label": "\u2318\\ file list",
       "ring": true,
       "visible": true,
       "type": "button",
       "cls": "status-btn",
       "id": "",
-      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318\\ explorer</button>",
+      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318\\ file list</button>",
       "outline": "solid 2px"
     },
     {
       "tag": "button",
-      "label": "\u2318/ rail",
+      "label": "\u2318/ related files",
       "ring": true,
       "visible": true,
       "type": "button",
       "cls": "status-btn",
       "id": "",
-      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318/ rail</button>",
+      "html": "<button type=\"button\" class=\"status-btn\" aria-pressed=\"false\">\u2318/ related files</button>",
       "outline": "solid 2px"
     },
     {
@@ -661,13 +705,24 @@
     },
     {
       "tag": "button",
-      "label": "Search files\u2318K",
+      "label": "Search files",
       "ring": true,
       "visible": true,
       "type": "button",
       "cls": "search-trigger",
       "id": "",
-      "html": "<button type=\"button\" class=\"search-trigger\"><span>Search files</span><span class=\"kbd\">\u2318K</span></button>",
+      "html": "<button type=\"button\" class=\"search-trigger\" aria-label=\"Search files\"><span>Search files</span><span class=\"kbd\">\u2318K</sp",
+      "outline": "solid 2px"
+    },
+    {
+      "tag": "button",
+      "label": "Start",
+      "ring": true,
+      "visible": true,
+      "type": "button",
+      "cls": "area-btn ",
+      "id": "",
+      "html": "<button type=\"button\" class=\"area-btn \">Start</button>",
       "outline": "solid 2px"
     },
     {
@@ -702,36 +757,20 @@
       "id": "",
       "html": "<button type=\"button\" class=\"area-btn \">Papers</button>",
       "outline": "solid 2px"
-    },
-    {
-      "tag": "button",
-      "label": "Housekeeping",
-      "ring": true,
-      "visible": true,
-      "type": "button",
-      "cls": "area-btn ",
-      "id": "",
-      "html": "<button type=\"button\" class=\"area-btn \">Housekeeping</button>",
-      "outline": "solid 2px"
-    },
-    {
-      "tag": "button",
-      "label": "Agent",
-      "ring": true,
-      "visible": true,
-      "type": "button",
-      "cls": "area-btn active",
-      "id": "",
-      "html": "<button type=\"button\" class=\"area-btn active\" aria-current=\"page\">Agent</button>",
-      "outline": "solid 2px"
     }
   ],
   "dark": {
     "1440": {
+      "Start here": {
+        "contrast": [],
+        "h1": [
+          "Start here"
+        ]
+      },
       "Folder": {
         "contrast": [],
         "h1": [
-          "Put the folder on the light table."
+          "Your folder"
         ]
       },
       "Capture": {
@@ -742,11 +781,15 @@
       },
       "Jobs": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Jobs"
+        ]
       },
       "Identity": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Identity"
+        ]
       },
       "Build": {
         "contrast": [],
@@ -756,7 +799,9 @@
       },
       "Verify": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Verify"
+        ]
       },
       "Audit": {
         "contrast": [],
@@ -766,11 +811,15 @@
       },
       "Trash": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Trash"
+        ]
       },
       "Sync": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Sync"
+        ]
       },
       "Loop": {
         "contrast": [],
@@ -786,7 +835,9 @@
       },
       "Panel": {
         "contrast": [],
-        "h1": []
+        "h1": [
+          "Panel"
+        ]
       }
     }
   },
