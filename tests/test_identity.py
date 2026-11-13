@@ -220,6 +220,87 @@ def test_role_families_match_without_an_exact_title():
     assert any("role family" in reason for reason in result["reasons"])
 
 
+# -- the title, seniority and location signals -----------------------------
+#
+# Each of these pins a false positive that the 2026-11-12 eval run exposed: a
+# generic title token counted as a match, "internal" counted as an internship, a
+# company's age counted as an experience requirement, and a listing whose
+# location was never captured was scored as if the location did not match.
+
+def test_a_generic_title_token_is_not_evidence_of_a_match():
+    """`service` is in both titles, and that alone must not award the title signal."""
+    profile = json.loads(json.dumps(PROFILE))
+    profile["fields"]["target_roles"]["value"] = ["Software Engineer", "Trade Service Team Member"]
+    result = identity.score_job(dict(GOOD, title="Customer Service Representative"), profile)
+    assert not any("title matches your target" in reason for reason in result["reasons"]), result["reasons"]
+
+
+def test_a_generic_token_that_is_the_only_overlap_earns_no_title_points():
+    """The score itself must not move: compare against a title with no overlap at all."""
+    profile = json.loads(json.dumps(PROFILE))
+    profile["fields"]["target_roles"]["value"] = ["Trade Service Team Member"]
+    generic = identity.score_job(dict(GOOD, title="Customer Service Representative"), profile)
+    unrelated = identity.score_job(dict(GOOD, title="Pastry Chef"), profile)
+    assert generic["earned"] == unrelated["earned"]
+    assert generic["score"] == unrelated["score"]
+
+
+def test_internal_is_not_an_internship():
+    """`\binterns?\b` was `"intern" in haystack`, which matched "internal tools".
+
+    `work_type` is set to `full-time` on both probes so only the description can
+    supply the wording: `GOOD` itself carries `internship`, which would make the
+    negative case pass for the wrong reason.
+    """
+    internal = identity.score_job(
+        dict(GOOD, title="Software Engineer", work_type="full-time",
+             description="Work on our internal tools."), PROFILE)
+    assert not any("internship wording" in reason for reason in internal["reasons"]), internal["reasons"]
+    offered = identity.score_job(
+        dict(GOOD, title="Junior Developer", work_type="full-time",
+             description="This is a paid summer internship for a CS student."), PROFILE)
+    assert any("internship wording" in reason for reason in offered["reasons"]), offered["reasons"]
+
+
+def test_company_age_and_age_limits_are_not_experience_requirements():
+    """A student role must not be disqualified by "115 years" or "16 years of age"."""
+    for sentence in ("We have been 115 years supporting local farmers.",
+                     "Applicants must be 16 years of age or older."):
+        result = identity.score_job(dict(GOOD, description=sentence), PROFILE)
+        assert result["disqualifiers"] == [], (sentence, result["disqualifiers"])
+
+
+def test_a_real_experience_requirement_still_disqualifies_a_student():
+    """The narrow pattern must not lose the signal it exists for."""
+    for sentence in ("Minimum 5 years experience required",
+                     "You have 8+ years of relevant experience.",
+                     "At least 6 years in a similar role"):
+        result = identity.score_job(dict(GOOD, description=sentence), PROFILE)
+        assert any("senior" in item for item in result["disqualifiers"]), (sentence, result)
+
+
+def test_an_uncaptured_location_is_named_instead_of_reading_as_a_mismatch():
+    """A blank location is a capture gap: it must say so, and not award the place signal."""
+    captured = identity.score_job(GOOD, PROFILE)
+    missing = identity.score_job(dict(GOOD, location=""), PROFILE)
+    assert any("location was not captured" in reason for reason in missing["reasons"]), missing["reasons"]
+    assert not any("is not hamilton" in reason for reason in missing["reasons"]), missing["reasons"]
+    assert missing["available"] == captured["available"] - identity.WEIGHTS["place"]
+
+
+# -- mining stops at the next section --------------------------------------
+
+def test_skills_stop_at_the_next_section_heading():
+    """A `## Referees` block after Skills is prose, not a skill list."""
+    resume = ("# Sam\n\nSkills\n"
+              "Technical: Python, SQL\n"
+              "## Referees\n"
+              "Available: on request\n")
+    skills = identity._skills_from_resume(resume)
+    assert "Python" in skills and "SQL" in skills
+    assert "on request" not in skills, skills
+
+
 # -- ranking the corpus ----------------------------------------------------
 
 def _corpus(root, rows):

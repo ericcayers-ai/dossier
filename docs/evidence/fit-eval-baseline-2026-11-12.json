@@ -1,0 +1,11 @@
+{
+  "recorded_on": "2026-11-12",
+  "n_graded": 23,
+  "ndcg": 0.8596,
+  "precision": 0.8,
+  "recall": 1.0,
+  "spearman": 0.7715,
+  "corpus_hash": "3c8314caac2e",
+  "labels_corpus_hash": "3c8314caac2e",
+  "note": "Recorded by `dossier identity eval --write-baseline`. A drop past the slack in evaluation.NDCG_SLACK / SPEARMAN_SLACK fails the gate."
+}

@@ -1,0 +1,175 @@
+{
+  "status": "confirmed grades, anonymised fixture (agent proposal accepted under owner delegation 2026-11-12)",
+  "confirmed_on": "2026-11-12",
+  "corpus_hash": "3c8314caac2e",
+  "labeller": "agent (confirmed under owner delegation)",
+  "scale": {
+    "strong": 3,
+    "possible": 2,
+    "unlikely": 1,
+    "skip": 0
+  },
+  "rows": [
+    {
+      "key": "url:https jobs example invalid 2026 2027 harbourline summer internship program in hamilton",
+      "grade": "strong",
+      "source_of_grade": "tracker",
+      "title": "2026/2027 Harbourline Summer Internship Program",
+      "employer": "harbourline"
+    },
+    {
+      "key": "pair:northbridge summer internships 2026 2027|northbridge",
+      "grade": "strong",
+      "source_of_grade": "tracker",
+      "title": "Northbridge Summer Internships 2026/2027",
+      "employer": "Northbridge"
+    },
+    {
+      "key": "url:https jobs example invalid summer internship molecular inbreeding depression",
+      "grade": "possible",
+      "source_of_grade": "tracker",
+      "title": "Summer Internship – Molecular Inbreeding Depression - Meadowfield Genetics (Meadowfield)",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "url:https jobs example invalid northbridge technical support engineer",
+      "grade": "strong",
+      "source_of_grade": "tracker",
+      "title": "Technical Support Engineer — Northbridge",
+      "employer": "Northbridge"
+    },
+    {
+      "key": "pair:cashier team member discount barn cambridge part time|discount barn group",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Cashier Team Member - Discount Barn, Cambridge (Part-time)",
+      "employer": "Discount Barn Group"
+    },
+    {
+      "key": "pair:retail assistant part time chartwell|broadleaf trading company",
+      "grade": "possible",
+      "source_of_grade": "tracker",
+      "title": "Retail Assistant - Part Time - Chartwell",
+      "employer": "Broadleaf Trading Company"
+    },
+    {
+      "key": "pair:ai development intern|gridspark",
+      "grade": "unlikely",
+      "source_of_grade": "agent",
+      "title": "AI Development Intern",
+      "employer": "Gridspark"
+    },
+    {
+      "key": "pair:data science intern|documint limited",
+      "grade": "unlikely",
+      "source_of_grade": "agent",
+      "title": "Data Science Intern",
+      "employer": "Documint Limited"
+    },
+    {
+      "key": "pair:software engineer intern|calderwood",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Software Engineer - Intern",
+      "employer": "Calderwood"
+    },
+    {
+      "key": "url:https jobs example invalid summer intern evaluating genetic sequencing approaches",
+      "grade": "possible",
+      "source_of_grade": "agent",
+      "title": "Source URL: https://jobs.example.invalid/summer-intern-evaluating-genetic-sequencing-approaches",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "url:https jobs example invalid summer intern machine learning for animal assessment",
+      "grade": "strong",
+      "source_of_grade": "tracker",
+      "title": "Summer Intern – Machine Learning for Animal Assessment - Meadowfield Genetics (Meadowfield)",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "url:https jobs example invalid summer internship molecular genetics of bull fertility",
+      "grade": "possible",
+      "source_of_grade": "tracker",
+      "title": "Summer Internship - Molecular Genetics of Bull Fertility - Meadowfield Genetics (Meadowfield)",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "url:https jobs example invalid summer internship leveraging calf defect data",
+      "grade": "possible",
+      "source_of_grade": "tracker",
+      "title": "Summer Internship –Leveraging calf defect data - Meadowfield Genetics (Meadowfield)",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "pair:test automation engineer intern|calderwood",
+      "grade": "unlikely",
+      "source_of_grade": "agent",
+      "title": "Test Automation Engineer - Intern",
+      "employer": "Calderwood"
+    },
+    {
+      "key": "pair:trade service team member drive through|buildmart",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Trade Service Team Member (Drive-Through)",
+      "employer": "Buildmart"
+    },
+    {
+      "key": "pair:part time retail assistant sylvia park store|plainwear",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Part-Time Retail Assistant | Sylvia Park Store",
+      "employer": "Plainwear"
+    },
+    {
+      "key": "url:https jobs example invalid summer internship accelerating genetic gain through simulation",
+      "grade": "strong",
+      "source_of_grade": "agent",
+      "title": "Summer Internship – Accelerating Genetic Gain Through Simulation - Meadowfield Genetics (Meadowfield)",
+      "employer": "meadowfield"
+    },
+    {
+      "key": "url:https jobs example invalid broadleaf retail assistants christmas 2026 expressions of interest",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Retail Assistants Christmas 2026 - Expressions of Interest -",
+      "employer": "broadleaf"
+    },
+    {
+      "key": "url:https jobs example invalid rata gifts sales assistant the outlet te rapa hamilton",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Sales Assistant - The Outlet (Te Rapa) - Rata Gifts",
+      "employer": "Rata Gifts"
+    },
+    {
+      "key": "pair:christmas team member nightfill discount barn te rapa|discount barn group",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Christmas Team Member (Nightfill) - Discount Barn, Te Rapa",
+      "employer": "Discount Barn Group"
+    },
+    {
+      "key": "pair:christmas team member shopfloor checkout discount barn cambridge|discount barn group",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Christmas Team Member (Shopfloor/Checkout) - Discount Barn, Cambridge",
+      "employer": "Discount Barn Group"
+    },
+    {
+      "key": "pair:seasonal department fixed term team member|buildmart",
+      "grade": "skip",
+      "source_of_grade": "agent",
+      "title": "Seasonal Department Fixed Term Team Member",
+      "employer": "Buildmart"
+    },
+    {
+      "key": "pair:photocentre operator|electrohome",
+      "grade": "unlikely",
+      "source_of_grade": "agent",
+      "title": "PhotoCentre Operator",
+      "employer": "Electrohome"
+    }
+  ]
+}

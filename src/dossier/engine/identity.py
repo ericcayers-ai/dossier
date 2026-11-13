@@ -345,15 +345,13 @@ def _skills_from_resume(text: str) -> list[str]:
         stripped = line.strip()
         if not stripped:
             continue
-        if re.match(r"^(?:#{1,6}\s|Education|Experience|Referees|References)", stripped, re.I):
+        if re.match(r"^(?:#{1,6}\s|Education|Experience|Referees|References)", stripped, re.I):
             break
         stripped = re.sub(r"^[-*•]\s*", "", stripped)
         if ":" in stripped:
-            label, _, value = stripped.partition(":")
-            stripped = value
-            if label.strip() and not re.search(r"[,;|]", value):
-                # `Label: single value` — keep the value, it is the searchable part.
-                pass
+            # `Label: value` — the value is the searchable part, whether it holds one
+            # item or several. The label is a heading, not a skill.
+            _label, _, stripped = stripped.partition(":")
         for part in re.split(r"[,;|]", stripped):
             part = part.strip(" .")
             if 1 < len(part) <= 60 and part not in items:
@@ -574,6 +572,32 @@ SENIORITY_TITLE_HINTS = {
     "student/intern": ("intern", "internship", "student", "summer", "placement"),
 }
 
+#: Tokens that name employment structure or a generic role container rather than a
+#: kind of work. They occur in target titles *and* in unrelated ones ("Customer
+#: Service Representative" beside "Trade Service Team Member"), so on their own they
+#: are not evidence of a match. A genuine signal — summer, intern, support, ai,
+#: automation — is deliberately absent from this set.
+_GENERIC_TITLE_TOKENS = frozenset({
+    "service", "team", "member", "assistant", "officer", "coordinator", "worker",
+    "staff", "crew", "associate", "operator", "part", "time", "full", "fixed",
+    "term", "seasonal", "christmas", "day", "night",
+})
+
+#: Whole-word internship wording. The previous `"intern" in haystack` also matched
+#: "internal" and "International", handing a seniority bonus to retail and support
+#: roles that never mentioned an internship.
+_INTERNSHIP_WORD = re.compile(r"\binterns?\b|\binternships?\b", re.IGNORECASE)
+
+#: A "N years" figure is a seniority requirement only inside an experience context.
+#: Company history ("115 years supporting farmers") and age limits ("16 years of
+#: age") are not experience requirements and must not disqualify a student role.
+_YEARS_EXPERIENCE = re.compile(
+    r"(\d+)\+?\s*years?(?:\s+of)?[^.\n]{0,40}?\b(?:experience|expertise|track record)\b"
+    r"|\b(?:experience|expertise|track record|minimum|at least|proven)\b"
+    r"[^.\n]{0,40}?(\d+)\+?\s*years?",
+    re.IGNORECASE,
+)
+
 
 def _tokens(value) -> set[str]:
     if isinstance(value, list):
@@ -656,7 +680,7 @@ def score_job(job: dict, data: dict) -> dict:
         target_tokens = set()
         for target in targets:
             target_tokens |= _tokens(target)
-        overlap = target_tokens & _tokens(title)
+        overlap = (target_tokens & _tokens(title)) - _GENERIC_TITLE_TOKENS
         if overlap:
             add("title", int(WEIGHTS["title"] * scale),
                 f"title matches your target on: {', '.join(sorted(overlap)[:5])}")
@@ -707,16 +731,22 @@ def score_job(job: dict, data: dict) -> dict:
     remote_pref = str(_value(fields.get("remote")) or "").casefold()
     is_remote = any(word in haystack or word in location.casefold()
                     for word in ("remote", "anywhere", "work from home", "distributed"))
+    location_known = bool(location.strip()) and location.strip().casefold() not in (
+        "unknown", "n/a", "not specified")
     if wanted or remote_pref:
-        available += WEIGHTS["place"]
-    if wanted and wanted in location.casefold():
+        if location_known or is_remote:
+            available += WEIGHTS["place"]
+        else:
+            reasons.append("location was not captured, so place is not scored "
+                           "(a capture gap, not a fit signal)")
+    if wanted and location_known and wanted in location.casefold():
         add("place", WEIGHTS["place"], f"location matches {location}")
     elif is_remote and remote_pref in ("yes", "no preference", ""):
         add("place", int(WEIGHTS["place"] * 0.75), "remote role, and remote is acceptable to you")
     elif is_remote and remote_pref == "hybrid only":
         reasons.append("remote role, but you asked for hybrid")
-    elif wanted:
-        reasons.append(f"location {location or 'unknown'} is not {wanted}")
+    elif wanted and location_known:
+        reasons.append(f"location {location} is not {wanted}")
     if remote_pref == "onsite only" and is_remote:
         disqualifiers.append("you asked for onsite only and this is remote")
 
@@ -736,15 +766,16 @@ def score_job(job: dict, data: dict) -> dict:
     seniority = str(_value(fields.get("seniority")) or "").casefold()
     if seniority:
         available += WEIGHTS["seniority"]
-        years = re.search(r"(\d+)\+?\s*years?", haystack)
+        year_hits = [int(m.group(1) or m.group(2)) for m in _YEARS_EXPERIENCE.finditer(haystack)]
+        senior_years = max(year_hits) if year_hits else 0
         hinted = [label for label, hints in SENIORITY_TITLE_HINTS.items()
                   if any(hint in f" {title.casefold()} " for hint in hints)]
         if seniority in ("student/intern", "graduate") and (
-                "senior" in hinted or "lead" in hinted or (years and int(years.group(1)) >= 5)):
+                "senior" in hinted or "lead" in hinted or senior_years >= 5):
             disqualifiers.append(f"role reads senior and you are targeting {seniority}")
         elif seniority in hinted:
             add("seniority", WEIGHTS["seniority"], f"seniority matches: {seniority}")
-        elif seniority == "student/intern" and "intern" in haystack:
+        elif seniority == "student/intern" and _INTERNSHIP_WORD.search(haystack):
             add("seniority", WEIGHTS["seniority"], "internship wording present")
 
     # -- pay floor ---------------------------------------------------------

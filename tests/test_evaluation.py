@@ -232,3 +232,52 @@ def test_recorded_baseline_carries_the_numbers_it_will_be_compared_against():
     recorded = evaluation.record_baseline(_report())
     assert recorded["ndcg"] == 0.9 and recorded["spearman"] == 0.5
     assert recorded["n_graded"] == 18
+
+
+# -- the committed fixture and the recorded baseline -----------------------
+#
+# `tests/fixtures/eval-workspace/` and `docs/evidence/fit-eval-baseline-2026-11-12.json`
+# are the two artefacts that make the ranking's quality reproducible. Before this
+# block existed, both were uncommitted and nothing ran them: the fixture lived in
+# `%TEMP%` and was lost, so the number in STATE.md could not be re-measured. These
+# tests make the pair part of the gate, and they are the reason the gate would
+# notice a ranking regression rather than a session having to remember one.
+
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "eval-workspace"
+BASELINE = (Path(__file__).resolve().parent.parent
+            / "docs" / "evidence" / "fit-eval-baseline-2026-11-12.json")
+
+
+def test_the_committed_eval_fixture_grades_every_row():
+    report = evaluation.evaluate_workspace(FIXTURE, FIXTURE / "labels.json")
+    assert report["present"] is True, report
+    assert report["n_graded"] == 23, report.get("rows")
+    assert report["n_graded"] == len(evaluation.load_labels(FIXTURE / "labels.json")["rows"])
+
+
+def test_the_ranking_beat_arrival_order_on_the_committed_fixture():
+    """The claim STATE.md makes is measured here, not asserted in prose.
+
+    `baseline_arrival` is the same metric with the rows in the order they arrived,
+    so it is the floor the ranking has to clear to be worth anything.
+    """
+    report = evaluation.evaluate_workspace(FIXTURE, FIXTURE / "labels.json")
+    product, arrival = report["product"], report["baseline_arrival"]
+    assert product["ndcg"] > arrival["ndcg"], (
+        f"nDCG@10 {product['ndcg']} did not beat arrival order {arrival['ndcg']}")
+    assert product["spearman"] > arrival["spearman"]
+
+
+def test_the_recorded_baseline_is_the_number_the_fixture_still_produces():
+    """A regression past the slack fails here, in the suite, with the metric named."""
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    report = evaluation.evaluate_workspace(FIXTURE, FIXTURE / "labels.json")
+    verdict = evaluation.compare_to_baseline(report, baseline)
+    assert verdict["ok"] is True, verdict["failures"]
+
+
+def test_the_baseline_file_matches_the_fixture_it_was_recorded_on():
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    report = evaluation.evaluate_workspace(FIXTURE, FIXTURE / "labels.json")
+    assert baseline["corpus_hash"] == report["corpus_hash"], (
+        "the baseline was recorded on a different set of postings; re-record it")
