@@ -147,10 +147,10 @@ def _shot(page, name: str) -> None:
     page.screenshot(path=str(EVIDENCE / f"e2e-{name}.png"), full_page=True)
 
 
-AREA_OF = {"Start here": "Start", "Folder": "Files", "Capture": "Search", "Jobs": "Search",
-           "Identity": "Search",
-           "Build": "Papers", "Verify": "Papers", "Audit": "Housekeeping",
-           "Trash": "Housekeeping", "Sync": "Housekeeping", "Loop": "Agent",
+AREA_OF = {"Start here": "Start", "Folder": "Files", "Find roles": "Search",
+           "Saved roles": "Search", "Preferences": "Search",
+           "Write CV": "Papers", "Check CV": "Papers", "Health check": "Housekeeping",
+           "Deleted": "Housekeeping", "Handoff": "Housekeeping", "Loop": "Agent",
            "Opportunity": "Agent", "Panel": "Agent"}
 
 
@@ -175,8 +175,8 @@ def test_the_shell_renders_the_built_ui(page):
 def test_a_user_captures_one_listing(page, app):
     from playwright.sync_api import expect
 
-    _pane(page, "Capture")
-    expect(page.locator("h1", has_text="Capture")).to_be_visible()
+    _pane(page, "Find roles")
+    expect(page.locator("h1", has_text="Find roles")).to_be_visible()
     journal = (app["root"] / "job-posting-web-senior-engineer-at-acme.md")
     journal.unlink(missing_ok=True)  # keep the assertion about *this* run
 
@@ -191,7 +191,7 @@ def test_a_user_captures_one_listing(page, app):
 def test_a_user_scrapes_the_whole_board_with_a_recipe(page, app):
     from playwright.sync_api import expect
 
-    _pane(page, "Capture")
+    _pane(page, "Find roles")
     page.get_by_label("Recipe").select_option("local-listing")
     page.get_by_role("button", name="Run recipe").click()
     recipe_result = page.locator('section[aria-label="Recipe result"]')
@@ -238,8 +238,8 @@ def test_a_user_builds_their_own_opportunity_tree(page, app):
 def test_a_user_provides_a_template_and_dossier_builds_a_resume(page, app):
     from playwright.sync_api import expect
 
-    _pane(page, "Build")
-    expect(page.locator("h1", has_text="Build")).to_be_visible()
+    _pane(page, "Write CV")
+    expect(page.locator("h1", has_text="Write CV")).to_be_visible()
 
     page.get_by_label("Template (.docx, relative to the workspace)").fill("templates/my-template.docx")
     page.get_by_label("Output (.docx)").fill("resume-acme.docx")
@@ -306,8 +306,8 @@ def test_a_user_builds_their_identity_and_sees_matching_jobs(page, app):
     scores the corpus and keeps the disqualified row visible with its reason."""
     from playwright.sync_api import expect
 
-    _pane(page, "Identity")
-    expect(page.locator("h1", has_text="Identity")).to_be_visible()
+    _pane(page, "Preferences")
+    expect(page.locator("h1", has_text="Preferences")).to_be_visible()
 
     page.get_by_label("Which roles are you actually applying for?").fill("Software Engineer Intern")
     page.get_by_label("What level are you targeting?").select_option("student/intern")
@@ -345,13 +345,13 @@ def test_a_pane_has_an_address_that_survives_a_cold_load(page, app):
     from playwright.sync_api import expect
 
     page.goto(f"{app['base']}/#/papers/verify", wait_until="networkidle")
-    expect(page.locator("h1", has_text="Verify")).to_be_visible(timeout=20_000)
-    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Verify")
+    expect(page.locator("h1", has_text="Check CV")).to_be_visible(timeout=20_000)
+    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Check CV")
     expect(page.locator(".area-btn[aria-current='page']")).to_have_text("Papers")
 
     page.reload(wait_until="networkidle")
-    expect(page.locator("h1", has_text="Verify")).to_be_visible(timeout=20_000)
-    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Verify")
+    expect(page.locator("h1", has_text="Check CV")).to_be_visible(timeout=20_000)
+    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Check CV")
 
 
 def test_the_back_button_moves_between_panes(page, app):
@@ -360,11 +360,11 @@ def test_the_back_button_moves_between_panes(page, app):
     from playwright.sync_api import expect
 
     page.goto(f"{app['base']}/#/search/jobs", wait_until="networkidle")
-    expect(page.locator("h1", has_text="Jobs")).to_be_visible(timeout=20_000)
+    expect(page.locator("h1", has_text="Saved roles")).to_be_visible(timeout=20_000)
     page.locator(".area-btn", has_text="Papers").first.click()
-    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Build")
+    expect(page.locator(".pane-btn[aria-current='page']")).to_have_text("Write CV")
     page.go_back()
-    expect(page.locator("h1", has_text="Jobs")).to_be_visible(timeout=20_000)
+    expect(page.locator("h1", has_text="Saved roles")).to_be_visible(timeout=20_000)
 
 
 def test_the_landing_pane_names_the_next_unit_of_work(page, app):
@@ -487,14 +487,14 @@ def test_filtering_the_rail_resets_the_scroll_and_the_count(page, app):
 
 def test_every_pane_keeps_its_heading_and_never_renders_blank(page, app):
     """A pane that throws unmounts the subtree and the page goes blank — which is
-    exactly what a misplaced React hook did to Trash: `h1` count dropped to zero
+    exactly what a misplaced React hook did to the Deleted pane: `h1` count dropped to zero
     while the console stayed quiet in the served build. Walk all eleven panes and
     require a heading, the pane's own title, and some text for each."""
     areas = {
         "Files": ["Folder"],
-        "Search": ["Capture", "Jobs", "Identity"],
-        "Papers": ["Build", "Verify"],
-        "Housekeeping": ["Audit", "Trash", "Sync"],
+        "Search": ["Find roles", "Saved roles", "Preferences"],
+        "Papers": ["Write CV", "Check CV"],
+        "Housekeeping": ["Health check", "Deleted", "Handoff"],
         "Agent": ["Loop", "Opportunity", "Panel"],
     }
     page.goto(app["base"], wait_until="networkidle")

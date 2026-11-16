@@ -99,7 +99,7 @@ tabs of the active area. Nothing else is mounted: an area shows only its own pan
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ Dossier   [Files][Search][Papers][Housekeeping][Agent]   ⌘K   ◐       │ 44px
-│            Capture   Jobs   Identity                                 │ 34px area tabs
+│            Find roles   Saved roles   Preferences                       │ 34px area tabs
 ├────────────┬───────────────────────────────────┬─────────────────────┤
 │ EXPLORER   │  VIEWER / PANE                    │  BUNDLE RAIL        │
 │ 260px      │  flex — one document, full focus  │  300px, collapsible │

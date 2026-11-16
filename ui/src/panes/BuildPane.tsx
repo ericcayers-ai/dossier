@@ -74,7 +74,7 @@ export default function BuildPane({docx=[]}:{docx?:string[]}):ReactNode{
   return <div className="audit-pane">
     <div className="audit-head">
       <div>
-        <h1>Build</h1>
+        <h1>Write CV</h1>
         <p className="pane-purpose">Fill your own resume with one job’s details. Dossier copies your file and replaces the placeholders, so the layout never changes.</p>
       </div>
     </div>

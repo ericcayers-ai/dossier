@@ -46,5 +46,5 @@ const PANE_OF:Record<string,string>={
   verify:'verify',audit:'audit',sources:'audit',track:'jobs',apply:'jobs',panel:'panel',
   interview:'agent',upskill:'agent',negotiate:'agent',handback:'agent',
 };
-const LABEL_OF:Record<string,string>={'files':'Folder',identity:'Identity',jobs:'Jobs',
-  capture:'Capture',build:'Build',verify:'Verify',audit:'Audit',agent:'Loop',panel:'Panel'};
+const LABEL_OF:Record<string,string>={'files':'Folder',identity:'Preferences',jobs:'Saved roles',
+  capture:'Find roles',build:'Write CV',verify:'Check CV',audit:'Health check',agent:'Loop',panel:'Panel'};

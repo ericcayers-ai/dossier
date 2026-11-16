@@ -46,7 +46,7 @@ export default function CapturePane():ReactNode{
   return <div className="audit-pane">
     <div className="audit-head">
       <div>
-        <h1>Capture</h1>
+        <h1>Find roles</h1>
         <p className="pane-purpose">Save one job ad from a link, or a whole board. The copy stays in this folder.</p>
       </div>
     </div>

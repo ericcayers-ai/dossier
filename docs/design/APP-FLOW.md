@@ -17,9 +17,9 @@
 
 ```
 Files        └ Folder
-Search       ├ Capture · Jobs · Identity
-Papers       ├ Build · Verify
-Housekeeping ├ Audit · Trash · Sync
+Search       ├ Find roles · Saved roles · Preferences
+Papers       ├ Write CV · Check CV
+Housekeeping ├ Health check · Deleted · Handoff
 Agent        ├ Loop · Opportunity · Panel
 ```
 

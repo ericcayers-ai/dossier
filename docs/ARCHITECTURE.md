@@ -102,6 +102,6 @@ a local fixture site (`tests/fixtures/scrape_site.py`) for the real engines.
 - A new pane → add it to `AREAS` in `ui/src/App.tsx` (an area holds at most three) and give it
   one `h1`, a loading skeleton, an empty state and an error state.
 - A new identity question → `engine/identity.QUESTIONS` (id, kind, choices, required); the
-  profile, the CLI, the API and the Identity pane all read that one tuple.
+  profile, the CLI, the API and the Preferences pane all read that one tuple.
 - A new rule that must not be softened → a `Gate` in `manifest.py` **and** its enforcer.
 - A new derived fact → the engine that owns the source; never a second parser.

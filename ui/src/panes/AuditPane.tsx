@@ -10,11 +10,11 @@ export default function AuditPane():ReactNode{
   // The heading stays while the body loads: a pane that changes identity when
   //  data lands loses the reader's place (and shifts the layout under them).
   if(audit.state.status==='loading')return <div className="audit-pane">
-    <div className="audit-head"><div><h1>Audit</h1></div></div>
+    <div className="audit-head"><div><h1>Health check</h1></div></div>
     <Loading what="the workspace audit" rows={5}/>
   </div>;
   if(audit.state.status==='failed')return <div className="audit-pane">
-    <div className="audit-head"><div><h1>Audit</h1></div></div>
+    <div className="audit-head"><div><h1>Health check</h1></div></div>
     <ErrorState error={audit.state.error} what="Reading the workspace audit" onRetry={audit.reload}/>
   </div>;
   const data=audit.state.data;
@@ -22,7 +22,7 @@ export default function AuditPane():ReactNode{
   return <div className="audit-pane">
     <div className="audit-head">
       <div>
-        <h1>Audit</h1>
+        <h1>Health check</h1>
         <p className="pane-purpose">A health check of the folder: what is missing, what is out of date, and which job boards Dossier may read.</p>
       </div>
       <span className="audit-date">Generated {data.generated_on}</span>

@@ -22,8 +22,8 @@ import NextStep from './NextStep';
 
 type Step={id:string;title:string;detail:string;done:boolean;pane:string};
 
-const LABEL:Record<string,string>={'files':'Folder',identity:'Identity',capture:'Capture',
-  build:'Build'};
+const LABEL:Record<string,string>={'files':'Folder',identity:'Preferences',capture:'Find roles',
+  build:'Write CV'};
 
 function stepsOf(workspace:WorkspaceState,identity:IdentityState|null):Step[]{
   const counts=workspace.counts??{};

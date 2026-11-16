@@ -50,8 +50,8 @@ its brief own mechanical decisions and gates.
 **Was:** this repository before the consolidation — a local-first document
 workspace over a mixed folder: FastAPI service on `127.0.0.1`, per-run bearer
 token, SQLite WAL + FTS5 index, Bundle Rail, conditional saves, trash-before-
-overwrite, DOCX/PDF rendering, declarative argv-only actions, a read-only Audit
-view and a copy-based Sync prompt.
+overwrite, DOCX/PDF rendering, declarative argv-only actions, a read-only Health
+check view and a copy-based Handoff prompt.
 
 **What survived:** all of it, unchanged in behaviour. The consolidation added a
 layer beside it rather than rewriting it. `src/dossier/` kept its module layout;

@@ -25,12 +25,13 @@ OUT = REPO / ".ui-ux-master" / "receipts" / "p5"
 OUT.mkdir(parents=True, exist_ok=True)
 WS = Path(tempfile.gettempdir()) / "uiux-workspace"
 
-PANES = ["Start here", "Folder", "Capture", "Jobs", "Identity", "Build", "Verify", "Audit",
-         "Trash", "Sync", "Loop", "Opportunity", "Panel"]
-AREA_OF = {"Start here": "Start", "Folder": "Files", "Capture": "Search", "Jobs": "Search", "Identity": "Search",
-           "Build": "Papers", "Verify": "Papers", "Audit": "Housekeeping", "Trash": "Housekeeping",
-           "Sync": "Housekeeping", "Loop": "Agent", "Opportunity": "Agent",
-           "Panel": "Agent"}
+PANES = ["Start here", "Folder", "Find roles", "Saved roles", "Preferences", "Write CV",
+         "Check CV", "Health check", "Deleted", "Handoff", "Loop", "Opportunity", "Panel"]
+AREA_OF = {"Start here": "Start", "Folder": "Files", "Find roles": "Search",
+           "Saved roles": "Search", "Preferences": "Search",
+           "Write CV": "Papers", "Check CV": "Papers", "Health check": "Housekeeping",
+           "Deleted": "Housekeeping", "Handoff": "Housekeeping", "Loop": "Agent",
+           "Opportunity": "Agent", "Panel": "Agent"}
 
 MEASURE = r"""
 () => {

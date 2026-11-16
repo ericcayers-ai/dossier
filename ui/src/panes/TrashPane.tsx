@@ -69,11 +69,11 @@ export default function TrashPane({onRestored}:{onRestored:(rel:string)=>void}):
   };
 
   if(trash.state.status==='loading')return <div className="trash-pane">
-    <h1>Trash</h1>
+    <h1>Deleted</h1>
     <Loading what="the trash folder" rows={4}/>
   </div>;
   if(trash.state.status==='failed')return <div className="trash-pane">
-    <h1>Trash</h1>
+    <h1>Deleted</h1>
     <ErrorState error={trash.state.error} what="Listing the trash folder" onRetry={trash.reload}/>
   </div>;
 
@@ -87,7 +87,7 @@ export default function TrashPane({onRestored}:{onRestored:(rel:string)=>void}):
   return <div className="trash-pane">
     <div className="audit-head">
       <div>
-        <h1>Trash</h1>
+        <h1>Deleted</h1>
         <p>Every overwrite this app makes keeps a timestamped copy first. Restoring writes the copy back to its original path and trashes whatever is there now, so a restore is itself reversible.</p>
       </div>
       <button type="button" onClick={trash.reload}>Refresh</button>

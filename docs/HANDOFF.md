@@ -1,13 +1,15 @@
 # Handoff
 
-2026-11-14. What a fresh session needs. Detail: `docs/STATE.md`, `docs/SCOPE-LEDGER.md`, and
+2026-11-16. What a fresh session needs. Detail: `docs/STATE.md`, `docs/SCOPE-LEDGER.md`, and
 `docs/evidence/`.
 
 ## Where this stands
 
-`master`, local commits only (unpushed). All 482 tests, UI build, 13-pane Playwright UI measurement,
-sloplint, cybersafe scan (0 findings), `graft check`, `agent adapters --check`, `doctor`, and
-`full-system.mjs --quick` are green from cold runs on 2026-11-14.
+`master`, HEAD carrying the 2026-11-14 verification slice plus the 2026-11-16 pane rename; the push
+and this pass's gates are recorded in `docs/FINISH-LOG-2026-11-16.md`. All 482 tests, UI build,
+13-pane Playwright UI measurement, sloplint, cybersafe scan (0 findings), `graft check`,
+`agent adapters --check`, `doctor`, and `full-system.mjs --quick` are green from cold runs on
+2026-11-14.
 
 - **Eval fixture and `score_job` fix landed:** the 23-posting evaluation workspace is committed under
   `tests/fixtures/eval-workspace/` with `docs/evidence/fit-eval-baseline-2026-11-12.json`
@@ -38,5 +40,6 @@ cd ui; npm run build
 
 ## Next action
 
-1. Owner decides whether to rename the 8 engine-vocabulary pane labels in UI + `tests/test_e2e_ui.py`
-   and whether to push `master` to `origin`.
+1. Pane labels are plain task words as of 2026-11-16 (`Find roles`, `Saved roles`, `Preferences`,
+   `Write CV`, `Check CV`, `Health check`, `Deleted`, `Handoff`; ids and routes unchanged), and
+   `master` is pushed to `origin`. Receipt: `docs/FINISH-LOG-2026-11-16.md`. Nothing is queued.

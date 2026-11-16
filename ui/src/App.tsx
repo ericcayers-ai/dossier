@@ -69,9 +69,9 @@ type SaveState={status:'idle'|'saving'|'saved'|'failed';at?:number;message?:stri
 const AREAS:Array<{id:Area;label:string;panes:Array<{id:Pane;label:string}>}>=[
   {id:'start',label:'Start',panes:[{id:'start',label:'Start here'}]},
   {id:'files',label:'Files',panes:[{id:'files',label:'Folder'}]},
-  {id:'search',label:'Search',panes:[{id:'capture',label:'Capture'},{id:'jobs',label:'Jobs'},{id:'identity',label:'Identity'}]},
-  {id:'papers',label:'Papers',panes:[{id:'build',label:'Build'},{id:'verify',label:'Verify'}]},
-  {id:'housekeeping',label:'Housekeeping',panes:[{id:'audit',label:'Audit'},{id:'trash',label:'Trash'},{id:'sync',label:'Sync'}]},
+  {id:'search',label:'Search',panes:[{id:'capture',label:'Find roles'},{id:'jobs',label:'Saved roles'},{id:'identity',label:'Preferences'}]},
+  {id:'papers',label:'Papers',panes:[{id:'build',label:'Write CV'},{id:'verify',label:'Check CV'}]},
+  {id:'housekeeping',label:'Housekeeping',panes:[{id:'audit',label:'Health check'},{id:'trash',label:'Deleted'},{id:'sync',label:'Handoff'}]},
   {id:'agent',label:'Agent',panes:[{id:'agent',label:'Loop'},{id:'trajectory',label:'Opportunity'},{id:'panel',label:'Panel'}]},
 ];
 /** The palette's places: eleven panes, each named with the area it lives under. */

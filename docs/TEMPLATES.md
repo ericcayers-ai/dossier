@@ -21,7 +21,7 @@ template.
 dossier tailor fields --template templates/my-template.docx
 ```
 
-lists the placeholders in first-appearance order. That is also what the Build pane calls to
+lists the placeholders in first-appearance order. That is also what the Write CV pane calls to
 draw one input per field.
 
 ## Filling
@@ -83,7 +83,7 @@ verify visual`).
 
 ## In the app
 
-**Build** pane → type the template path → **Read placeholders** → one input per field →
+**Write CV** pane → type the template path → **Read placeholders** → one input per field →
 **Build from template** → **Check the document**. The pane shows `written`, the fill count,
 any unused value, any leftover, and each verification check.
 

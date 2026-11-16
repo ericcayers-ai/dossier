@@ -34,7 +34,7 @@ export default function VerifyPane({candidate='',files=[]}:{candidate?:string;fi
   return <div className="verify-pane">
     <div className="audit-head">
       <div>
-        <h1>Verify</h1>
+        <h1>Check CV</h1>
         <p className="pane-purpose">Check a document before you send it: layout kept, text readable, pages rendered.</p>
       </div>
     </div>

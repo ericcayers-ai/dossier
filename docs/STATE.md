@@ -45,8 +45,10 @@ Vite, MIT-clean PDF stack (`pypdfium2`; `tests/test_licences.py` enforces non-co
 - **`dossier verify template`** does not inspect Word text boxes or images (`python-docx` limit).
 - **Two CLI-only/script API routes** have no UI caller (`GET /api/agent/next`, `GET /api/match/posting`).
 
-## Blocked / Remaining owner decision
+## Decided 2026-11-16
 
-- **Owner decision:** confirm whether to rename the 8 engine-vocabulary pane labels (`Capture`,
-  `Identity`, `Papers`, `Housekeeping`, `Agent`, `Loop`, `Opportunity`, `Panel`) to plain-language
-  names (requires updating `tests/test_e2e_ui.py` in the same commit).
+- **Pane labels are plain task words.** The eight engine-vocabulary labels became `Find roles`,
+  `Saved roles`, `Preferences`, `Write CV`, `Check CV`, `Health check`, `Deleted`, `Handoff`.
+  Pane ids, areas and routes (`#/search/capture`, `#/papers/build`, …) did not move;
+  `tests/test_e2e_ui.py` and `.ui-ux-master/measure.py` click the new labels in the same commit.
+  Receipt: `docs/FINISH-LOG-2026-11-16.md`.

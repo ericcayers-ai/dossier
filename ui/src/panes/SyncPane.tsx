@@ -9,11 +9,11 @@ export default function SyncPane():ReactNode{
   const [copied,setCopied]=useState(false);
 
   if(handoff.state.status==='loading')return <div className="sync-pane">
-    <h1>Sync</h1>
+    <h1>Handoff</h1>
     <Loading what="the reconciliation packet" rows={4}/>
   </div>;
   if(handoff.state.status==='failed')return <div className="sync-pane">
-    <h1>Sync</h1>
+    <h1>Handoff</h1>
     <ErrorState error={handoff.state.error} what="Building the reconciliation packet" onRetry={handoff.reload}/>
   </div>;
 
@@ -36,7 +36,7 @@ export default function SyncPane():ReactNode{
   return <div className="sync-pane">
     <div className="audit-head">
       <div>
-        <h1>Sync</h1>
+        <h1>Handoff</h1>
         <p className="pane-purpose">Hand this session to another AI in one paste. Nothing is sent anywhere unless you paste it.</p>
       </div>
       <button type="button" className="primary" onClick={()=>void copy()}>{copied?'Copied':'Copy prompt'}</button>

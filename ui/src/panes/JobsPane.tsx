@@ -73,7 +73,7 @@ export default function JobsPane():ReactNode{
   return <div className="jobs-pane">
     <div className="audit-head">
       <div>
-        <h1>Jobs</h1>
+        <h1>Saved roles</h1>
         <p className="pane-purpose">Every job Dossier has saved, plus what you have applied to and what is due a follow-up.</p>
       </div>
     </div>
@@ -98,7 +98,7 @@ export default function JobsPane():ReactNode{
           <div className="chips">{fitChips.map(value=><button type="button" key={value} className={`chip ${fit===value?'active':''}`} aria-pressed={fit===value} onClick={()=>setFit(value)}>{value==='all'?'All fits':value}</button>)}</div>
         </div>
         {jobs.length===0?<EmptyState title="No postings archived yet">
-          <p>Use <b>Search → Capture</b> to archive a board, then this table fills from the corpus.</p>
+          <p>Use <b>Search → Find roles</b> to archive a board, then this table fills from the corpus.</p>
         </EmptyState>
           :<div className="table-wrap"><table className="data-table">
             <thead><tr>{sortHeader('fit','Fit')}{sortHeader('title','Role')}{sortHeader('employer','Employer')}{sortHeader('location','Location')}{sortHeader('source','Source')}</tr></thead>

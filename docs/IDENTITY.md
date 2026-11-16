@@ -91,7 +91,7 @@ disqualifier.
 
 ## Where relevance is used
 
-1. **`dossier identity match`** (and the GUI's Identity → Matches tab) ranks the captured
+1. **`dossier identity match`** (and the GUI's Preferences → Matches tab) ranks the captured
    corpus. Disqualified rows stay visible under their own heading with the reason.
 2. **Capture filter**: `dossier scrape capture --min-match 45` or a recipe's
    `limits.min_match`. A page below the floor is **not archived**, and the run records

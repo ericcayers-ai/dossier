@@ -11,7 +11,11 @@ Tracks items discovered beyond the handoff and items deliberately left undone.
 
 ## Deliberately not done
 
-- **Plain-language pane rename (`Capture`, `Identity`, `Papers`, `Housekeeping`, `Agent`, `Loop`, `Opportunity`, `Panel`)** — Pinned by `tests/test_e2e_ui.py`; requires owner decision on vocabulary before renaming labels and e2e assertions together.
+- **Plain-language pane rename** — **done 2026-11-16.** The eight engine-vocabulary labels are now
+  `Find roles`, `Saved roles`, `Preferences`, `Write CV`, `Check CV`, `Health check`, `Deleted`,
+  `Handoff`, with ids and routes unchanged. `tests/test_e2e_ui.py` and `.ui-ux-master/measure.py`
+  click the new labels in the same commit, so the pin moved with the rename instead of being
+  loosened. Receipt: `docs/FINISH-LOG-2026-11-16.md`.
 - **Automated CAPTCHA solver / proxy pool** — Requires paid owner key (`DOSSIER_SOLVER_KEY`); excluded by design (`challenge-is-explicit` + `session-is-the-users`).
 - **`POST /api/scrape/login`** — Omitted by design because browser sign-in requires an interactive local window (`dossier scrape login`).
 - **Splitting `src/dossier/cli.py`** — 1,680 lines; no failing test or defect justifies the behaviour risk of refactoring CLI wiring.
