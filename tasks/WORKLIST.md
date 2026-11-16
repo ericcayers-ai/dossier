@@ -151,33 +151,56 @@ $ uv run dossier agent manifest --root .             -> exit 0; 22 modes; `traje
 $ uv run dossier agent adapters --check --root .     -> exit 0; 8/8 packs `true`, 0 `false`
 ```
 
-No checkbox above is ticked by this re-measurement: the receipt still requires a committed
-revision, and the owner commit decision (`"Awaiting an owner commit decision."`, WORKLIST.md:45)
-stands. Full receipt:
-[autofix2-2026-10-25](../docs/evidence/autofix2-2026-10-25.md).
+No checkbox was ticked by that 2026-10-25 re-measurement, because the receipt it relied on was a dirty
+tree. **Re-measured 2026-11-16 against `HEAD` = `45eeaa0` with the feature committed at `c043aa0`:
+all six are now ticked,** each with the command that proves it quoted in place. Full receipt:
+[docs/FINISH-LOG-2026-11-16.md](../docs/FINISH-LOG-2026-11-16.md).
 
-- [ ] Engine DAG core, tests, safe tree writes, deterministic ASCII/Mermaid, unique tracker
-  matching, exact-path artifacts, and read-only source sync. Receipt (dirty tree only): focused
-  tree/API/CLI/contract tests passed (41/41 passing in tree test suite; 190/190 passing across
-  full repository test suite); canonical-copy probe imported **1,789 jobs + 38 tracker records**,
-  linked 17 exact tracker records, kept 21 separate, reported zero ambiguity. Evidence:
-  `docs/evidence/trajectory-tree-corpus-baseline-2026-10-01.json` (untracked, 1,171 B, dated
-  2026-10-01) — that file holds six checks (`corpus-row-count`, `tracker-row-count`,
-  `tracker-exact-match`, `artifact-read-only-projection`, and two `status: manual` entries). It
-  supports 1,789 / 38 / 17 / 21; it does **not** contain a SHA-256 check and does **not**
-  contain a "119 artifacts" figure, so neither claim is carried here.
-- [ ] Authenticated API endpoints and CLI tree actions implemented. `GET /api/tree` remains the
-  filesystem view; `GET /api/tree?view=trajectory` serves the graph. In the dirty tree,
-  `src/dossier/api/app.py:116` reads `if view == "trajectory":`; at `HEAD` the string
-  `trajectory` occurs 0 times in that file. Targeted run receipt: `test_tree_api.py` 6/6 passed,
-  `test_tree_cli.py` 2/2 passed.
-- [ ] Manifest registers `trajectory` stage/mode and `.dossier/tree.json` artifact without
-  modifying the existing 14 safety gates. All **8/8 adapter packs** checked `true` with 0 drift
-  (`uv run dossier agent adapters --check --root .`).
-- [ ] UI add/link/sync/exports and Generate Next Branch packet implemented in `ui/src/trajectory/`.
-  Frontend typecheck and build verified clean with zero TypeScript errors (`npm run build` -> `tsc -b && vite build` exit 0). The whole directory is untracked.
-- [ ] Full-stack end-to-end sequential flow verified: Experience -> Touchpoint (inbound email) -> Meeting (screen) -> Opportunity (tailored job) -> Milestone (outcome) with deterministic ASCII and Mermaid graph TD exports.
-- [ ] Canonical corpus integration confirmed in `<workspace>/.dossier/tree.json` (1,810 nodes — measured 2026-10-11, file 1,373,953 B). The 1,789 jobs figure is independently confirmed (`all_boards_data/all_jobs.json` parses to 1,789 rows, 2,120,866 B). The 21 unmatched tracker records / 119 artifacts / 0 stubs breakdown and the "source file SHA-256 values were unchanged" claim were **not** re-verified by the C pass and are not carried here.
+- [x] Engine DAG core, tests, safe tree writes, deterministic ASCII/Mermaid, unique tracker
+  matching, exact-path artifacts, and read-only source sync. **Committed at `c043aa0`.** At `HEAD`,
+  `git show HEAD:src/dossier/engine/tree.py` is **640 lines** and defines `upsert_node`,
+  `link_nodes`, `to_ascii`, `to_mermaid`, `sync`, `generate_next_packet`, `_artifact_path` and
+  `_proposed_tracker_branch`; `_write_unlocked` (`tree.py:214-225`) trashes the previous file and
+  writes through `atomic_write(path, content, expected)`. Targeted run:
+  `pytest -k test_tree` → **43 passed, 439 deselected** (2.46 s). The 1,789 jobs / 38 tracker /
+  17 exact-match figures remain the 2026-10-01 measurement quoted in the receipt above, which
+  supports them and still carries neither a SHA-256 claim nor a "119 artifacts" figure.
+- [x] Authenticated API endpoints and CLI tree actions implemented. **Committed at `c043aa0`.**
+  `GET /api/tree` remains the filesystem view and `GET /api/tree?view=trajectory` serves the graph:
+  `git show HEAD:src/dossier/api/app.py` contains `if view == "trajectory":`, and
+  `git show HEAD:src/dossier/cli.py` contains `trajectory = add("tree", "career trajectory DAG")`.
+  `tests/test_tree_api.py` and `tests/test_tree_cli.py` are both in `HEAD` and pass inside the
+  43-test run above. The "0 occurrences at `HEAD`" line that stood here was measured against
+  `701c1fd` and is superseded by the commit.
+- [x] Manifest registers `trajectory` stage/mode and `.dossier/tree.json` artifact without
+  modifying the existing safety gates. **Committed at `c043aa0`:** `git show
+  HEAD:src/dossier/agent/manifest.py` carries `Stage("trajectory", …)`, the `trajectory` mode row
+  and `Artifact("trajectory_tree", ".dossier/tree.json", …)`.
+  `.venv\Scripts\dossier.exe agent adapters --check --root .` → **8/8 `true`**, 0 drift
+  (2026-11-16).
+- [x] UI add/link/sync/exports and Generate Next Branch packet implemented in `ui/src/trajectory/`.
+  **Committed at `c043aa0`.** `git ls-tree -r --name-only HEAD ui/src/trajectory` returns exactly
+  `TrajectoryPane.tsx` and `trajectory.css`; the committed pane calls `api.treeUpsert`,
+  `api.treeLink`, `api.treeSync`, `api.treeExport` (`ascii` / `mermaid`) and `api.treeNextPacket`
+  ("Generate next branch"). `cd ui && npm run build` → exit 0, 70 modules, 2026-11-16.
+- [x] Full-stack end-to-end sequential flow verified: Experience → Touchpoint (inbound email) →
+  Meeting (screen) → Opportunity (tailored job) → Milestone (outcome) with deterministic ASCII
+  and Mermaid `graph TD` exports. **Committed at `c043aa0`**, as
+  `tests/test_tree_api.py::test_api_creates_nodes_links_and_exports_an_experience_to_milestone_path`:
+  it posts the six nodes and five links through the real HTTP app, asserts the child stays
+  non-actionable until its parents complete, then asserts every node label is in the ASCII export
+  and `mermaid.count("-->") == 5`. It passes in the 43-test run above.
+- [x] Canonical corpus integration confirmed in `<workspace>/.dossier/tree.json`. **Committed at
+  `c043aa0`:** `test_sync_imports_all_jobs_and_unique_tracker_rows_without_marking_applied`,
+  `test_sync_uses_exact_tracker_artifact_names_and_leaves_sources_read_only` and
+  `test_sync_builds_prospective_sequence_for_uniquely_matched_tracker_jobs_only` cover the import,
+  the exact-artifact matching and the read-only-source guarantee, and pass in the 43-test run.
+  **Caveat, stated rather than buried:** the 1,810-node `.dossier/tree.json` quoted below was
+  measured on 2026-10-11 in a job-search workspace that is not part of this checkout
+  (`dir .dossier\tree.json` here → *File Not Found*), so that node count and the 1,373,953 B size
+  are **not** re-derived; the committed code and tests are what is verified. The 21 unmatched
+  tracker rows / 119 artifacts / 0 stubs breakdown and the "source SHA-256 unchanged" claim remain
+  un-re-verified and are still not carried here.
 
 ## Historical resolved items
 
