@@ -16,6 +16,7 @@
 ## Navigation map
 
 ```
+Start        └ Start here
 Files        └ Folder
 Search       ├ Find roles · Saved roles · Preferences
 Papers       ├ Write CV · Check CV
@@ -23,14 +24,14 @@ Housekeeping ├ Health check · Deleted · Handoff
 Agent        ├ Loop · Opportunity · Panel
 ```
 
-Two levels, because eleven flat tabs clipped at 1100 px. `⌘K` lists all twelve panes with no
-query and ranks places above files, so any screen is one keystroke and one Enter away.
+Two levels, because thirteen flat tabs clipped at 1100 px. `⌘K` lists all thirteen panes with
+no query and ranks places above files, so any screen is one keystroke and one Enter away.
 
 ## Every pane carries the same four states
 
 Loading (a skeleton, never a spinner), ready, empty (what this place is, one next action) and
 failed (a sentence and a retry). `test_every_pane_keeps_its_heading_and_never_renders_blank`
-walks all twelve and fails if a pane loses its `h1`.
+walks the twelve panes inside the working areas and fails if one loses its `h1`.
 
 ## Trust boundaries the flow must not cross
 

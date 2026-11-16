@@ -25,8 +25,8 @@ nothing from the package, so the contract can be rendered without a workspace.
 
 ## The interface
 
-React 19 + Vite, no component library. Five areas (Files, Search, Papers, Housekeeping, Agent)
-mount eleven panes; each area renders only its own panes, and the two side panels become
+React 19 + Vite, no component library. Six areas (Start, Files, Search, Papers, Housekeeping,
+Agent) mount thirteen panes; each area renders only its own panes, and the two side panels become
 `inert` slide-overs below 1000/700 px. `tokens.css` is the whole vocabulary: OKLCH colour with
 two chromatic tokens, six type sizes, a 4 px spacing scale, named chrome heights, two durations
 and one easing. Panes share `Pane`-level primitives from `panes/StateViews.tsx` (`Loading`
